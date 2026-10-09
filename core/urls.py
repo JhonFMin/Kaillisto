@@ -6,18 +6,23 @@ from .views import (
     iniciar_sesion,
 )
 from .views import (
+    AlertaViewSet,
     ComunidadViewSet,
     DispositivoViewSet,
     EstadoInstalacionViewSet,
     InstalacionViewSet,
-    TipoMedicionViewSet,
-    UmbralViewSet,
-    AlertaViewSet,
     OrdenTrabajoViewSet,
+    RecepcionMedicionView,
     RepuestoOrdenTrabajoViewSet,
     RepuestoViewSet,
+    TipoMedicionViewSet,
+    cerrar_sesion,
+    dashboard_resumen,
+    iniciar_sesion,
+    UmbralViewSet,
 
 )
+
 
 
 router = DefaultRouter()
@@ -79,6 +84,12 @@ router.register(
 )
 urlpatterns = [
     path(
+        "dashboard/resumen/",
+        dashboard_resumen,
+        name="dashboard-resumen",
+    ),
+
+    path(
     "auth/login/",
     iniciar_sesion,
     name="iniciar-sesion",
@@ -95,3 +106,4 @@ urlpatterns = [
         name="recepcion-mediciones",
     ),
 ] + router.urls
+

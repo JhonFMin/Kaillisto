@@ -18,8 +18,16 @@ from .models import (
     Umbral,
     Repuesto, 
     RepuestoOrdenTrabajo,
-
+    Alerta,
+    EstadoOrdenTrabajo,
+    Instalacion,
+    
 )
+from datetime import timedelta
+
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
 from .serializers import MedicionSerializer, AlertaSerializer
 from .serializers import DispositivoSerializer
 from .models import Comunidad, Umbral, EstadoInstalacion, Instalacion
@@ -109,7 +117,10 @@ class RecepcionMedicionView(generics.CreateAPIView):
             )
 
         medicion = serializer.save(es_anomala=es_anomala)
-
+        dispositivo.ultima_comunicacion = timezone.now()
+        dispositivo.save(
+            update_fields=["ultima_comunicacion"]
+        )
         if not es_anomala:
             return
 
@@ -209,7 +220,28 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
         ):
             cambios["fecha_cierre"] = timezone.now()
 
-        serializer.save(**cambios)
+        orden_actualizada = serializer.save(**cambios)
+
+        if (
+            estado_nuevo == "Cerrada"
+            and orden_anterior.alerta is not None
+        ):
+            estado_alerta_cerrada = EstadoAlerta.objects.filter(
+                nombre="Cerrada"
+            ).first()
+
+            if estado_alerta_cerrada is not None:
+                alerta = orden_actualizada.alerta
+
+                if alerta.estado.nombre == "Vigente":
+                    alerta.estado = estado_alerta_cerrada
+                    alerta.fecha_cierre = timezone.now()
+                    alerta.save(
+                        update_fields=[
+                            "estado",
+                            "fecha_cierre",
+                        ]
+                    )   
 class UmbralViewSet(viewsets.ModelViewSet):
     queryset = Umbral.objects.select_related(
         "instalacion",
@@ -324,3 +356,91 @@ class RepuestoOrdenTrabajoViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def dashboard_resumen(request):
+    limite_fuera_linea = timezone.now() - timedelta(hours=24)
+
+    estado_vigente = EstadoAlerta.objects.filter(
+        nombre="Vigente"
+    ).first()
+
+    estado_en_proceso = EstadoOrdenTrabajo.objects.filter(
+        nombre="En proceso"
+    ).first()
+
+    instalaciones = Instalacion.objects.select_related(
+        "estado_instalacion"
+    ).order_by("id_instalacion")
+
+    datos = []
+
+    for instalacion in instalaciones:
+        ultima_comunicacion = (
+            instalacion.dispositivos
+            .order_by("-ultima_comunicacion")
+            .values_list("ultima_comunicacion", flat=True)
+            .first()
+        )
+
+        tiene_alerta = (
+            estado_vigente is not None
+            and Alerta.objects.filter(
+                instalacion=instalacion,
+                estado=estado_vigente,
+            ).exists()
+        )
+
+        en_mantenimiento = (
+            estado_en_proceso is not None
+            and OrdenTrabajo.objects.filter(
+                instalacion=instalacion,
+                estado=estado_en_proceso,
+            ).exists()
+        )
+
+        if en_mantenimiento:
+            estado_calculado = "En mantenimiento"
+        elif tiene_alerta:
+            estado_calculado = "Con alerta"
+        elif (
+            ultima_comunicacion is None
+            or ultima_comunicacion < limite_fuera_linea
+        ):
+            estado_calculado = "Fuera de línea"
+        else:
+            estado_calculado = "Normal"
+
+        datos.append(
+            {
+                "id_instalacion": instalacion.id_instalacion,
+                "nombre": instalacion.nombre,
+                "ubicacion": instalacion.ubicacion,
+                "estado": estado_calculado,
+                "ultima_comunicacion": ultima_comunicacion,
+            }
+        )
+
+    return Response(
+        {
+            "total_instalaciones": len(datos),
+            "normales": sum(
+                item["estado"] == "Normal"
+                for item in datos
+            ),
+            "con_alerta": sum(
+                item["estado"] == "Con alerta"
+                for item in datos
+            ),
+            "en_mantenimiento": sum(
+                item["estado"] == "En mantenimiento"
+                for item in datos
+            ),
+            "fuera_de_linea": sum(
+                item["estado"] == "Fuera de línea"
+                for item in datos
+            ),
+            "instalaciones": datos,
+        }
+    )
