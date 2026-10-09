@@ -4,13 +4,23 @@ from .models import Dispositivo
 
 from .models import (
     Comunidad,
+    Dispositivo,
     EstadoInstalacion,
     Idioma,
     Instalacion,
     Rol,
+    Medicion,
+    TipoMedicion,
     Usuario,
+    Alerta,
+    EstadoAlerta,
+    PrioridadAlerta,
+    TipoAlerta,
+    EstadoOrdenTrabajo,
+    OrdenTrabajo,
+    Repuesto,
+    RepuestoOrdenTrabajo,
 )
-
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
@@ -59,3 +69,13 @@ admin.site.register(Idioma)
 admin.site.register(EstadoInstalacion)
 admin.site.register(Instalacion)
 admin.site.register(Dispositivo)
+admin.site.register(Medicion)
+admin.site.register(TipoMedicion)
+admin.site.register(TipoAlerta)
+admin.site.register(PrioridadAlerta)
+admin.site.register(EstadoAlerta)
+admin.site.register(Alerta)
+admin.site.register(EstadoOrdenTrabajo)
+admin.site.register(OrdenTrabajo)
+admin.site.register(Repuesto)
+admin.site.register(RepuestoOrdenTrabajo)
