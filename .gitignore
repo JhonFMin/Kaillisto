@@ -1,0 +1,30 @@
+
+# Entornos virtuales
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Base de datos local
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Archivos locales y generados
+*.log
+.vscode/
+.DS_Store
+Thumbs.db
+staticfiles/
+media/
