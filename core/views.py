@@ -1,3 +1,4 @@
+from django.db.migrations import serializer
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -21,6 +22,7 @@ from .models import (
     Alerta,
     EstadoOrdenTrabajo,
     Instalacion,
+    Evento,
     
 )
 from datetime import timedelta
@@ -41,7 +43,7 @@ from .serializers import (
     RepuestoOrdenTrabajoSerializer,
 )
 from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import (
     AllowAny,
@@ -158,8 +160,7 @@ class RecepcionMedicionView(generics.CreateAPIView):
         if alerta_ya_vigente:
             return
 
-        Alerta.objects.create(
-            instalacion=dispositivo.instalacion,
+        alerta = Alerta.objects.create(
             tipo_medicion=tipo_medicion,
             tipo_alerta=tipo_alerta,
             prioridad=prioridad,
@@ -169,11 +170,23 @@ class RecepcionMedicionView(generics.CreateAPIView):
                 "fuera del umbral configurado."
             ),
         )
+        Evento.objects.create(
+            usuario=None,
+            instalacion=dispositivo.instalacion,
+            tipo="Alerta generada",
+            descripcion=(
+                f"El sistema generó la alerta "
+                f"#{alerta.id_alerta} por tres mediciones "
+                f"consecutivas fuera del umbral de "
+                f"{tipo_medicion.nombre}."
+            ),
+        )
 class TipoMedicionViewSet(viewsets.ModelViewSet):
     queryset = TipoMedicion.objects.all().order_by("id_tipo_medicion")
     serializer_class = TipoMedicionSerializer
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
+    
 class OrdenTrabajoViewSet(viewsets.ModelViewSet):
     serializer_class = OrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
@@ -196,7 +209,19 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             return [IsAdminUser()]
 
         return [IsAuthenticated()]
+    def perform_create(self, serializer):
+        orden = serializer.save()
 
+        Evento.objects.create(
+            usuario=self.request.user,
+            instalacion=orden.instalacion,
+            tipo="Orden creada y asignada",
+            descripcion=(
+                f"Se creó la orden #{orden.id_orden_trabajo} "
+                f"y se asignó al técnico "
+                f"{orden.tecnico.username}."
+            ),
+        )
     def perform_update(self, serializer):
         orden_anterior = self.get_object()
         estado_anterior = orden_anterior.estado.nombre
@@ -219,6 +244,16 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             and orden_anterior.fecha_cierre is None
         ):
             cambios["fecha_cierre"] = timezone.now()
+            
+            Evento.objects.create(
+                usuario=self.request.user,
+                instalacion=orden_anterior.instalacion,
+                tipo="Orden cerrada",
+                descripcion=(
+                    f"Se cerró la orden "
+                    f"#{orden_anterior.id_orden_trabajo}."
+                ),
+            )
 
         orden_actualizada = serializer.save(**cambios)
 
@@ -442,5 +477,127 @@ def dashboard_resumen(request):
                 for item in datos
             ),
             "instalaciones": datos,
+        }
+    )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historial_mediciones_instalacion(request, id_instalacion):
+    
+    instalacion = get_object_or_404(
+        Instalacion,
+        id_instalacion=id_instalacion,
+    )
+
+    mediciones = Medicion.objects.select_related(
+        "dispositivo",
+        "tipo_medicion",
+    ).filter(
+        dispositivo__instalacion=instalacion
+    ).order_by("-fecha_hora")
+
+    tipo_medicion = request.query_params.get("tipo_medicion")
+
+    if tipo_medicion:
+        mediciones = mediciones.filter(
+            tipo_medicion_id=tipo_medicion
+        )
+
+    fecha_inicio = request.query_params.get("fecha_inicio")
+
+    if fecha_inicio:
+        mediciones = mediciones.filter(
+            fecha_hora__date__gte=fecha_inicio
+        )
+
+    fecha_fin = request.query_params.get("fecha_fin")
+
+    if fecha_fin:
+        mediciones = mediciones.filter(
+            fecha_hora__date__lte=fecha_fin
+        )
+
+    datos = [
+        {
+            "id_medicion": medicion.id_medicion,
+            "dispositivo": medicion.dispositivo.codigo,
+            "tipo_medicion": medicion.tipo_medicion.nombre,
+            "unidad": medicion.tipo_medicion.unidad,
+            "valor": str(medicion.valor),
+            "fecha_hora": medicion.fecha_hora,
+            "es_anomala": medicion.es_anomala,
+        }
+        for medicion in mediciones
+    ]
+
+    return Response(
+        {
+            "id_instalacion": instalacion.id_instalacion,
+            "instalacion": instalacion.nombre,
+            "total_mediciones": len(datos),
+            "mediciones": datos,
+        }
+    )
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historial_mantenimientos_instalacion(
+    request,
+    id_instalacion,
+):
+    instalacion = get_object_or_404(
+        Instalacion,
+        id_instalacion=id_instalacion,
+    )
+
+    estado_cerrada = EstadoOrdenTrabajo.objects.filter(
+        nombre="Cerrada"
+    ).first()
+
+    ordenes = OrdenTrabajo.objects.select_related(
+        "alerta",
+        "tecnico",
+        "estado",
+    ).prefetch_related(
+        "repuestos_utilizados__repuesto"
+    ).filter(
+        instalacion=instalacion,
+        estado=estado_cerrada,
+    ).order_by("-fecha_cierre")
+
+    datos = []
+
+    for orden in ordenes:
+        repuestos = [
+            {
+                "id_repuesto": uso.repuesto.id_repuesto,
+                "nombre": uso.repuesto.nombre,
+                "unidad_medida": uso.repuesto.unidad_medida,
+                "cantidad": str(uso.cantidad),
+            }
+            for uso in orden.repuestos_utilizados.all()
+        ]
+
+        datos.append(
+            {
+                "id_orden_trabajo": orden.id_orden_trabajo,
+                "alerta": orden.alerta_id,
+                "tecnico": orden.tecnico.username,
+                "estado": orden.estado.nombre,
+                "descripcion": orden.descripcion,
+                "diagnostico": orden.diagnostico,
+                "solucion_aplicada": orden.solucion_aplicada,
+                "fecha_creacion": orden.fecha_creacion,
+                "fecha_atencion": orden.fecha_atencion,
+                "fecha_cierre": orden.fecha_cierre,
+                "repuestos": repuestos,
+            }
+        )
+
+    return Response(
+        {
+            "id_instalacion": instalacion.id_instalacion,
+            "instalacion": instalacion.nombre,
+            "total_mantenimientos": len(datos),
+            "mantenimientos": datos,
         }
     )

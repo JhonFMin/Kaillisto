@@ -460,3 +460,37 @@ class RepuestoOrdenTrabajo(models.Model):
             f"{self.orden_trabajo} - "
             f"{self.repuesto}: {self.cantidad}"
         )
+class Evento(models.Model):
+    id_evento = models.BigAutoField(primary_key=True)
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        db_column="id_usuario",
+        related_name="eventos",
+        null=True,
+        blank=True,
+    )
+
+    instalacion = models.ForeignKey(
+        Instalacion,
+        on_delete=models.PROTECT,
+        db_column="id_instalacion",
+        related_name="eventos",
+        null=True,
+        blank=True,
+    )
+
+    tipo = models.CharField(max_length=100)
+    descripcion = models.TextField()
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "evento"
+        ordering = ["-fecha_hora"]
+
+    def __str__(self):
+        return (
+            f"{self.tipo} - "
+            f"{self.fecha_hora:%Y-%m-%d %H:%M}"
+        )

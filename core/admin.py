@@ -20,6 +20,7 @@ from .models import (
     OrdenTrabajo,
     Repuesto,
     RepuestoOrdenTrabajo,
+    Evento,
 )
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
@@ -79,3 +80,4 @@ admin.site.register(EstadoOrdenTrabajo)
 admin.site.register(OrdenTrabajo)
 admin.site.register(Repuesto)
 admin.site.register(RepuestoOrdenTrabajo)
+admin.site.register(Evento)

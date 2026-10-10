@@ -20,7 +20,8 @@ from .views import (
     dashboard_resumen,
     iniciar_sesion,
     UmbralViewSet,
-
+    historial_mediciones_instalacion, 
+    historial_mantenimientos_instalacion,
 )
 
 
@@ -87,6 +88,17 @@ urlpatterns = [
         "dashboard/resumen/",
         dashboard_resumen,
         name="dashboard-resumen",
+    ),
+    path(
+        "instalaciones/<int:id_instalacion>/mediciones/",
+        historial_mediciones_instalacion,
+        name="historial-mediciones-instalacion",
+    ),
+    
+    path(
+        "instalaciones/<int:id_instalacion>/mantenimientos/",
+        historial_mantenimientos_instalacion,
+        name="historial-mantenimientos-instalacion",
     ),
 
     path(
