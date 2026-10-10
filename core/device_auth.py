@@ -1,38 +1,30 @@
 from django.contrib.auth.hashers import check_password
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework import authentication
+from rest_framework import exceptions
 
 from .models import Dispositivo
 
 
-class DispositivoAuthentication(BaseAuthentication):
+class DispositivoAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
-        api_key = request.headers.get("X-Device-Key")
+        api_key = request.headers.get("X-API-Key")
 
         if not api_key:
-            return None
-
-        codigo = request.headers.get("X-Device-Code")
-
-        if not codigo:
-            raise AuthenticationFailed(
-                "Falta la cabecera X-Device-Code."
+            raise exceptions.AuthenticationFailed(
+                "Debes enviar el encabezado X-API-Key."
             )
 
-        try:
-            dispositivo = Dispositivo.objects.get(
-                codigo=codigo,
-                activo=True,
-            )
-        except Dispositivo.DoesNotExist:
-            raise AuthenticationFailed(
-                "Dispositivo desconocido o inactivo."
-            )
+        dispositivos = Dispositivo.objects.filter(
+            activo=True
+        )
 
-        if not check_password(api_key, dispositivo.api_key_hash):
-            raise AuthenticationFailed("Clave de dispositivo inválida.")
+        for dispositivo in dispositivos:
+            if check_password(
+                api_key,
+                dispositivo.api_key_hash,
+            ):
+                return (dispositivo, api_key)
 
-        return (dispositivo, None)
-
-    def authenticate_header(self, request):
-        return "X-Device-Key"
+        raise exceptions.AuthenticationFailed(
+            "API key de dispositivo inválida."
+        )

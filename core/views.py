@@ -26,6 +26,8 @@ from .models import (
     
 )
 from datetime import timedelta
+import csv
+from django.http import HttpResponse
 
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -92,14 +94,13 @@ class RecepcionMedicionView(generics.CreateAPIView):
     serializer_class = MedicionSerializer
     authentication_classes = [DispositivoAuthentication]
     permission_classes = []
-
     def perform_create(self, serializer):
         dispositivo = self.request.user
         dispositivo_recibido = serializer.validated_data["dispositivo"]
         tipo_medicion = serializer.validated_data["tipo_medicion"]
         valor = serializer.validated_data["valor"]
 
-        if dispositivo_recibido != dispositivo:
+        if dispositivo_recibido.id_dispositivo != dispositivo.id_dispositivo:
             raise PermissionDenied(
                 "No puedes enviar mediciones de otro dispositivo."
             )
@@ -161,6 +162,7 @@ class RecepcionMedicionView(generics.CreateAPIView):
             return
 
         alerta = Alerta.objects.create(
+            instalacion=dispositivo.instalacion,
             tipo_medicion=tipo_medicion,
             tipo_alerta=tipo_alerta,
             prioridad=prioridad,
@@ -599,5 +601,395 @@ def historial_mantenimientos_instalacion(
             "instalacion": instalacion.nombre,
             "total_mantenimientos": len(datos),
             "mantenimientos": datos,
+        }
+    )
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def exportar_mediciones_csv(request, id_instalacion):
+    instalacion = get_object_or_404(
+        Instalacion,
+        id_instalacion=id_instalacion,
+    )
+
+    mediciones = Medicion.objects.select_related(
+        "dispositivo",
+        "tipo_medicion",
+    ).filter(
+        dispositivo__instalacion=instalacion
+    ).order_by("-fecha_hora")
+
+    tipo_medicion = request.query_params.get("tipo_medicion")
+
+    if tipo_medicion:
+        mediciones = mediciones.filter(
+            tipo_medicion_id=tipo_medicion
+        )
+
+    fecha_inicio = request.query_params.get("fecha_inicio")
+
+    if fecha_inicio:
+        mediciones = mediciones.filter(
+            fecha_hora__date__gte=fecha_inicio
+        )
+
+    fecha_fin = request.query_params.get("fecha_fin")
+
+    if fecha_fin:
+        mediciones = mediciones.filter(
+            fecha_hora__date__lte=fecha_fin
+        )
+
+    respuesta = HttpResponse(
+        content_type="text/csv",
+    )
+    respuesta["Content-Disposition"] = (
+        f'attachment; filename="mediciones_instalacion_'
+        f'{instalacion.id_instalacion}.csv"'
+    )
+
+    escritor = csv.writer(respuesta,delimiter=";",)
+
+    escritor.writerow(
+        [
+            "ID medicion",
+            "Dispositivo",
+            "Tipo de medicion",
+            "Unidad",
+            "Valor",
+            "Fecha y hora",
+            "Es anomala",
+        ]
+    )
+
+    for medicion in mediciones:
+        escritor.writerow(
+            [
+                medicion.id_medicion,
+                medicion.dispositivo.codigo,
+                medicion.tipo_medicion.nombre,
+                medicion.tipo_medicion.unidad,
+                str(medicion.valor),
+                medicion.fecha_hora,
+                "Si" if medicion.es_anomala else "No",
+            ]
+        )
+
+    return respuesta
+
+def formatear_fecha_local(fecha):
+    if fecha is None:
+        return ""
+
+    fecha_local = timezone.localtime(fecha)
+
+    return fecha_local.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def formatear_duracion(fecha_inicio, fecha_fin):
+    if fecha_inicio is None or fecha_fin is None:
+        return ""
+
+    duracion = fecha_fin - fecha_inicio
+    segundos_totales = int(duracion.total_seconds())
+
+    horas, resto = divmod(segundos_totales, 3600)
+    minutos, segundos = divmod(resto, 60)
+
+    return f"{horas:02d}:{minutos:02d}:{segundos:02d}"
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def exportar_mantenimientos_csv(request, id_instalacion): 
+    
+    instalacion = get_object_or_404(
+        Instalacion,
+        id_instalacion=id_instalacion,
+    )
+
+    estado_cerrada = EstadoOrdenTrabajo.objects.filter(
+        nombre="Cerrada"
+    ).first()
+
+    ordenes = OrdenTrabajo.objects.select_related(
+        "alerta",
+        "tecnico",
+        "estado",
+    ).prefetch_related(
+        "repuestos_utilizados__repuesto"
+    ).filter(
+        instalacion=instalacion,
+        estado=estado_cerrada,
+    ).order_by("-fecha_cierre")
+
+    respuesta = HttpResponse(
+        content_type="text/csv",
+    )
+    respuesta["Content-Disposition"] = (
+        f'attachment; filename="mantenimientos_instalacion_'
+        f'{instalacion.id_instalacion}.csv"'
+    )
+
+    escritor = csv.writer(respuesta,  delimiter=";",)
+
+    escritor.writerow(
+        [
+            "ID orden",
+            "Alerta",
+            "Tecnico",
+            "Estado",
+            "Descripcion",
+            "Diagnostico",
+            "Solucion aplicada",
+            "Fecha creacion",
+            "Fecha atencion",
+            "Fecha cierre",
+            "Duracion de atencion",
+            "Repuestos utilizados",
+        ]
+    )
+
+    for orden in ordenes:
+        repuestos = "; ".join(
+            f"{uso.repuesto.nombre} "
+            f"({uso.repuesto.unidad_medida}) x {uso.cantidad}"
+            for uso in orden.repuestos_utilizados.all()
+        )
+
+        escritor.writerow(
+            [
+                orden.id_orden_trabajo,
+                orden.alerta_id or "",
+                orden.tecnico.username,
+                orden.estado.nombre,
+                orden.descripcion,
+                orden.diagnostico or "",
+                orden.solucion_aplicada or "",
+                formatear_fecha_local(orden.fecha_creacion),
+                formatear_fecha_local(orden.fecha_atencion),
+                formatear_fecha_local(orden.fecha_cierre),
+                formatear_duracion(
+                    orden.fecha_atencion,
+                    orden.fecha_cierre,
+                ),
+                repuestos,
+            ]
+        )
+
+
+    return respuesta
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def instalaciones_lider_comunitario(request):
+    usuario = request.user
+
+    es_lider = (
+        usuario.rol is not None
+        and "lider" in usuario.rol.nombre.lower()
+    )
+
+    if not es_lider:
+        raise PermissionDenied(
+            "Este endpoint es exclusivo para líderes comunitarios."
+        )
+
+    if usuario.comunidad is None:
+        raise PermissionDenied(
+            "El líder comunitario no tiene una comunidad asignada."
+        )
+
+    limite_fuera_linea = timezone.now() - timedelta(hours=24)
+
+    estado_vigente = EstadoAlerta.objects.filter(
+        nombre="Vigente"
+    ).first()
+
+    estado_en_proceso = EstadoOrdenTrabajo.objects.filter(
+        nombre="En proceso"
+    ).first()
+
+    instalaciones = Instalacion.objects.select_related(
+        "estado_instalacion"
+    ).filter(
+        comunidad=usuario.comunidad
+    ).order_by("id_instalacion")
+
+    datos = []
+
+    for instalacion in instalaciones:
+        ultima_comunicacion = (
+            instalacion.dispositivos
+            .order_by("-ultima_comunicacion")
+            .values_list("ultima_comunicacion", flat=True)
+            .first()
+        )
+
+        tiene_alerta = (
+            estado_vigente is not None
+            and Alerta.objects.filter(
+                instalacion=instalacion,
+                estado=estado_vigente,
+            ).exists()
+        )
+
+        en_mantenimiento = (
+            estado_en_proceso is not None
+            and OrdenTrabajo.objects.filter(
+                instalacion=instalacion,
+                estado=estado_en_proceso,
+            ).exists()
+        )
+
+        if en_mantenimiento:
+            estado_calculado = "En mantenimiento"
+        elif tiene_alerta:
+            estado_calculado = "Con alerta"
+        elif (
+            ultima_comunicacion is None
+            or ultima_comunicacion < limite_fuera_linea
+        ):
+            estado_calculado = "Fuera de línea"
+        else:
+            estado_calculado = "Normal"
+
+        datos.append(
+            {
+                "id_instalacion": instalacion.id_instalacion,
+                "nombre": instalacion.nombre,
+                "ubicacion": instalacion.ubicacion,
+                "capacidad": str(instalacion.capacidad),
+                "estado": estado_calculado,
+                "ultima_comunicacion": ultima_comunicacion,
+            }
+        )
+
+    return Response(
+        {
+            "id_comunidad": usuario.comunidad.id_comunidad,
+            "comunidad": usuario.comunidad.nombre,
+            "total_instalaciones": len(datos),
+            "instalaciones": datos,
+        }
+    )
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def alertas_lider_comunitario(request):
+    usuario = request.user
+
+    es_lider = (
+        usuario.rol is not None
+        and "lider" in usuario.rol.nombre.lower()
+    )
+
+    if not es_lider:
+        raise PermissionDenied(
+            "Este endpoint es exclusivo para líderes comunitarios."
+        )
+
+    if usuario.comunidad is None:
+        raise PermissionDenied(
+            "El líder comunitario no tiene una comunidad asignada."
+        )
+
+    estado_vigente = EstadoAlerta.objects.filter(
+        nombre="Vigente"
+    ).first()
+
+    if estado_vigente is None:
+        return Response(
+            {
+                "id_comunidad": usuario.comunidad.id_comunidad,
+                "comunidad": usuario.comunidad.nombre,
+                "total_alertas": 0,
+                "alertas": [],
+            }
+        )
+
+    alertas = Alerta.objects.select_related(
+        "instalacion",
+        "tipo_medicion",
+        "tipo_alerta",
+        "prioridad",
+        "estado",
+    ).filter(
+        instalacion__comunidad=usuario.comunidad,
+        estado=estado_vigente,
+    ).order_by("-fecha_creacion")
+
+    datos = [
+        {
+            "id_alerta": alerta.id_alerta,
+            "instalacion": alerta.instalacion.nombre,
+            "tipo_medicion": alerta.tipo_medicion.nombre,
+            "tipo_alerta": alerta.tipo_alerta.nombre,
+            "prioridad": alerta.prioridad.nombre,
+            "mensaje": alerta.mensaje,
+            "fecha_creacion": alerta.fecha_creacion,
+        }
+        for alerta in alertas
+    ]
+
+    return Response(
+        {
+            "id_comunidad": usuario.comunidad.id_comunidad,
+            "comunidad": usuario.comunidad.nombre,
+            "total_alertas": len(datos),
+            "alertas": datos,
+        }
+    )
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def ordenes_trabajo_lider_comunitario(request):
+    usuario = request.user
+
+    es_lider = (
+        usuario.rol is not None
+        and "lider" in usuario.rol.nombre.lower()
+    )
+
+    if not es_lider:
+        raise PermissionDenied(
+            "Este endpoint es exclusivo para líderes comunitarios."
+        )
+
+    if usuario.comunidad is None:
+        raise PermissionDenied(
+            "El líder comunitario no tiene una comunidad asignada."
+        )
+
+    ordenes = OrdenTrabajo.objects.select_related(
+        "instalacion",
+        "alerta",
+        "tecnico",
+        "estado",
+    ).filter(
+        instalacion__comunidad=usuario.comunidad
+    ).order_by("-fecha_creacion")
+
+    datos = [
+        {
+            "id_orden_trabajo": orden.id_orden_trabajo,
+            "instalacion": orden.instalacion.nombre,
+            "alerta": orden.alerta_id,
+            "tecnico": {
+                "id_usuario": orden.tecnico.id_usuario,
+                "username": orden.tecnico.username,
+                "telefono": orden.tecnico.telefono,
+            },
+            "estado": orden.estado.nombre,
+            "descripcion": orden.descripcion,
+            "fecha_creacion": orden.fecha_creacion,
+            "fecha_atencion": orden.fecha_atencion,
+            "fecha_cierre": orden.fecha_cierre,
+        }
+        for orden in ordenes
+    ]
+
+    return Response(
+        {
+            "id_comunidad": usuario.comunidad.id_comunidad,
+            "comunidad": usuario.comunidad.nombre,
+            "total_ordenes": len(datos),
+            "ordenes_trabajo": datos,
         }
     )
