@@ -53,6 +53,7 @@ from rest_framework.permissions import (
     IsAuthenticated,
 )
 from rest_framework.response import Response
+from .notificaciones import notificar_alerta_a_lideres
 
 
 class ComunidadViewSet(viewsets.ModelViewSet):
@@ -183,6 +184,7 @@ class RecepcionMedicionView(generics.CreateAPIView):
                 f"{tipo_medicion.nombre}."
             ),
         )
+        notificar_alerta_a_lideres(alerta)
 class TipoMedicionViewSet(viewsets.ModelViewSet):
     queryset = TipoMedicion.objects.all().order_by("id_tipo_medicion")
     serializer_class = TipoMedicionSerializer

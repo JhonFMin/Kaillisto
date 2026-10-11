@@ -494,3 +494,33 @@ class Evento(models.Model):
             f"{self.tipo} - "
             f"{self.fecha_hora:%Y-%m-%d %H:%M}"
         )
+        
+class Notificacion(models.Model):
+    id_notificacion = models.BigAutoField(primary_key=True)
+
+    destinatario = models.ForeignKey(
+        Usuario,
+        on_delete=models.PROTECT,
+        db_column="id_destinatario",
+        related_name="notificaciones",
+    )
+    alerta = models.ForeignKey(
+        Alerta,
+        on_delete=models.PROTECT,
+        db_column="id_alerta",
+        related_name="notificaciones",
+    )
+
+    canal = models.CharField(max_length=30, default="whatsapp")
+    estado = models.CharField(max_length=20, default="pendiente")
+    mensaje = models.TextField()
+    detalle_error = models.TextField(blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_envio = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "notificacion"
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return f"Notificación #{self.id_notificacion} - {self.estado}"

@@ -11,7 +11,18 @@ from .models import (
     OrdenTrabajo,
     Rol,
     Usuario,
+    Alerta,
+    EstadoAlerta,
+    Notificacion,
+    PrioridadAlerta,
+    TipoAlerta,
+    TipoMedicion,
 )
+from unittest.mock import patch
+
+from django.test import TestCase, override_settings
+
+from .notificaciones import notificar_alerta_a_lideres
 
 class InstalacionAPITests(APITestCase):
     def setUp(self):
@@ -228,3 +239,77 @@ class FlujoOrdenTrabajoTests(APITestCase):
         respuesta = self.client.get(url)
 
         self.assertEqual(respuesta.status_code, status.HTTP_403_FORBIDDEN)
+
+
+@override_settings(WHATSAPP_ENABLED=False)
+class NotificacionAlertaTests(TestCase):
+    def setUp(self):
+        rol = Rol.objects.create(nombre="lider comunitario")
+        self.comunidad_a = Comunidad.objects.create(
+            nombre="Comunidad A", ubicacion="Riohacha"
+        )
+        self.comunidad_b = Comunidad.objects.create(
+            nombre="Comunidad B", ubicacion="Uribia"
+        )
+        estado_inst = EstadoInstalacion.objects.create(nombre="Normal")
+        instalacion = Instalacion.objects.create(
+            comunidad=self.comunidad_a,
+            nombre="Instalación A",
+            ubicacion="Riohacha",
+            capacidad="5.00",
+            fecha_instalacion="2026-10-09",
+            estado_instalacion=estado_inst,
+        )
+
+        self.lider_a = Usuario.objects.create_user(
+            username="lider_a",
+            email="lider_a@example.com",
+            password="ClaveSoloParaPruebas_2026!",
+            rol=rol,
+            comunidad=self.comunidad_a,
+            telefono="3000000001",
+        )
+        self.lider_b = Usuario.objects.create_user(
+            username="lider_b",
+            email="lider_b@example.com",
+            password="ClaveSoloParaPruebas_2026!",
+            rol=rol,
+            comunidad=self.comunidad_b,
+            telefono="3000000002",
+        )
+
+        self.alerta = Alerta.objects.create(
+            instalacion=instalacion,
+            tipo_medicion=TipoMedicion.objects.create(nombre="Voltaje", unidad="V"),
+            tipo_alerta=TipoAlerta.objects.create(nombre="Medición fuera de umbral"),
+            prioridad=PrioridadAlerta.objects.create(nombre="Alta"),
+            estado=EstadoAlerta.objects.create(nombre="Vigente"),
+            mensaje="Tres mediciones fuera del umbral.",
+        )
+
+    def test_notifica_solo_al_lider_de_la_comunidad(self):
+        notificar_alerta_a_lideres(self.alerta)
+
+        self.assertEqual(Notificacion.objects.count(), 1)
+        notificacion = Notificacion.objects.get()
+        self.assertEqual(notificacion.destinatario, self.lider_a)
+        self.assertEqual(notificacion.estado, "simulada")
+
+    def test_lider_sin_telefono_queda_fallida(self):
+        self.lider_a.telefono = ""
+        self.lider_a.save()
+
+        notificar_alerta_a_lideres(self.alerta)
+
+        self.assertEqual(Notificacion.objects.get().estado, "fallida")
+
+    def test_fallo_de_envio_no_interrumpe_el_flujo(self):
+        with patch(
+            "core.notificaciones._enviar_whatsapp",
+            side_effect=Exception("fallo simulado"),
+        ):
+            notificar_alerta_a_lideres(self.alerta)
+
+        notificacion = Notificacion.objects.get()
+        self.assertEqual(notificacion.estado, "fallida")
+        self.assertIn("fallo simulado", notificacion.detalle_error)
