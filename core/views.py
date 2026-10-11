@@ -224,74 +224,74 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
                 f"{orden.tecnico.username}."
             ),
         )
-def perform_update(self, serializer):
-    orden_anterior = self.get_object()
-    estado_anterior = orden_anterior.estado.nombre
-    estado_nuevo_obj = serializer.validated_data.get(
-        "estado",
-        orden_anterior.estado,
-    )
-    estado_nuevo = estado_nuevo_obj.nombre
-
-    cambios = {}
-    evento = None
-
-    if (
-        estado_anterior == "Pendiente"
-        and estado_nuevo == "En proceso"
-        and orden_anterior.fecha_atencion is None
-    ):
-        cambios["fecha_atencion"] = timezone.now()
-        evento = {
-            "tipo": "Atención iniciada",
-            "descripcion": (
-                f"El técnico {self.request.user.username} "
-                f"inició la atención de la orden "
-                f"#{orden_anterior.id_orden_trabajo}."
-            ),
-        }
-
-    if (
-        estado_nuevo == "Cerrada"
-        and orden_anterior.fecha_cierre is None
-    ):
-        cambios["fecha_cierre"] = timezone.now()
-        evento = {
-            "tipo": "Orden cerrada",
-            "descripcion": (
-                f"Se cerró la orden "
-                f"#{orden_anterior.id_orden_trabajo}."
-            ),
-        }
-
-    orden_actualizada = serializer.save(**cambios)
-
-    if evento:
-        Evento.objects.create(
-            usuario=self.request.user,
-            instalacion=orden_anterior.instalacion,
-            tipo=evento["tipo"],
-            descripcion=evento["descripcion"],
+    def perform_update(self, serializer):
+        orden_anterior = self.get_object()
+        estado_anterior = orden_anterior.estado.nombre
+        estado_nuevo_obj = serializer.validated_data.get(
+            "estado",
+            orden_anterior.estado,
         )
+        estado_nuevo = estado_nuevo_obj.nombre
 
-    if (
-        estado_nuevo == "Cerrada"
-        and orden_anterior.alerta is not None
-    ):
-        estado_alerta_cerrada = EstadoAlerta.objects.filter(
-            nombre="Cerrada"
-        ).first()
+        cambios = {}
+        evento = None
 
         if (
-            estado_alerta_cerrada is not None
-            and orden_actualizada.alerta.estado.nombre == "Vigente"
+            estado_anterior == "Pendiente"
+            and estado_nuevo == "En proceso"
+            and orden_anterior.fecha_atencion is None
         ):
-            alerta = orden_actualizada.alerta
-            alerta.estado = estado_alerta_cerrada
-            alerta.fecha_cierre = timezone.now()
-            alerta.save(
-                update_fields=["estado", "fecha_cierre"]
-            )   
+            cambios["fecha_atencion"] = timezone.now()
+            evento = {
+                "tipo": "Atención iniciada",
+                "descripcion": (
+                    f"El técnico {self.request.user.username} "
+                    f"inició la atención de la orden "
+                    f"#{orden_anterior.id_orden_trabajo}."
+                ),
+            }
+
+        if (
+            estado_nuevo == "Cerrada"
+            and orden_anterior.fecha_cierre is None
+        ):
+            cambios["fecha_cierre"] = timezone.now()
+            evento = {
+                "tipo": "Orden cerrada",
+                "descripcion": (
+                    f"Se cerró la orden "
+                    f"#{orden_anterior.id_orden_trabajo}."
+                ),
+            }
+
+        orden_actualizada = serializer.save(**cambios)
+
+        if evento:
+            Evento.objects.create(
+                usuario=self.request.user,
+                instalacion=orden_anterior.instalacion,
+                tipo=evento["tipo"],
+                descripcion=evento["descripcion"],
+            )
+
+        if (
+            estado_nuevo == "Cerrada"
+            and orden_anterior.alerta is not None
+        ):
+            estado_alerta_cerrada = EstadoAlerta.objects.filter(
+                nombre="Cerrada"
+            ).first()
+
+            if (
+                estado_alerta_cerrada is not None
+                and orden_actualizada.alerta.estado.nombre == "Vigente"
+            ):
+                alerta = orden_actualizada.alerta
+                alerta.estado = estado_alerta_cerrada
+                alerta.fecha_cierre = timezone.now()
+                alerta.save(
+                    update_fields=["estado", "fecha_cierre"]
+                )   
 class UmbralViewSet(viewsets.ModelViewSet):
     queryset = Umbral.objects.select_related(
         "instalacion",
