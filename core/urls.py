@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     RecepcionMedicionView,
     cerrar_sesion,
+    ficha_instalacion_tecnico,
     iniciar_sesion,
 )
 from .views import (
@@ -114,6 +115,11 @@ urlpatterns = [
         "instalaciones/<int:id_instalacion>/mediciones/",
         historial_mediciones_instalacion,
         name="historial-mediciones-instalacion",
+    ),
+    path(
+    "tecnico/instalaciones/<int:id_instalacion>/ficha/",
+        ficha_instalacion_tecnico,
+        name="ficha-instalacion-tecnico",
     ),
     path(
         "instalaciones/<int:id_instalacion>/mediciones/exportar-csv/",

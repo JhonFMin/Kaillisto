@@ -224,61 +224,74 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
                 f"{orden.tecnico.username}."
             ),
         )
-    def perform_update(self, serializer):
-        orden_anterior = self.get_object()
-        estado_anterior = orden_anterior.estado.nombre
-        estado_nuevo = serializer.validated_data.get(
-            "estado",
-            orden_anterior.estado,
-        ).nombre
+def perform_update(self, serializer):
+    orden_anterior = self.get_object()
+    estado_anterior = orden_anterior.estado.nombre
+    estado_nuevo_obj = serializer.validated_data.get(
+        "estado",
+        orden_anterior.estado,
+    )
+    estado_nuevo = estado_nuevo_obj.nombre
 
-        cambios = {}
+    cambios = {}
+    evento = None
+
+    if (
+        estado_anterior == "Pendiente"
+        and estado_nuevo == "En proceso"
+        and orden_anterior.fecha_atencion is None
+    ):
+        cambios["fecha_atencion"] = timezone.now()
+        evento = {
+            "tipo": "Atención iniciada",
+            "descripcion": (
+                f"El técnico {self.request.user.username} "
+                f"inició la atención de la orden "
+                f"#{orden_anterior.id_orden_trabajo}."
+            ),
+        }
+
+    if (
+        estado_nuevo == "Cerrada"
+        and orden_anterior.fecha_cierre is None
+    ):
+        cambios["fecha_cierre"] = timezone.now()
+        evento = {
+            "tipo": "Orden cerrada",
+            "descripcion": (
+                f"Se cerró la orden "
+                f"#{orden_anterior.id_orden_trabajo}."
+            ),
+        }
+
+    orden_actualizada = serializer.save(**cambios)
+
+    if evento:
+        Evento.objects.create(
+            usuario=self.request.user,
+            instalacion=orden_anterior.instalacion,
+            tipo=evento["tipo"],
+            descripcion=evento["descripcion"],
+        )
+
+    if (
+        estado_nuevo == "Cerrada"
+        and orden_anterior.alerta is not None
+    ):
+        estado_alerta_cerrada = EstadoAlerta.objects.filter(
+            nombre="Cerrada"
+        ).first()
 
         if (
-            estado_anterior == "Pendiente"
-            and estado_nuevo == "En proceso"
-            and orden_anterior.fecha_atencion is None
+            estado_alerta_cerrada is not None
+            and orden_actualizada.alerta.estado.nombre == "Vigente"
         ):
-            cambios["fecha_atencion"] = timezone.now()
-
-        if (
-            estado_nuevo == "Cerrada"
-            and orden_anterior.fecha_cierre is None
-        ):
-            cambios["fecha_cierre"] = timezone.now()
-            
-            Evento.objects.create(
-                usuario=self.request.user,
-                instalacion=orden_anterior.instalacion,
-                tipo="Orden cerrada",
-                descripcion=(
-                    f"Se cerró la orden "
-                    f"#{orden_anterior.id_orden_trabajo}."
-                ),
-            )
-
-        orden_actualizada = serializer.save(**cambios)
-
-        if (
-            estado_nuevo == "Cerrada"
-            and orden_anterior.alerta is not None
-        ):
-            estado_alerta_cerrada = EstadoAlerta.objects.filter(
-                nombre="Cerrada"
-            ).first()
-
-            if estado_alerta_cerrada is not None:
-                alerta = orden_actualizada.alerta
-
-                if alerta.estado.nombre == "Vigente":
-                    alerta.estado = estado_alerta_cerrada
-                    alerta.fecha_cierre = timezone.now()
-                    alerta.save(
-                        update_fields=[
-                            "estado",
-                            "fecha_cierre",
-                        ]
-                    )   
+            alerta = orden_actualizada.alerta
+            alerta.estado = estado_alerta_cerrada
+            alerta.fecha_cierre = timezone.now()
+            alerta.save(
+                update_fields=["estado", "fecha_cierre"]
+            )   
 class UmbralViewSet(viewsets.ModelViewSet):
     queryset = Umbral.objects.select_related(
         "instalacion",
@@ -991,5 +1004,49 @@ def ordenes_trabajo_lider_comunitario(request):
             "comunidad": usuario.comunidad.nombre,
             "total_ordenes": len(datos),
             "ordenes_trabajo": datos,
+        }
+    )
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def ficha_instalacion_tecnico(request, id_instalacion):
+    usuario = request.user
+
+    es_tecnico = (
+        usuario.rol is not None
+        and "tecnico" in usuario.rol.nombre.lower()
+    )
+
+    if not es_tecnico:
+        raise PermissionDenied(
+            "Este endpoint es exclusivo para técnicos."
+        )
+
+    orden_asignada = OrdenTrabajo.objects.filter(
+        instalacion_id=id_instalacion,
+        tecnico=usuario,
+    ).exists()
+
+    if not orden_asignada:
+        raise PermissionDenied(
+            "No tienes una orden asignada para esta instalación."
+        )
+
+    instalacion = get_object_or_404(
+        Instalacion.objects.select_related(
+            "comunidad",
+            "estado_instalacion",
+        ),
+        id_instalacion=id_instalacion,
+    )
+
+    return Response(
+        {
+            "id_instalacion": instalacion.id_instalacion,
+            "nombre": instalacion.nombre,
+            "ubicacion": instalacion.ubicacion,
+            "capacidad": str(instalacion.capacidad),
+            "fecha_instalacion": instalacion.fecha_instalacion,
+            "estado_instalacion": instalacion.estado_instalacion.nombre,
+            "comunidad": instalacion.comunidad.nombre,
         }
     )
