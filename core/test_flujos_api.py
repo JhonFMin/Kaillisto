@@ -1,4 +1,3 @@
-from django.contrib.auth.hashers import make_password
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -6,12 +5,13 @@ from rest_framework.test import APITestCase
 from .models import (
     Alerta,
     Comunidad,
-    Dispositivo,
     EstadoAlerta,
     EstadoInstalacion,
     EstadoOrdenTrabajo,
     Instalacion,
     PrioridadAlerta,
+    Repuesto,
+    RepuestoOrdenTrabajo,
     Rol,
     TipoAlerta,
     TipoMedicion,
@@ -30,7 +30,8 @@ class FlujosApiAdicionalesTests(APITestCase):
             is_staff=True,
         )
         self.rol_tecnico = Rol.objects.create(nombre="Técnico de campo")
-        self.rol_lider = Rol.objects.create(nombre="Líder comunitario")
+        # La vista valida el texto "lider" en minúscula.
+        self.rol_lider = Rol.objects.create(nombre="lider comunitario")
         self.tecnico = Usuario.objects.create_user(
             username="tecnico_flujo_test",
             email="tecnico_flujo_test@example.test",
@@ -90,9 +91,7 @@ class FlujosApiAdicionalesTests(APITestCase):
         self.tipo_medicion = TipoMedicion.objects.create(
             nombre="Voltaje test", unidad="V"
         )
-        self.tipo_alerta = TipoAlerta.objects.create(
-            nombre="Alerta test"
-        )
+        self.tipo_alerta = TipoAlerta.objects.create(nombre="Alerta test")
         self.prioridad = PrioridadAlerta.objects.create(nombre="Alta")
         self.estado_alerta = EstadoAlerta.objects.create(nombre="Vigente")
         self.alerta_a = Alerta.objects.create(
@@ -179,8 +178,6 @@ class FlujosApiAdicionalesTests(APITestCase):
         self.assertEqual(ids, {self.orden_a.id_orden_trabajo, self.orden_b.id_orden_trabajo})
 
     def test_tecnico_puede_registrar_repuesto_en_su_orden(self):
-        from .models import Repuesto, RepuestoOrdenTrabajo
-
         self.client.force_authenticate(user=self.tecnico)
         repuesto = Repuesto.objects.create(nombre="Fusible de prueba")
         respuesta = self.client.post(
@@ -202,8 +199,6 @@ class FlujosApiAdicionalesTests(APITestCase):
         )
 
     def test_tecnico_no_puede_registrar_repuesto_en_orden_ajena(self):
-        from .models import Repuesto
-
         self.client.force_authenticate(user=self.otro_tecnico)
         repuesto = Repuesto.objects.create(nombre="Fusible ajeno test")
         respuesta = self.client.post(
