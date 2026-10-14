@@ -1,0 +1,2080 @@
+[
+  {
+    "model": "core.rol",
+    "pk": 1,
+    "fields": {
+      "nombre": "Administrador",
+      "descripcion": "Gestiona comunidades, instalaciones, usuarios y configuraciones"
+    }
+  },
+  {
+    "model": "core.rol",
+    "pk": 2,
+    "fields": {
+      "nombre": "Tecnico",
+      "descripcion": "Atiende \u00f3rdenes de trabajo y registra diagn\u00f3sticos, soluciones y repuestos"
+    }
+  },
+  {
+    "model": "core.rol",
+    "pk": 3,
+    "fields": {
+      "nombre": "Lider comunitario",
+      "descripcion": "Consulta instalaciones, alertas y t\u00e9cnicos asignados de su comunidad"
+    }
+  },
+  {
+    "model": "core.comunidad",
+    "pk": 1,
+    "fields": {
+      "nombre": "Comunidad de prueba",
+      "ubicacion": "Riohacha, La Guajira",
+      "descripcion": "Registro de prueba para validar la API."
+    }
+  },
+  {
+    "model": "core.comunidad",
+    "pk": 2,
+    "fields": {
+      "nombre": "Comunidad Demo Uribia",
+      "ubicacion": "Uribia",
+      "descripcion": "Datos de demostracion."
+    }
+  },
+  {
+    "model": "core.comunidad",
+    "pk": 3,
+    "fields": {
+      "nombre": "Comunidad Demo Manaure",
+      "ubicacion": "Manaure",
+      "descripcion": "Datos de demostracion."
+    }
+  },
+  {
+    "model": "core.idioma",
+    "pk": 1,
+    "fields": {
+      "codigo": "es",
+      "nombre": "Espa\u00f1ol",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.idioma",
+    "pk": 2,
+    "fields": {
+      "codigo": "guc",
+      "nombre": "Wayuunaiki (Wayuu)",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 1,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "jhonadmin",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-09T17:22:23.001Z",
+      "email": "usuario-demo-1@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": null,
+      "comunidad": null,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-09T17:24:58.695Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 2,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "tecnico-1",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-09T20:23:17Z",
+      "email": "usuario-demo-2@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 2,
+      "comunidad": 1,
+      "idioma_preferido": 1,
+      "fecha_actualizacion": "2026-10-10T06:22:33.310Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 3,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "lider-1",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-10T06:16:18Z",
+      "email": "usuario-demo-3@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 3,
+      "comunidad": 1,
+      "idioma_preferido": 2,
+      "fecha_actualizacion": "2026-10-10T06:22:38.013Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 4,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "lider-2",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-14T20:35:08.568Z",
+      "email": "usuario-demo-4@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 3,
+      "comunidad": 2,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-14T20:35:08.696Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 5,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "lider-3",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-14T20:35:08.697Z",
+      "email": "usuario-demo-5@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 3,
+      "comunidad": 3,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-14T20:35:08.819Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 6,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "tecnico-2",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-14T20:35:08.820Z",
+      "email": "usuario-demo-6@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 2,
+      "comunidad": 2,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-14T20:35:08.946Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 7,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "tecnico-3",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-14T20:35:08.946Z",
+      "email": "usuario-demo-7@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": 2,
+      "comunidad": 3,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-14T20:35:09.069Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.usuario",
+    "pk": 8,
+    "fields": {
+      "password": "!cuenta-demo-sin-password",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "yeleinys",
+      "first_name": "",
+      "last_name": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-10-14T20:45:45.464Z",
+      "email": "usuario-demo-8@example.test",
+      "documento": null,
+      "telefono": "",
+      "rol": null,
+      "comunidad": null,
+      "idioma_preferido": null,
+      "fecha_actualizacion": "2026-10-14T20:45:45.582Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.estadoinstalacion",
+    "pk": 1,
+    "fields": {
+      "nombre": "Normal",
+      "descripcion": "La instalaci\u00f3n funciona dentro de los par\u00e1metros establecidos."
+    }
+  },
+  {
+    "model": "core.estadoinstalacion",
+    "pk": 2,
+    "fields": {
+      "nombre": "Con alerta",
+      "descripcion": "Instalacion con una alerta que requiere revision."
+    }
+  },
+  {
+    "model": "core.estadoinstalacion",
+    "pk": 3,
+    "fields": {
+      "nombre": "En mantenimiento",
+      "descripcion": "Instalacion con trabajos de mantenimiento en curso."
+    }
+  },
+  {
+    "model": "core.estadoinstalacion",
+    "pk": 4,
+    "fields": {
+      "nombre": "Fuera de l\u00ednea",
+      "descripcion": "Instalacion sin comunicacion reciente del dispositivo."
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 1,
+    "fields": {
+      "comunidad": 1,
+      "nombre": "Instalaci\u00f3n solar de prueba",
+      "ubicacion": "Riohacha, La Guajira",
+      "capacidad": "5.00",
+      "fecha_instalacion": "2026-10-09",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 2,
+    "fields": {
+      "comunidad": 1,
+      "nombre": "Instalaci\u00f3n escuela demo",
+      "ubicacion": "Riohacha",
+      "capacidad": "6.00",
+      "fecha_instalacion": "2026-10-01",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 3,
+    "fields": {
+      "comunidad": 2,
+      "nombre": "Instalaci\u00f3n centro comunitario",
+      "ubicacion": "Uribia",
+      "capacidad": "8.00",
+      "fecha_instalacion": "2026-10-01",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 4,
+    "fields": {
+      "comunidad": 2,
+      "nombre": "Instalaci\u00f3n puesto de salud",
+      "ubicacion": "Uribia",
+      "capacidad": "10.00",
+      "fecha_instalacion": "2026-10-01",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 5,
+    "fields": {
+      "comunidad": 3,
+      "nombre": "Instalaci\u00f3n bombeo de agua",
+      "ubicacion": "Manaure",
+      "capacidad": "12.00",
+      "fecha_instalacion": "2026-10-01",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.instalacion",
+    "pk": 6,
+    "fields": {
+      "comunidad": 3,
+      "nombre": "Instalaci\u00f3n escuela rural",
+      "ubicacion": "Manaure",
+      "capacidad": "5.00",
+      "fecha_instalacion": "2026-10-01",
+      "estado_instalacion": 1
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 1,
+    "fields": {
+      "instalacion": 1,
+      "codigo": "ESP32-001",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-09T18:26:20.213Z",
+      "ultima_comunicacion": "2026-10-10T07:01:58.796Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 2,
+    "fields": {
+      "instalacion": 2,
+      "codigo": "ESP32-002",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-14T20:35:08.059Z",
+      "ultima_comunicacion": "2026-10-14T20:35:07.927Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 3,
+    "fields": {
+      "instalacion": 3,
+      "codigo": "ESP32-003",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-14T20:35:08.186Z",
+      "ultima_comunicacion": "2026-10-14T20:41:31.616Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 4,
+    "fields": {
+      "instalacion": 4,
+      "codigo": "ESP32-004",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-14T20:35:08.311Z",
+      "ultima_comunicacion": "2026-10-14T20:35:07.927Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 5,
+    "fields": {
+      "instalacion": 5,
+      "codigo": "ESP32-005",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-14T20:35:08.435Z",
+      "ultima_comunicacion": "2026-10-14T20:35:07.927Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 6,
+    "fields": {
+      "instalacion": 6,
+      "codigo": "ESP32-006",
+      "modelo": "ESP32",
+      "fecha_registro": "2026-10-14T20:35:08.565Z",
+      "ultima_comunicacion": "2026-10-11T20:35:07.927Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 7,
+    "fields": {
+      "instalacion": 1,
+      "codigo": "DEMO50-ESP32-01",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.682Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.736Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 8,
+    "fields": {
+      "instalacion": 2,
+      "codigo": "DEMO50-ESP32-02",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.738Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.748Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 9,
+    "fields": {
+      "instalacion": 3,
+      "codigo": "DEMO50-ESP32-03",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.750Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.761Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 10,
+    "fields": {
+      "instalacion": 4,
+      "codigo": "DEMO50-ESP32-04",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.764Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.774Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 11,
+    "fields": {
+      "instalacion": 5,
+      "codigo": "DEMO50-ESP32-05",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.777Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.792Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 12,
+    "fields": {
+      "instalacion": 6,
+      "codigo": "DEMO50-ESP32-06",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.794Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.808Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 13,
+    "fields": {
+      "instalacion": 1,
+      "codigo": "DEMO50-ESP32-07",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.810Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.833Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 14,
+    "fields": {
+      "instalacion": 2,
+      "codigo": "DEMO50-ESP32-08",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.838Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.855Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 15,
+    "fields": {
+      "instalacion": 3,
+      "codigo": "DEMO50-ESP32-09",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.857Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.871Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.dispositivo",
+    "pk": 16,
+    "fields": {
+      "instalacion": 4,
+      "codigo": "DEMO50-ESP32-10",
+      "modelo": "ESP32 simulado - lote de 50",
+      "fecha_registro": "2026-10-14T20:49:18.873Z",
+      "ultima_comunicacion": "2026-10-14T20:49:18.888Z",
+      "activo": true,
+      "api_key_hash": "!dispositivo-demo-sin-clave"
+    }
+  },
+  {
+    "model": "core.tipomedicion",
+    "pk": 1,
+    "fields": {
+      "nombre": "Voltaje",
+      "unidad": "V",
+      "descripcion": "Voltaje de prueba"
+    }
+  },
+  {
+    "model": "core.tipomedicion",
+    "pk": 2,
+    "fields": {
+      "nombre": "Corriente",
+      "unidad": "A",
+      "descripcion": "Corriente de prueba"
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 1,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "12.40",
+      "fecha_hora": "2026-10-09T19:37:55.816Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 2,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T19:50:38.114Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 3,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "12.40",
+      "fecha_hora": "2026-10-09T19:51:50.988Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 4,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "12.40",
+      "fecha_hora": "2026-10-09T20:09:36.990Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 5,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:09:37.166Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 6,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:09:37.299Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 7,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:09:37.433Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 8,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:10:28.314Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 9,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:10:43.861Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 10,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:10:44.289Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 11,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:10:44.700Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 12,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-09T20:10:45.166Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 13,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "12.40",
+      "fecha_hora": "2026-10-09T22:59:53.203Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 14,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T06:51:12.218Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 15,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T06:51:35.988Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 16,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T06:51:36.825Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 17,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T06:51:40.308Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 18,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T06:56:36.112Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 19,
+    "fields": {
+      "dispositivo": 1,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-10T07:01:58.793Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 20,
+    "fields": {
+      "dispositivo": 3,
+      "tipo_medicion": 1,
+      "valor": "12.50",
+      "fecha_hora": "2026-10-14T20:39:19.810Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 21,
+    "fields": {
+      "dispositivo": 3,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:39:19.836Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 22,
+    "fields": {
+      "dispositivo": 3,
+      "tipo_medicion": 1,
+      "valor": "9.80",
+      "fecha_hora": "2026-10-14T20:39:19.845Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 23,
+    "fields": {
+      "dispositivo": 3,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:39:19.854Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 24,
+    "fields": {
+      "dispositivo": 3,
+      "tipo_medicion": 1,
+      "valor": "12.50",
+      "fecha_hora": "2026-10-14T20:41:31.613Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 25,
+    "fields": {
+      "dispositivo": 7,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.717Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 26,
+    "fields": {
+      "dispositivo": 7,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.730Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 27,
+    "fields": {
+      "dispositivo": 7,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.732Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 28,
+    "fields": {
+      "dispositivo": 7,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.734Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 29,
+    "fields": {
+      "dispositivo": 7,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.736Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 30,
+    "fields": {
+      "dispositivo": 8,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.740Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 31,
+    "fields": {
+      "dispositivo": 8,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.742Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 32,
+    "fields": {
+      "dispositivo": 8,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.744Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 33,
+    "fields": {
+      "dispositivo": 8,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.746Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 34,
+    "fields": {
+      "dispositivo": 8,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.748Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 35,
+    "fields": {
+      "dispositivo": 9,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.752Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 36,
+    "fields": {
+      "dispositivo": 9,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.754Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 37,
+    "fields": {
+      "dispositivo": 9,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.756Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 38,
+    "fields": {
+      "dispositivo": 9,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.758Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 39,
+    "fields": {
+      "dispositivo": 9,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.761Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 40,
+    "fields": {
+      "dispositivo": 10,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.766Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 41,
+    "fields": {
+      "dispositivo": 10,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.768Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 42,
+    "fields": {
+      "dispositivo": 10,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.770Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 43,
+    "fields": {
+      "dispositivo": 10,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.772Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 44,
+    "fields": {
+      "dispositivo": 10,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.774Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 45,
+    "fields": {
+      "dispositivo": 11,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.780Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 46,
+    "fields": {
+      "dispositivo": 11,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.783Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 47,
+    "fields": {
+      "dispositivo": 11,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.785Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 48,
+    "fields": {
+      "dispositivo": 11,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.788Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 49,
+    "fields": {
+      "dispositivo": 11,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.792Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 50,
+    "fields": {
+      "dispositivo": 12,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.796Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 51,
+    "fields": {
+      "dispositivo": 12,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.799Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 52,
+    "fields": {
+      "dispositivo": 12,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.801Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 53,
+    "fields": {
+      "dispositivo": 12,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.804Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 54,
+    "fields": {
+      "dispositivo": 12,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.808Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 55,
+    "fields": {
+      "dispositivo": 13,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.813Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 56,
+    "fields": {
+      "dispositivo": 13,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.819Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 57,
+    "fields": {
+      "dispositivo": 13,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.823Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 58,
+    "fields": {
+      "dispositivo": 13,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.828Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 59,
+    "fields": {
+      "dispositivo": 13,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.833Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 60,
+    "fields": {
+      "dispositivo": 14,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.840Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 61,
+    "fields": {
+      "dispositivo": 14,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.845Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 62,
+    "fields": {
+      "dispositivo": 14,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.849Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 63,
+    "fields": {
+      "dispositivo": 14,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.851Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 64,
+    "fields": {
+      "dispositivo": 14,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.855Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 65,
+    "fields": {
+      "dispositivo": 15,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.860Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 66,
+    "fields": {
+      "dispositivo": 15,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.863Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 67,
+    "fields": {
+      "dispositivo": 15,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.865Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 68,
+    "fields": {
+      "dispositivo": 15,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.868Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 69,
+    "fields": {
+      "dispositivo": 15,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.871Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 70,
+    "fields": {
+      "dispositivo": 16,
+      "tipo_medicion": 1,
+      "valor": "11.00",
+      "fecha_hora": "2026-10-14T20:49:18.876Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 71,
+    "fields": {
+      "dispositivo": 16,
+      "tipo_medicion": 1,
+      "valor": "14.00",
+      "fecha_hora": "2026-10-14T20:49:18.879Z",
+      "es_anomala": false
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 72,
+    "fields": {
+      "dispositivo": 16,
+      "tipo_medicion": 1,
+      "valor": "10.00",
+      "fecha_hora": "2026-10-14T20:49:18.881Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 73,
+    "fields": {
+      "dispositivo": 16,
+      "tipo_medicion": 1,
+      "valor": "9.50",
+      "fecha_hora": "2026-10-14T20:49:18.884Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.medicion",
+    "pk": 74,
+    "fields": {
+      "dispositivo": 16,
+      "tipo_medicion": 1,
+      "valor": "9.00",
+      "fecha_hora": "2026-10-14T20:49:18.887Z",
+      "es_anomala": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 1,
+    "fields": {
+      "instalacion": 1,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-09T19:46:51.073Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 2,
+    "fields": {
+      "instalacion": 2,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-14T20:35:08.060Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 3,
+    "fields": {
+      "instalacion": 2,
+      "tipo_medicion": 2,
+      "valor_minimo": "0.00",
+      "valor_maximo": "10.00",
+      "fecha_inicio": "2026-10-14T20:35:08.061Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 4,
+    "fields": {
+      "instalacion": 3,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-14T20:35:08.187Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 5,
+    "fields": {
+      "instalacion": 3,
+      "tipo_medicion": 2,
+      "valor_minimo": "0.00",
+      "valor_maximo": "10.00",
+      "fecha_inicio": "2026-10-14T20:35:08.188Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 6,
+    "fields": {
+      "instalacion": 4,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-14T20:35:08.312Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 7,
+    "fields": {
+      "instalacion": 4,
+      "tipo_medicion": 2,
+      "valor_minimo": "0.00",
+      "valor_maximo": "10.00",
+      "fecha_inicio": "2026-10-14T20:35:08.313Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 8,
+    "fields": {
+      "instalacion": 5,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-14T20:35:08.436Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 9,
+    "fields": {
+      "instalacion": 5,
+      "tipo_medicion": 2,
+      "valor_minimo": "0.00",
+      "valor_maximo": "10.00",
+      "fecha_inicio": "2026-10-14T20:35:08.436Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 10,
+    "fields": {
+      "instalacion": 6,
+      "tipo_medicion": 1,
+      "valor_minimo": "11.00",
+      "valor_maximo": "14.00",
+      "fecha_inicio": "2026-10-14T20:35:08.566Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.umbral",
+    "pk": 11,
+    "fields": {
+      "instalacion": 6,
+      "tipo_medicion": 2,
+      "valor_minimo": "0.00",
+      "valor_maximo": "10.00",
+      "fecha_inicio": "2026-10-14T20:35:08.567Z",
+      "fecha_fin": null,
+      "activo": true
+    }
+  },
+  {
+    "model": "core.tipoalerta",
+    "pk": 1,
+    "fields": {
+      "nombre": "Medici\u00f3n fuera de umbral",
+      "descripcion": "Tres mediciones consecutivas fuera del rango configurado."
+    }
+  },
+  {
+    "model": "core.prioridadalerta",
+    "pk": 1,
+    "fields": {
+      "nombre": "Alta",
+      "descripcion": "Requiere revisi\u00f3n t\u00e9cnica prioritaria."
+    }
+  },
+  {
+    "model": "core.prioridadalerta",
+    "pk": 2,
+    "fields": {
+      "nombre": "Media",
+      "descripcion": "Prioridad media para escenarios de prueba."
+    }
+  },
+  {
+    "model": "core.prioridadalerta",
+    "pk": 3,
+    "fields": {
+      "nombre": "Baja",
+      "descripcion": "Prioridad baja para escenarios de prueba."
+    }
+  },
+  {
+    "model": "core.estadoalerta",
+    "pk": 1,
+    "fields": {
+      "nombre": "Vigente",
+      "descripcion": "Alerta activa pendiente de atenci\u00f3n."
+    }
+  },
+  {
+    "model": "core.estadoalerta",
+    "pk": 2,
+    "fields": {
+      "nombre": "Cerrada",
+      "descripcion": "Alerta resuelta despu\u00e9s de la atenci\u00f3n t\u00e9cnica."
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 1,
+    "fields": {
+      "instalacion": 1,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 2,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-09T20:09:37.439Z",
+      "fecha_cierre": "2026-10-09T23:03:11Z"
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 2,
+    "fields": {
+      "instalacion": 1,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-10T07:01:58.803Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 3,
+    "fields": {
+      "instalacion": 3,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 2,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:39:19.863Z",
+      "fecha_cierre": "2026-10-14T20:40:52.148Z"
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 4,
+    "fields": {
+      "instalacion": 2,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:49:18.749Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 5,
+    "fields": {
+      "instalacion": 3,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:49:18.763Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 6,
+    "fields": {
+      "instalacion": 4,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:49:18.776Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 7,
+    "fields": {
+      "instalacion": 5,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:49:18.793Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.alerta",
+    "pk": 8,
+    "fields": {
+      "instalacion": 6,
+      "tipo_medicion": 1,
+      "tipo_alerta": 1,
+      "prioridad": 1,
+      "estado": 1,
+      "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+      "fecha_creacion": "2026-10-14T20:49:18.809Z",
+      "fecha_cierre": null
+    }
+  },
+  {
+    "model": "core.estadoordentrabajo",
+    "pk": 1,
+    "fields": {
+      "nombre": "Pendiente",
+      "descripcion": "Orden creada y pendiente de atenci\u00f3n t\u00e9cnica."
+    }
+  },
+  {
+    "model": "core.estadoordentrabajo",
+    "pk": 2,
+    "fields": {
+      "nombre": "En proceso",
+      "descripcion": "El t\u00e9cnico inici\u00f3 la atenci\u00f3n de la orden."
+    }
+  },
+  {
+    "model": "core.estadoordentrabajo",
+    "pk": 3,
+    "fields": {
+      "nombre": "Cerrada",
+      "descripcion": "El t\u00e9cnico termin\u00f3 la atenci\u00f3n y registr\u00f3 la soluci\u00f3n."
+    }
+  },
+  {
+    "model": "core.ordentrabajo",
+    "pk": 1,
+    "fields": {
+      "instalacion": 1,
+      "alerta": 1,
+      "tecnico": 2,
+      "estado": 3,
+      "descripcion": "Revisar voltaje bajo detectado en la instalaci\u00f3n. El sistema gener\u00f3 una alerta despu\u00e9s de tres mediciones consecutivas fuera del rango configurado.",
+      "diagnostico": "Se verific\u00f3 voltaje bajo sostenido. La bater\u00eda presentaba carga insuficiente y requer\u00eda revisi\u00f3n de conexiones y del controlador.",
+      "solucion_aplicada": "Se ajustaron las conexiones de la bater\u00eda y se verific\u00f3 el controlador de carga. Despu\u00e9s de la intervenci\u00f3n, el voltaje volvi\u00f3 al rango operativo configurado.",
+      "fecha_creacion": "2026-10-09T20:39:11.984Z",
+      "fecha_atencion": "2026-10-09T20:48:48.019Z",
+      "fecha_cierre": "2026-10-09T20:49:25.895Z"
+    }
+  },
+  {
+    "model": "core.ordentrabajo",
+    "pk": 2,
+    "fields": {
+      "instalacion": 1,
+      "alerta": null,
+      "tecnico": 2,
+      "estado": 3,
+      "descripcion": "Revisi\u00f3n preventiva de conexiones y controlador de carga.",
+      "diagnostico": "Revisi\u00f3n preventiva: conexiones en buen estado.",
+      "solucion_aplicada": "Se ajust\u00f3 una conexi\u00f3n floja en el controlador.",
+      "fecha_creacion": "2026-10-10T00:29:21.273Z",
+      "fecha_atencion": "2026-10-10T00:32:12.501Z",
+      "fecha_cierre": "2026-10-10T00:32:28.931Z"
+    }
+  },
+  {
+    "model": "core.ordentrabajo",
+    "pk": 3,
+    "fields": {
+      "instalacion": 1,
+      "alerta": null,
+      "tecnico": 2,
+      "estado": 3,
+      "descripcion": "Revisi\u00f3n preventiva para validar auditor\u00eda de atenci\u00f3n.",
+      "diagnostico": "",
+      "solucion_aplicada": "",
+      "fecha_creacion": "2026-10-10T00:39:52.345Z",
+      "fecha_atencion": "2026-10-10T00:40:08.802Z",
+      "fecha_cierre": "2026-10-10T00:49:14.067Z"
+    }
+  },
+  {
+    "model": "core.ordentrabajo",
+    "pk": 4,
+    "fields": {
+      "instalacion": 3,
+      "alerta": 3,
+      "tecnico": 6,
+      "estado": 3,
+      "descripcion": "DEMO: revisar voltaje bajo detectado por ESP32-003.",
+      "diagnostico": "DEMO: conexion deteriorada; se simula revision por voltaje bajo.",
+      "solucion_aplicada": "DEMO: sustitucion simulada del conector MC4 y revision de la conexion.",
+      "fecha_creacion": "2026-10-14T20:39:50.687Z",
+      "fecha_atencion": "2026-10-14T20:40:16.346Z",
+      "fecha_cierre": "2026-10-14T20:40:52.141Z"
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 1,
+    "fields": {
+      "nombre": "Cable solar calibre 10 AWG",
+      "descripcion": "Cable para conexi\u00f3n de bater\u00eda y controlador de carga.",
+      "unidad_medida": "metro",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 2,
+    "fields": {
+      "nombre": "Fusible DC 15 A",
+      "descripcion": "Fusible para escenarios de mantenimiento.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 3,
+    "fields": {
+      "nombre": "Conector MC4",
+      "descripcion": "Conector para cableado fotovoltaico.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 4,
+    "fields": {
+      "nombre": "Cable solar 4 mm2",
+      "descripcion": "Cable para escenarios de reparaci\u00f3n.",
+      "unidad_medida": "metro",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 5,
+    "fields": {
+      "nombre": "Terminal de conexi\u00f3n",
+      "descripcion": "Terminal para conexiones el\u00e9ctricas.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 6,
+    "fields": {
+      "nombre": "Portafusible DC",
+      "descripcion": "Soporte para fusible de corriente continua.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 7,
+    "fields": {
+      "nombre": "Interruptor DC",
+      "descripcion": "Interruptor de corriente continua.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 8,
+    "fields": {
+      "nombre": "Protector de sobretensi\u00f3n DC",
+      "descripcion": "Protector para escenarios de mantenimiento.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 9,
+    "fields": {
+      "nombre": "Controlador de carga",
+      "descripcion": "Controlador para escenarios de sustituci\u00f3n.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 10,
+    "fields": {
+      "nombre": "Bater\u00eda de demostraci\u00f3n",
+      "descripcion": "Registro ficticio para pruebas.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuesto",
+    "pk": 11,
+    "fields": {
+      "nombre": "Sensor de temperatura",
+      "descripcion": "Sensor para escenarios de sustituci\u00f3n.",
+      "unidad_medida": "unidad",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.repuestoordentrabajo",
+    "pk": 1,
+    "fields": {
+      "orden_trabajo": 1,
+      "repuesto": 1,
+      "cantidad": "2.00"
+    }
+  },
+  {
+    "model": "core.repuestoordentrabajo",
+    "pk": 2,
+    "fields": {
+      "orden_trabajo": 4,
+      "repuesto": 3,
+      "cantidad": "1.00"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 1,
+    "fields": {
+      "usuario": 1,
+      "instalacion": 1,
+      "tipo": "Orden creada y asignada",
+      "descripcion": "Se cre\u00f3 la orden #2 y se asign\u00f3 al t\u00e9cnico tecnico-1.",
+      "fecha_hora": "2026-10-10T00:29:21.283Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 2,
+    "fields": {
+      "usuario": 1,
+      "instalacion": 1,
+      "tipo": "Orden cerrada",
+      "descripcion": "Se cerr\u00f3 la orden #2.",
+      "fecha_hora": "2026-10-10T00:32:28.931Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 3,
+    "fields": {
+      "usuario": 1,
+      "instalacion": 1,
+      "tipo": "Orden creada y asignada",
+      "descripcion": "Se cre\u00f3 la orden #3 y se asign\u00f3 al t\u00e9cnico tecnico-1.",
+      "fecha_hora": "2026-10-10T00:39:52.352Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 4,
+    "fields": {
+      "usuario": 1,
+      "instalacion": 1,
+      "tipo": "Orden cerrada",
+      "descripcion": "Se cerr\u00f3 la orden #3.",
+      "fecha_hora": "2026-10-10T00:49:14.067Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 5,
+    "fields": {
+      "usuario": null,
+      "instalacion": 1,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #2 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-10T07:01:58.806Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 6,
+    "fields": {
+      "usuario": null,
+      "instalacion": 3,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #3 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:39:19.867Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 7,
+    "fields": {
+      "usuario": 1,
+      "instalacion": 3,
+      "tipo": "Orden creada y asignada",
+      "descripcion": "Se cre\u00f3 la orden #4 y se asign\u00f3 al t\u00e9cnico tecnico-2.",
+      "fecha_hora": "2026-10-14T20:39:50.692Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 8,
+    "fields": {
+      "usuario": 6,
+      "instalacion": 3,
+      "tipo": "Atenci\u00f3n iniciada",
+      "descripcion": "El t\u00e9cnico tecnico-2 inici\u00f3 la atenci\u00f3n de la orden #4.",
+      "fecha_hora": "2026-10-14T20:40:16.350Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 9,
+    "fields": {
+      "usuario": 6,
+      "instalacion": 3,
+      "tipo": "Orden cerrada",
+      "descripcion": "Se cerr\u00f3 la orden #4.",
+      "fecha_hora": "2026-10-14T20:40:52.145Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 10,
+    "fields": {
+      "usuario": null,
+      "instalacion": 2,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #4 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:49:18.749Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 11,
+    "fields": {
+      "usuario": null,
+      "instalacion": 3,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #5 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:49:18.763Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 12,
+    "fields": {
+      "usuario": null,
+      "instalacion": 4,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #6 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:49:18.777Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 13,
+    "fields": {
+      "usuario": null,
+      "instalacion": 5,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #7 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:49:18.793Z"
+    }
+  },
+  {
+    "model": "core.evento",
+    "pk": 14,
+    "fields": {
+      "usuario": null,
+      "instalacion": 6,
+      "tipo": "Alerta generada",
+      "descripcion": "El sistema gener\u00f3 la alerta #8 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+      "fecha_hora": "2026-10-14T20:49:18.809Z"
+    }
+  }
+]
