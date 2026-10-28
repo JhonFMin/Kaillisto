@@ -1,0 +1,1988 @@
+[
+{
+  "model": "admin.logentry",
+  "pk": 1,
+  "fields": {
+    "action_time": "2026-10-09T20:05:18.999Z",
+    "user": 1,
+    "content_type": 19,
+    "object_id": "1",
+    "object_repr": "Medición fuera de umbral",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 2,
+  "fields": {
+    "action_time": "2026-10-09T20:05:34.693Z",
+    "user": 1,
+    "content_type": 16,
+    "object_id": "1",
+    "object_repr": "Alta",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 3,
+  "fields": {
+    "action_time": "2026-10-09T20:05:49.668Z",
+    "user": 1,
+    "content_type": 18,
+    "object_id": "1",
+    "object_repr": "Vigente",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 4,
+  "fields": {
+    "action_time": "2026-10-09T20:17:45.464Z",
+    "user": 1,
+    "content_type": 21,
+    "object_id": "1",
+    "object_repr": "Pendiente",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 5,
+  "fields": {
+    "action_time": "2026-10-09T20:23:17.389Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "2",
+    "object_repr": "tecnico-1",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 6,
+  "fields": {
+    "action_time": "2026-10-09T20:23:40.506Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "2",
+    "object_repr": "tecnico-1",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"First name\", \"Last name\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 7,
+  "fields": {
+    "action_time": "2026-10-09T20:30:02.187Z",
+    "user": 1,
+    "content_type": 21,
+    "object_id": "2",
+    "object_repr": "En proceso",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 8,
+  "fields": {
+    "action_time": "2026-10-09T20:30:11.529Z",
+    "user": 1,
+    "content_type": 21,
+    "object_id": "3",
+    "object_repr": "Cerrada",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 9,
+  "fields": {
+    "action_time": "2026-10-09T23:01:03.170Z",
+    "user": 1,
+    "content_type": 18,
+    "object_id": "2",
+    "object_repr": "Cerrada",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 10,
+  "fields": {
+    "action_time": "2026-10-09T23:03:24.450Z",
+    "user": 1,
+    "content_type": 17,
+    "object_id": "1",
+    "object_repr": "Alerta #1 - Instalación solar de prueba - Voltaje (V)",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Estado\", \"Fecha cierre\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 11,
+  "fields": {
+    "action_time": "2026-10-10T06:16:18.428Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "3",
+    "object_repr": "lider-1",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 12,
+  "fields": {
+    "action_time": "2026-10-10T06:16:50.875Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "3",
+    "object_repr": "lider-1",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"First name\", \"Last name\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 13,
+  "fields": {
+    "action_time": "2026-10-10T06:18:39.160Z",
+    "user": 1,
+    "content_type": 8,
+    "object_id": "1",
+    "object_repr": "Administrador",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 14,
+  "fields": {
+    "action_time": "2026-10-10T06:19:00.978Z",
+    "user": 1,
+    "content_type": 8,
+    "object_id": "2",
+    "object_repr": "Tecnico",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 15,
+  "fields": {
+    "action_time": "2026-10-10T06:19:07.800Z",
+    "user": 1,
+    "content_type": 8,
+    "object_id": "3",
+    "object_repr": "Lider comunitario",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 16,
+  "fields": {
+    "action_time": "2026-10-10T06:20:36.526Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "1",
+    "object_repr": "Español",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 17,
+  "fields": {
+    "action_time": "2026-10-10T06:21:43.913Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "2",
+    "object_repr": "Wayuunaiki (Wayuu)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 18,
+  "fields": {
+    "action_time": "2026-10-10T06:22:25.157Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "3",
+    "object_repr": "lider-1",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Idioma preferido\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 19,
+  "fields": {
+    "action_time": "2026-10-10T06:22:33.314Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "2",
+    "object_repr": "tecnico-1",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Rol\", \"Idioma preferido\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 20,
+  "fields": {
+    "action_time": "2026-10-10T06:22:38.017Z",
+    "user": 1,
+    "content_type": 9,
+    "object_id": "3",
+    "object_repr": "lider-1",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Rol\"]}}]"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 1,
+  "fields": {
+    "name": "Can add log entry",
+    "content_type": 1,
+    "codename": "add_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 2,
+  "fields": {
+    "name": "Can change log entry",
+    "content_type": 1,
+    "codename": "change_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 3,
+  "fields": {
+    "name": "Can delete log entry",
+    "content_type": 1,
+    "codename": "delete_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 4,
+  "fields": {
+    "name": "Can view log entry",
+    "content_type": 1,
+    "codename": "view_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 5,
+  "fields": {
+    "name": "Can add permission",
+    "content_type": 2,
+    "codename": "add_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 6,
+  "fields": {
+    "name": "Can change permission",
+    "content_type": 2,
+    "codename": "change_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 7,
+  "fields": {
+    "name": "Can delete permission",
+    "content_type": 2,
+    "codename": "delete_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 8,
+  "fields": {
+    "name": "Can view permission",
+    "content_type": 2,
+    "codename": "view_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 9,
+  "fields": {
+    "name": "Can add group",
+    "content_type": 3,
+    "codename": "add_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 10,
+  "fields": {
+    "name": "Can change group",
+    "content_type": 3,
+    "codename": "change_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 11,
+  "fields": {
+    "name": "Can delete group",
+    "content_type": 3,
+    "codename": "delete_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 12,
+  "fields": {
+    "name": "Can view group",
+    "content_type": 3,
+    "codename": "view_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 13,
+  "fields": {
+    "name": "Can add content type",
+    "content_type": 4,
+    "codename": "add_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 14,
+  "fields": {
+    "name": "Can change content type",
+    "content_type": 4,
+    "codename": "change_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 15,
+  "fields": {
+    "name": "Can delete content type",
+    "content_type": 4,
+    "codename": "delete_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 16,
+  "fields": {
+    "name": "Can view content type",
+    "content_type": 4,
+    "codename": "view_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 17,
+  "fields": {
+    "name": "Can add session",
+    "content_type": 5,
+    "codename": "add_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 18,
+  "fields": {
+    "name": "Can change session",
+    "content_type": 5,
+    "codename": "change_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 19,
+  "fields": {
+    "name": "Can delete session",
+    "content_type": 5,
+    "codename": "delete_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 20,
+  "fields": {
+    "name": "Can view session",
+    "content_type": 5,
+    "codename": "view_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 21,
+  "fields": {
+    "name": "Can add comunidad",
+    "content_type": 6,
+    "codename": "add_comunidad"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 22,
+  "fields": {
+    "name": "Can change comunidad",
+    "content_type": 6,
+    "codename": "change_comunidad"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 23,
+  "fields": {
+    "name": "Can delete comunidad",
+    "content_type": 6,
+    "codename": "delete_comunidad"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 24,
+  "fields": {
+    "name": "Can view comunidad",
+    "content_type": 6,
+    "codename": "view_comunidad"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 25,
+  "fields": {
+    "name": "Can add idioma",
+    "content_type": 7,
+    "codename": "add_idioma"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 26,
+  "fields": {
+    "name": "Can change idioma",
+    "content_type": 7,
+    "codename": "change_idioma"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 27,
+  "fields": {
+    "name": "Can delete idioma",
+    "content_type": 7,
+    "codename": "delete_idioma"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 28,
+  "fields": {
+    "name": "Can view idioma",
+    "content_type": 7,
+    "codename": "view_idioma"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 29,
+  "fields": {
+    "name": "Can add rol",
+    "content_type": 8,
+    "codename": "add_rol"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 30,
+  "fields": {
+    "name": "Can change rol",
+    "content_type": 8,
+    "codename": "change_rol"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 31,
+  "fields": {
+    "name": "Can delete rol",
+    "content_type": 8,
+    "codename": "delete_rol"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 32,
+  "fields": {
+    "name": "Can view rol",
+    "content_type": 8,
+    "codename": "view_rol"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 33,
+  "fields": {
+    "name": "Can add usuario",
+    "content_type": 9,
+    "codename": "add_usuario"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 34,
+  "fields": {
+    "name": "Can change usuario",
+    "content_type": 9,
+    "codename": "change_usuario"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 35,
+  "fields": {
+    "name": "Can delete usuario",
+    "content_type": 9,
+    "codename": "delete_usuario"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 36,
+  "fields": {
+    "name": "Can view usuario",
+    "content_type": 9,
+    "codename": "view_usuario"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 37,
+  "fields": {
+    "name": "Can add Estado de instalación",
+    "content_type": 10,
+    "codename": "add_estadoinstalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 38,
+  "fields": {
+    "name": "Can change Estado de instalación",
+    "content_type": 10,
+    "codename": "change_estadoinstalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 39,
+  "fields": {
+    "name": "Can delete Estado de instalación",
+    "content_type": 10,
+    "codename": "delete_estadoinstalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 40,
+  "fields": {
+    "name": "Can view Estado de instalación",
+    "content_type": 10,
+    "codename": "view_estadoinstalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 41,
+  "fields": {
+    "name": "Can add Instalación",
+    "content_type": 11,
+    "codename": "add_instalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 42,
+  "fields": {
+    "name": "Can change Instalación",
+    "content_type": 11,
+    "codename": "change_instalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 43,
+  "fields": {
+    "name": "Can delete Instalación",
+    "content_type": 11,
+    "codename": "delete_instalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 44,
+  "fields": {
+    "name": "Can view Instalación",
+    "content_type": 11,
+    "codename": "view_instalacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 45,
+  "fields": {
+    "name": "Can add dispositivo",
+    "content_type": 12,
+    "codename": "add_dispositivo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 46,
+  "fields": {
+    "name": "Can change dispositivo",
+    "content_type": 12,
+    "codename": "change_dispositivo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 47,
+  "fields": {
+    "name": "Can delete dispositivo",
+    "content_type": 12,
+    "codename": "delete_dispositivo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 48,
+  "fields": {
+    "name": "Can view dispositivo",
+    "content_type": 12,
+    "codename": "view_dispositivo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 49,
+  "fields": {
+    "name": "Can add medicion",
+    "content_type": 13,
+    "codename": "add_medicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 50,
+  "fields": {
+    "name": "Can change medicion",
+    "content_type": 13,
+    "codename": "change_medicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 51,
+  "fields": {
+    "name": "Can delete medicion",
+    "content_type": 13,
+    "codename": "delete_medicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 52,
+  "fields": {
+    "name": "Can view medicion",
+    "content_type": 13,
+    "codename": "view_medicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 53,
+  "fields": {
+    "name": "Can add tipo medicion",
+    "content_type": 14,
+    "codename": "add_tipomedicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 54,
+  "fields": {
+    "name": "Can change tipo medicion",
+    "content_type": 14,
+    "codename": "change_tipomedicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 55,
+  "fields": {
+    "name": "Can delete tipo medicion",
+    "content_type": 14,
+    "codename": "delete_tipomedicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 56,
+  "fields": {
+    "name": "Can view tipo medicion",
+    "content_type": 14,
+    "codename": "view_tipomedicion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 57,
+  "fields": {
+    "name": "Can add umbral",
+    "content_type": 15,
+    "codename": "add_umbral"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 58,
+  "fields": {
+    "name": "Can change umbral",
+    "content_type": 15,
+    "codename": "change_umbral"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 59,
+  "fields": {
+    "name": "Can delete umbral",
+    "content_type": 15,
+    "codename": "delete_umbral"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 60,
+  "fields": {
+    "name": "Can view umbral",
+    "content_type": 15,
+    "codename": "view_umbral"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 61,
+  "fields": {
+    "name": "Can add Prioridad de alerta",
+    "content_type": 16,
+    "codename": "add_prioridadalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 62,
+  "fields": {
+    "name": "Can change Prioridad de alerta",
+    "content_type": 16,
+    "codename": "change_prioridadalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 63,
+  "fields": {
+    "name": "Can delete Prioridad de alerta",
+    "content_type": 16,
+    "codename": "delete_prioridadalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 64,
+  "fields": {
+    "name": "Can view Prioridad de alerta",
+    "content_type": 16,
+    "codename": "view_prioridadalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 65,
+  "fields": {
+    "name": "Can add alerta",
+    "content_type": 17,
+    "codename": "add_alerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 66,
+  "fields": {
+    "name": "Can change alerta",
+    "content_type": 17,
+    "codename": "change_alerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 67,
+  "fields": {
+    "name": "Can delete alerta",
+    "content_type": 17,
+    "codename": "delete_alerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 68,
+  "fields": {
+    "name": "Can view alerta",
+    "content_type": 17,
+    "codename": "view_alerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 69,
+  "fields": {
+    "name": "Can add Estado de alerta",
+    "content_type": 18,
+    "codename": "add_estadoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 70,
+  "fields": {
+    "name": "Can change Estado de alerta",
+    "content_type": 18,
+    "codename": "change_estadoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 71,
+  "fields": {
+    "name": "Can delete Estado de alerta",
+    "content_type": 18,
+    "codename": "delete_estadoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 72,
+  "fields": {
+    "name": "Can view Estado de alerta",
+    "content_type": 18,
+    "codename": "view_estadoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 73,
+  "fields": {
+    "name": "Can add Tipo de alerta",
+    "content_type": 19,
+    "codename": "add_tipoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 74,
+  "fields": {
+    "name": "Can change Tipo de alerta",
+    "content_type": 19,
+    "codename": "change_tipoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 75,
+  "fields": {
+    "name": "Can delete Tipo de alerta",
+    "content_type": 19,
+    "codename": "delete_tipoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 76,
+  "fields": {
+    "name": "Can view Tipo de alerta",
+    "content_type": 19,
+    "codename": "view_tipoalerta"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 77,
+  "fields": {
+    "name": "Can add orden trabajo",
+    "content_type": 20,
+    "codename": "add_ordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 78,
+  "fields": {
+    "name": "Can change orden trabajo",
+    "content_type": 20,
+    "codename": "change_ordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 79,
+  "fields": {
+    "name": "Can delete orden trabajo",
+    "content_type": 20,
+    "codename": "delete_ordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 80,
+  "fields": {
+    "name": "Can view orden trabajo",
+    "content_type": 20,
+    "codename": "view_ordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 81,
+  "fields": {
+    "name": "Can add Estado de orden de trabajo",
+    "content_type": 21,
+    "codename": "add_estadoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 82,
+  "fields": {
+    "name": "Can change Estado de orden de trabajo",
+    "content_type": 21,
+    "codename": "change_estadoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 83,
+  "fields": {
+    "name": "Can delete Estado de orden de trabajo",
+    "content_type": 21,
+    "codename": "delete_estadoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 84,
+  "fields": {
+    "name": "Can view Estado de orden de trabajo",
+    "content_type": 21,
+    "codename": "view_estadoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 85,
+  "fields": {
+    "name": "Can add repuesto",
+    "content_type": 22,
+    "codename": "add_repuesto"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 86,
+  "fields": {
+    "name": "Can change repuesto",
+    "content_type": 22,
+    "codename": "change_repuesto"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 87,
+  "fields": {
+    "name": "Can delete repuesto",
+    "content_type": 22,
+    "codename": "delete_repuesto"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 88,
+  "fields": {
+    "name": "Can view repuesto",
+    "content_type": 22,
+    "codename": "view_repuesto"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 89,
+  "fields": {
+    "name": "Can add repuesto orden trabajo",
+    "content_type": 23,
+    "codename": "add_repuestoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 90,
+  "fields": {
+    "name": "Can change repuesto orden trabajo",
+    "content_type": 23,
+    "codename": "change_repuestoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 91,
+  "fields": {
+    "name": "Can delete repuesto orden trabajo",
+    "content_type": 23,
+    "codename": "delete_repuestoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 92,
+  "fields": {
+    "name": "Can view repuesto orden trabajo",
+    "content_type": 23,
+    "codename": "view_repuestoordentrabajo"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 93,
+  "fields": {
+    "name": "Can add evento",
+    "content_type": 24,
+    "codename": "add_evento"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 94,
+  "fields": {
+    "name": "Can change evento",
+    "content_type": 24,
+    "codename": "change_evento"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 95,
+  "fields": {
+    "name": "Can delete evento",
+    "content_type": 24,
+    "codename": "delete_evento"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 96,
+  "fields": {
+    "name": "Can view evento",
+    "content_type": 24,
+    "codename": "view_evento"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 97,
+  "fields": {
+    "name": "Can add notificacion",
+    "content_type": 25,
+    "codename": "add_notificacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 98,
+  "fields": {
+    "name": "Can change notificacion",
+    "content_type": 25,
+    "codename": "change_notificacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 99,
+  "fields": {
+    "name": "Can delete notificacion",
+    "content_type": 25,
+    "codename": "delete_notificacion"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 100,
+  "fields": {
+    "name": "Can view notificacion",
+    "content_type": 25,
+    "codename": "view_notificacion"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 1,
+  "fields": {
+    "app_label": "admin",
+    "model": "logentry"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 2,
+  "fields": {
+    "app_label": "auth",
+    "model": "permission"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 3,
+  "fields": {
+    "app_label": "auth",
+    "model": "group"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 4,
+  "fields": {
+    "app_label": "contenttypes",
+    "model": "contenttype"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 5,
+  "fields": {
+    "app_label": "sessions",
+    "model": "session"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 6,
+  "fields": {
+    "app_label": "core",
+    "model": "comunidad"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 7,
+  "fields": {
+    "app_label": "core",
+    "model": "idioma"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 8,
+  "fields": {
+    "app_label": "core",
+    "model": "rol"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 9,
+  "fields": {
+    "app_label": "core",
+    "model": "usuario"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 10,
+  "fields": {
+    "app_label": "core",
+    "model": "estadoinstalacion"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 11,
+  "fields": {
+    "app_label": "core",
+    "model": "instalacion"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 12,
+  "fields": {
+    "app_label": "core",
+    "model": "dispositivo"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 13,
+  "fields": {
+    "app_label": "core",
+    "model": "medicion"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 14,
+  "fields": {
+    "app_label": "core",
+    "model": "tipomedicion"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 15,
+  "fields": {
+    "app_label": "core",
+    "model": "umbral"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 16,
+  "fields": {
+    "app_label": "core",
+    "model": "prioridadalerta"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 17,
+  "fields": {
+    "app_label": "core",
+    "model": "alerta"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 18,
+  "fields": {
+    "app_label": "core",
+    "model": "estadoalerta"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 19,
+  "fields": {
+    "app_label": "core",
+    "model": "tipoalerta"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 20,
+  "fields": {
+    "app_label": "core",
+    "model": "ordentrabajo"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 21,
+  "fields": {
+    "app_label": "core",
+    "model": "estadoordentrabajo"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 22,
+  "fields": {
+    "app_label": "core",
+    "model": "repuesto"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 23,
+  "fields": {
+    "app_label": "core",
+    "model": "repuestoordentrabajo"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 24,
+  "fields": {
+    "app_label": "core",
+    "model": "evento"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "pk": 25,
+  "fields": {
+    "app_label": "core",
+    "model": "notificacion"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "hx28u4bt31isttuu4xcega39exn93zuy",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQRf-FtSHQDo-6dO83kBkGpGogKe3K-O_apAvd3nPOfYmA21rC1tMSZhZnMYrT70YYH6nugO9Yb03GVtdlJrkr8qBdXhun5-Vw_w4K9vKtHTJNw5C9RUeGtNIavDeZXVJJI7msHE6ggccIib0fwWayYCbNMMQs3h_kuDfZ:1xFQzS:5mOHFEvRBRAFy4CX1xDNbtSoaoCpQy4XA-7dxrbX1_w",
+    "expire_date": "2026-10-24T06:55:30.239Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "z11ad1wkky1r3ygsvepgr7c38urz2quz",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQRf-FtSEM5enSvd9AYBikaiAp7cr479qkC93ec859sRC3tYZt0BLmzM4M2Ol3SxEf1HaQ77HdOsfe1mVOfFf4QQe_9kzPy-H-HdQ46rf2IJPVjgw6hapMKA0WnUTUIgFJsg5iMVBS9gAlWy2VMJK8IandpBR7fwDhTTd1:1xH5X9:RtMaYapvFsB1uGUXu2dIAI2TRAtfjPEwJ0gAbiwUVXc",
+    "expire_date": "2026-10-28T20:25:07.232Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "zx2lb5fn86iup183ojjg7ad8445h6x2t",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQRf-FtSHQDo-6dO83kBkGpGogKe3K-O_apAvd3nPOfYmA21rC1tMSZhZnMYrT70YYH6nugO9Yb03GVtdlJrkr8qBdXhun5-Vw_w4K9vKtHTJNw5C9RUeGtNIavDeZXVJJI7msHE6ggccIib0fwWayYCbNMMQs3h_kuDfZ:1xFR8T:v4bHVIIaDWvjAOSQTcP9CMcDeKPYOWgEc4620ybcCNs",
+    "expire_date": "2026-10-24T07:04:49.553Z"
+  }
+},
+{
+  "model": "core.rol",
+  "pk": 1,
+  "fields": {
+    "nombre": "Administrador",
+    "descripcion": "Gestiona comunidades, instalaciones, usuarios y configuraciones"
+  }
+},
+{
+  "model": "core.rol",
+  "pk": 2,
+  "fields": {
+    "nombre": "Tecnico",
+    "descripcion": "Atiende órdenes de trabajo y registra diagnósticos, soluciones y repuestos"
+  }
+},
+{
+  "model": "core.rol",
+  "pk": 3,
+  "fields": {
+    "nombre": "Lider comunitario",
+    "descripcion": "Consulta instalaciones, alertas y técnicos asignados de su comunidad"
+  }
+},
+{
+  "model": "core.comunidad",
+  "pk": 1,
+  "fields": {
+    "nombre": "Comunidad de prueba",
+    "ubicacion": "Riohacha, La Guajira",
+    "descripcion": "Registro de prueba para validar la API."
+  }
+},
+{
+  "model": "core.idioma",
+  "pk": 1,
+  "fields": {
+    "codigo": "es",
+    "nombre": "Español",
+    "activo": true
+  }
+},
+{
+  "model": "core.idioma",
+  "pk": 2,
+  "fields": {
+    "codigo": "guc",
+    "nombre": "Wayuunaiki (Wayuu)",
+    "activo": true
+  }
+},
+{
+  "model": "core.usuario",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$5dIfOo5JUnSW1t4t3RnAS5$FzEcMaGe9MwdRUsutwH9czEhQMkqdMD5S3tj5a5piJ0=",
+    "last_login": "2026-10-14T20:25:07.225Z",
+    "is_superuser": true,
+    "username": "jhonadmin",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-10-09T17:22:23.001Z",
+    "email": "mindiolaatencio@gmail.com",
+    "documento": null,
+    "telefono": "",
+    "rol": null,
+    "comunidad": null,
+    "idioma_preferido": null,
+    "fecha_actualizacion": "2026-10-09T17:24:58.695Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "core.usuario",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$2zj5XRmALTSYIn6uYfd39O$av0UKi6VAJ16AdFdj0eFcBp0Twhj8gUD0xdgPpz3tyM=",
+    "last_login": "2026-10-11T22:45:09.043Z",
+    "is_superuser": false,
+    "username": "tecnico-1",
+    "first_name": "Juan",
+    "last_name": "El pintor",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-10-09T20:23:17Z",
+    "email": "tecnico1@kaillisto.local",
+    "documento": "1118822240",
+    "telefono": "3243333381",
+    "rol": 2,
+    "comunidad": 1,
+    "idioma_preferido": 1,
+    "fecha_actualizacion": "2026-10-10T06:22:33.310Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "core.usuario",
+  "pk": 3,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$Xq70pLcD7ODm93n22nqxxu$SYTAd0NEap8tNaIjpEcBenRbRLOtfXlUVwTOvoiELR8=",
+    "last_login": "2026-10-10T07:04:49.550Z",
+    "is_superuser": false,
+    "username": "lider-1",
+    "first_name": "Juan",
+    "last_name": "Cito",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-10-10T06:16:18Z",
+    "email": "lider1@kaillisto.com",
+    "documento": "1118822250",
+    "telefono": "3243333382",
+    "rol": 3,
+    "comunidad": 1,
+    "idioma_preferido": 2,
+    "fecha_actualizacion": "2026-10-10T06:22:38.013Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "core.estadoinstalacion",
+  "pk": 1,
+  "fields": {
+    "nombre": "Normal",
+    "descripcion": "La instalación funciona dentro de los parámetros establecidos."
+  }
+},
+{
+  "model": "core.instalacion",
+  "pk": 1,
+  "fields": {
+    "comunidad": 1,
+    "nombre": "Instalación solar de prueba",
+    "ubicacion": "Riohacha, La Guajira",
+    "capacidad": "5.00",
+    "fecha_instalacion": "2026-10-09",
+    "estado_instalacion": 1
+  }
+},
+{
+  "model": "core.dispositivo",
+  "pk": 1,
+  "fields": {
+    "instalacion": 1,
+    "codigo": "ESP32-001",
+    "modelo": "ESP32",
+    "fecha_registro": "2026-10-09T18:26:20.213Z",
+    "ultima_comunicacion": "2026-10-10T07:01:58.796Z",
+    "activo": true,
+    "api_key_hash": "pbkdf2_sha256$1000000$FExj3c1g4QnYOMjiiYWU6Q$6mEyPY8yD7DeWTujktr5A1RJtw6K6YOMCVbrprbgp6I="
+  }
+},
+{
+  "model": "core.tipomedicion",
+  "pk": 1,
+  "fields": {
+    "nombre": "Voltaje",
+    "unidad": "V",
+    "descripcion": "Voltaje de prueba"
+  }
+},
+{
+  "model": "core.tipomedicion",
+  "pk": 2,
+  "fields": {
+    "nombre": "Corriente",
+    "unidad": "A",
+    "descripcion": "Corriente de prueba"
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 1,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "12.40",
+    "fecha_hora": "2026-10-09T19:37:55.816Z",
+    "es_anomala": false
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 2,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T19:50:38.114Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 3,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "12.40",
+    "fecha_hora": "2026-10-09T19:51:50.988Z",
+    "es_anomala": false
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 4,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "12.40",
+    "fecha_hora": "2026-10-09T20:09:36.990Z",
+    "es_anomala": false
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 5,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:09:37.166Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 6,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:09:37.299Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 7,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:09:37.433Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 8,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:10:28.314Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 9,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:10:43.861Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 10,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:10:44.289Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 11,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:10:44.700Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 12,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-09T20:10:45.166Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 13,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "12.40",
+    "fecha_hora": "2026-10-09T22:59:53.203Z",
+    "es_anomala": false
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 14,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T06:51:12.218Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 15,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T06:51:35.988Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 16,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T06:51:36.825Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 17,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T06:51:40.308Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 18,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T06:56:36.112Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.medicion",
+  "pk": 19,
+  "fields": {
+    "dispositivo": 1,
+    "tipo_medicion": 1,
+    "valor": "10.00",
+    "fecha_hora": "2026-10-10T07:01:58.793Z",
+    "es_anomala": true
+  }
+},
+{
+  "model": "core.umbral",
+  "pk": 1,
+  "fields": {
+    "instalacion": 1,
+    "tipo_medicion": 1,
+    "valor_minimo": "11.00",
+    "valor_maximo": "14.00",
+    "fecha_inicio": "2026-10-09T19:46:51.073Z",
+    "fecha_fin": null,
+    "activo": true
+  }
+},
+{
+  "model": "core.tipoalerta",
+  "pk": 1,
+  "fields": {
+    "nombre": "Medición fuera de umbral",
+    "descripcion": "Tres mediciones consecutivas fuera del rango configurado."
+  }
+},
+{
+  "model": "core.prioridadalerta",
+  "pk": 1,
+  "fields": {
+    "nombre": "Alta",
+    "descripcion": "Requiere revisión técnica prioritaria."
+  }
+},
+{
+  "model": "core.estadoalerta",
+  "pk": 1,
+  "fields": {
+    "nombre": "Vigente",
+    "descripcion": "Alerta activa pendiente de atención."
+  }
+},
+{
+  "model": "core.estadoalerta",
+  "pk": 2,
+  "fields": {
+    "nombre": "Cerrada",
+    "descripcion": "Alerta resuelta después de la atención técnica."
+  }
+},
+{
+  "model": "core.alerta",
+  "pk": 1,
+  "fields": {
+    "instalacion": 1,
+    "tipo_medicion": 1,
+    "tipo_alerta": 1,
+    "prioridad": 1,
+    "estado": 2,
+    "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+    "fecha_creacion": "2026-10-09T20:09:37.439Z",
+    "fecha_cierre": "2026-10-09T23:03:11Z"
+  }
+},
+{
+  "model": "core.alerta",
+  "pk": 2,
+  "fields": {
+    "instalacion": 1,
+    "tipo_medicion": 1,
+    "tipo_alerta": 1,
+    "prioridad": 1,
+    "estado": 1,
+    "mensaje": "Se detectaron tres mediciones consecutivas fuera del umbral configurado.",
+    "fecha_creacion": "2026-10-10T07:01:58.803Z",
+    "fecha_cierre": null
+  }
+},
+{
+  "model": "core.estadoordentrabajo",
+  "pk": 1,
+  "fields": {
+    "nombre": "Pendiente",
+    "descripcion": "Orden creada y pendiente de atención técnica."
+  }
+},
+{
+  "model": "core.estadoordentrabajo",
+  "pk": 2,
+  "fields": {
+    "nombre": "En proceso",
+    "descripcion": "El técnico inició la atención de la orden."
+  }
+},
+{
+  "model": "core.estadoordentrabajo",
+  "pk": 3,
+  "fields": {
+    "nombre": "Cerrada",
+    "descripcion": "El técnico terminó la atención y registró la solución."
+  }
+},
+{
+  "model": "core.ordentrabajo",
+  "pk": 1,
+  "fields": {
+    "instalacion": 1,
+    "alerta": 1,
+    "tecnico": 2,
+    "estado": 3,
+    "descripcion": "Revisar voltaje bajo detectado en la instalación. El sistema generó una alerta después de tres mediciones consecutivas fuera del rango configurado.",
+    "diagnostico": "Se verificó voltaje bajo sostenido. La batería presentaba carga insuficiente y requería revisión de conexiones y del controlador.",
+    "solucion_aplicada": "Se ajustaron las conexiones de la batería y se verificó el controlador de carga. Después de la intervención, el voltaje volvió al rango operativo configurado.",
+    "fecha_creacion": "2026-10-09T20:39:11.984Z",
+    "fecha_atencion": "2026-10-09T20:48:48.019Z",
+    "fecha_cierre": "2026-10-09T20:49:25.895Z"
+  }
+},
+{
+  "model": "core.ordentrabajo",
+  "pk": 2,
+  "fields": {
+    "instalacion": 1,
+    "alerta": null,
+    "tecnico": 2,
+    "estado": 3,
+    "descripcion": "Revisión preventiva de conexiones y controlador de carga.",
+    "diagnostico": "Revisión preventiva: conexiones en buen estado.",
+    "solucion_aplicada": "Se ajustó una conexión floja en el controlador.",
+    "fecha_creacion": "2026-10-10T00:29:21.273Z",
+    "fecha_atencion": "2026-10-10T00:32:12.501Z",
+    "fecha_cierre": "2026-10-10T00:32:28.931Z"
+  }
+},
+{
+  "model": "core.ordentrabajo",
+  "pk": 3,
+  "fields": {
+    "instalacion": 1,
+    "alerta": null,
+    "tecnico": 2,
+    "estado": 3,
+    "descripcion": "Revisión preventiva para validar auditoría de atención.",
+    "diagnostico": "",
+    "solucion_aplicada": "",
+    "fecha_creacion": "2026-10-10T00:39:52.345Z",
+    "fecha_atencion": "2026-10-10T00:40:08.802Z",
+    "fecha_cierre": "2026-10-10T00:49:14.067Z"
+  }
+},
+{
+  "model": "core.repuesto",
+  "pk": 1,
+  "fields": {
+    "nombre": "Cable solar calibre 10 AWG",
+    "descripcion": "Cable para conexión de batería y controlador de carga.",
+    "unidad_medida": "metro",
+    "activo": true
+  }
+},
+{
+  "model": "core.repuestoordentrabajo",
+  "pk": 1,
+  "fields": {
+    "orden_trabajo": 1,
+    "repuesto": 1,
+    "cantidad": "2.00"
+  }
+},
+{
+  "model": "core.evento",
+  "pk": 1,
+  "fields": {
+    "usuario": 1,
+    "instalacion": 1,
+    "tipo": "Orden creada y asignada",
+    "descripcion": "Se creó la orden #2 y se asignó al técnico tecnico-1.",
+    "fecha_hora": "2026-10-10T00:29:21.283Z"
+  }
+},
+{
+  "model": "core.evento",
+  "pk": 2,
+  "fields": {
+    "usuario": 1,
+    "instalacion": 1,
+    "tipo": "Orden cerrada",
+    "descripcion": "Se cerró la orden #2.",
+    "fecha_hora": "2026-10-10T00:32:28.931Z"
+  }
+},
+{
+  "model": "core.evento",
+  "pk": 3,
+  "fields": {
+    "usuario": 1,
+    "instalacion": 1,
+    "tipo": "Orden creada y asignada",
+    "descripcion": "Se creó la orden #3 y se asignó al técnico tecnico-1.",
+    "fecha_hora": "2026-10-10T00:39:52.352Z"
+  }
+},
+{
+  "model": "core.evento",
+  "pk": 4,
+  "fields": {
+    "usuario": 1,
+    "instalacion": 1,
+    "tipo": "Orden cerrada",
+    "descripcion": "Se cerró la orden #3.",
+    "fecha_hora": "2026-10-10T00:49:14.067Z"
+  }
+},
+{
+  "model": "core.evento",
+  "pk": 5,
+  "fields": {
+    "usuario": null,
+    "instalacion": 1,
+    "tipo": "Alerta generada",
+    "descripcion": "El sistema generó la alerta #2 por tres mediciones consecutivas fuera del umbral de Voltaje.",
+    "fecha_hora": "2026-10-10T07:01:58.806Z"
+  }
+}
+]

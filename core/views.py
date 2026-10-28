@@ -8,7 +8,6 @@ from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from .models import OrdenTrabajo
 from .serializers import OrdenTrabajoSerializer
-from .device_auth import DispositivoAuthentication
 from .models import (
     Alerta,
     EstadoAlerta,
@@ -93,7 +92,6 @@ class DispositivoViewSet(viewsets.ModelViewSet):
 
 class RecepcionMedicionView(generics.CreateAPIView):
     serializer_class = MedicionSerializer
-    authentication_classes = [DispositivoAuthentication]
     permission_classes = []
     def perform_create(self, serializer):
         dispositivo = self.request.user
