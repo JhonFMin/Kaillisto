@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'maintenance',
     "drf_spectacular",
     'catalogs', 
+    'security',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

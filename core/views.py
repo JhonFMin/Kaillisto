@@ -8,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
 from .models import OrdenTrabajo
 from .serializers import OrdenTrabajoSerializer
+from security.permissions import RoleBasedPermission
 from .models import (
     Alerta,
     EstadoAlerta,
@@ -59,37 +60,31 @@ class ComunidadViewSet(viewsets.ModelViewSet):
     queryset = Comunidad.objects.all().order_by("id_comunidad")
     serializer_class = ComunidadSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
-
-
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Catálogos' # NUEVO
+    
 class EstadoInstalacionViewSet(viewsets.ModelViewSet):
-    queryset = EstadoInstalacion.objects.all().order_by(
-        "id_estado_instalacion"
-    )
+    queryset = EstadoInstalacion.objects.all().order_by("id_estado_instalacion")
     serializer_class = EstadoInstalacionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Catálogos' # NUEVO
 
 
 class InstalacionViewSet(viewsets.ModelViewSet):
-    queryset = Instalacion.objects.select_related(
-        "comunidad",
-        "estado_instalacion",
-    ).order_by("id_instalacion")
-
+    queryset = Instalacion.objects.select_related("comunidad", "estado_instalacion").order_by("id_instalacion")
     serializer_class = InstalacionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Instalaciones' # NUEVO
     
 class DispositivoViewSet(viewsets.ModelViewSet):
-    queryset = Dispositivo.objects.select_related(
-        "instalacion"
-    ).order_by("id_dispositivo")
-
+    queryset = Dispositivo.objects.select_related("instalacion").order_by("id_dispositivo")
     serializer_class = DispositivoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
-
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Dispositivos' # NUEVO
+    
 class RecepcionMedicionView(generics.CreateAPIView):
     serializer_class = MedicionSerializer
     permission_classes = []
@@ -187,12 +182,15 @@ class TipoMedicionViewSet(viewsets.ModelViewSet):
     queryset = TipoMedicion.objects.all().order_by("id_tipo_medicion")
     serializer_class = TipoMedicionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Catálogos' # NUEVO
     
 class OrdenTrabajoViewSet(viewsets.ModelViewSet):
     serializer_class = OrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
-
+    permission_classes = [RoleBasedPermission] # NUEVO
+    recurso_nombre = 'Órdenes de Trabajo'
+    
     def get_queryset(self):
         queryset = OrdenTrabajo.objects.select_related(
             "instalacion",
@@ -293,27 +291,19 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
                     update_fields=["estado", "fecha_cierre"]
                 )   
 class UmbralViewSet(viewsets.ModelViewSet):
-    queryset = Umbral.objects.select_related(
-        "instalacion",
-        "tipo_medicion",
-    ).order_by("id_umbral")
-
+    queryset = Umbral.objects.select_related("instalacion", "tipo_medicion").order_by("id_umbral")
     serializer_class = UmbralSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Umbrales' # NUEVO
 
 class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Alerta.objects.select_related(
-        "instalacion",
-        "tipo_medicion",
-        "tipo_alerta",
-        "prioridad",
-        "estado",
-    ).order_by("-fecha_creacion")
-
+    queryset = Alerta.objects.select_related("instalacion", "tipo_medicion", "tipo_alerta", "prioridad", "estado").order_by("-fecha_creacion")
     serializer_class = AlertaSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Alertas' # NUEVO
+    
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def iniciar_sesion(request):
@@ -367,13 +357,14 @@ class RepuestoViewSet(viewsets.ModelViewSet):
     queryset = Repuesto.objects.all().order_by("nombre")
     serializer_class = RepuestoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAdminUser]
-
+    permission_classes = [RoleBasedPermission] # REEMPLAZADO
+    recurso_nombre = 'Repuestos' # NUEVO
 
 class RepuestoOrdenTrabajoViewSet(viewsets.ModelViewSet):
     serializer_class = RepuestoOrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
-
+    permission_classes = [RoleBasedPermission] # NUEVO
+    recurso_nombre = 'Órdenes de Trabajo' # NUEVO
     def get_queryset(self):
         queryset = RepuestoOrdenTrabajo.objects.select_related(
             "orden_trabajo",
