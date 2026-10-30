@@ -1,20 +1,15 @@
 from django.contrib import admin
-from .models import Rol, Recurso, RolRecurso, UsuarioRol
+from .models import Role, UserRole
 
-class RolRecursoInline(admin.TabularInline):
-    model = RolRecurso
-    extra = 1
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    filter_horizontal = ('permissions',)
 
-@admin.register(Rol)
-class RolAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'activo')
-    inlines = [RolRecursoInline]
-
-@admin.register(Recurso)
-class RecursoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'ruta')
-
-@admin.register(UsuarioRol)
-class UsuarioRolAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'rol')
-    list_filter = ('rol',)
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'rol', 'asignado_por', 'fecha')
+    list_filter = ('rol', 'fecha')
+    search_fields = ('usuario__username', 'rol__name')
