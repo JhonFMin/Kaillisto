@@ -745,12 +745,15 @@ function Records({ kind, user, title, readonly = false }) {
                           </button>
                           {kind === "usuarios" &&
                             user.is_superuser &&
-                            idOf(row) !== user.id && (
+                            (idOf(row) !== user.id || row.is_superuser) && (
                               <button
                                 onClick={async () => {
+                                  const isSelf = idOf(row) === user.id;
                                   if (
                                     !window.confirm(
-                                      `${row.is_superuser ? "Revocar" : "Otorgar"} superadmin a ${row.username}?`,
+                                      isSelf
+                                        ? "¿Dejar de ser superadministrador? Se aplicarán los permisos de tus roles y podrías perder acceso administrativo."
+                                        : `${row.is_superuser ? "Revocar" : "Otorgar"} superadmin a ${row.username}?`,
                                     )
                                   )
                                     return;
@@ -759,13 +762,17 @@ function Records({ kind, user, title, readonly = false }) {
                                       `${endpoint(kind)}${idOf(row)}/toggle_superadmin/`,
                                     );
                                     await load();
+                                    if (isSelf)
+                                      window.dispatchEvent(new Event("kaillisto:permissions"));
                                   } catch (e) {
                                     setError(errorText(e));
                                   }
                                 }}
                               >
                                 {row.is_superuser
-                                  ? "Quitar superadmin"
+                                  ? idOf(row) === user.id
+                                    ? "Probar permisos del rol"
+                                    : "Quitar superadmin"
                                   : "Hacer superadmin"}
                               </button>
                             )}
@@ -798,10 +805,17 @@ function Records({ kind, user, title, readonly = false }) {
           user={user}
           onClose={() => setEditing(null)}
           onSave={async (data) => {
+            const isSelf = kind === "usuarios" && idOf(editing) === user.id;
             if (idOf(editing))
               await api.patch(`${endpoint(kind)}${idOf(editing)}/`, data);
             else await api.post(endpoint(kind), data);
             setEditing(null);
+            if (isSelf && data.is_active === false) {
+              window.location.assign("/login");
+              return;
+            }
+            if (isSelf && data.roles !== undefined)
+              window.dispatchEvent(new Event("kaillisto:permissions"));
             await load();
           }}
         />

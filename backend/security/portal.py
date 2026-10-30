@@ -65,9 +65,17 @@ class UserSerializer(serializers.ModelSerializer):
                 raise ValidationError({'password': exc.messages})
         if self.instance and self.instance.is_superuser and not self.context['request'].user.is_superuser:
             raise PermissionDenied('Solo un superadministrador puede modificar esta cuenta.')
-        if self.instance and self.instance.pk == self.context['request'].user.pk:
+        request_user = self.context['request'].user
+        is_self = self.instance and self.instance.pk == request_user.pk
+        if is_self and not request_user.is_superuser:
             if attrs.get('is_active') is False or 'roles' in attrs:
-                raise ValidationError('No puedes desactivar tu cuenta ni cambiar tus propios roles.')
+                raise ValidationError('Solo un superadministrador puede cambiar sus propios roles o desactivar su cuenta.')
+        if is_self and request_user.is_superuser and attrs.get('is_active') is False:
+            another_superuser = get_user_model().objects.filter(
+                is_active=True, is_superuser=True
+            ).exclude(pk=request_user.pk).exists()
+            if not another_superuser:
+                raise ValidationError('Antes de desactivar esta cuenta, debe existir otro superadministrador activo para conservar el acceso de recuperación.')
         role_ids = attrs.get('roles')
         if role_ids is not None and any(r.name == 'Líder Comunitario' for r in role_ids) and not attrs.get('comunidad', getattr(self.instance, 'comunidad', None)):
             raise ValidationError({'comunidad': 'El líder necesita una comunidad.'})
@@ -105,8 +113,16 @@ class Users(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object(), data={'is_active': False}, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        user = serializer.save()
+        if user.pk == request.user.pk:
+            from django.contrib.auth import logout
+            logout(request)
         return Response(serializer.data)
+    def perform_update(self, serializer):
+        user = serializer.save()
+        if user.pk == self.request.user.pk and not user.is_active:
+            from django.contrib.auth import logout
+            logout(self.request)
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def toggle_superadmin(self, request, pk=None):
@@ -114,10 +130,12 @@ class Users(viewsets.ModelViewSet):
             raise PermissionDenied('Solo un superadministrador puede promover o revocar este acceso.')
         from django.shortcuts import get_object_or_404
         obj = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
-        if obj.pk == request.user.pk:
-            raise ValidationError('No puedes revocar tu propio acceso.')
         if not obj.is_active:
             raise ValidationError('Activa la cuenta primero.')
+        if obj.is_superuser and not Usuario.objects.filter(
+            is_active=True, is_superuser=True
+        ).exclude(pk=obj.pk).exists():
+            raise ValidationError('No puedes revocar el último superadministrador activo. Promueve otra cuenta primero.')
         obj.is_superuser = not obj.is_superuser
         obj.is_staff = obj.is_superuser
         obj.save(update_fields=['is_superuser', 'is_staff'])
