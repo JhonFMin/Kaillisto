@@ -3,30 +3,59 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { useContext } from 'react';
 import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Inicio from './pages/Inicio';
-import Roles from './pages/Roles';
-import Permisos from './pages/Permisos';
-import Usuarios from './pages/Usuarios';
+import RolesPermisos from './pages/RolesPermisos';
+import Catalogos from './pages/Catalogos';
+import Dispositivos from './pages/Dispositivos';
+import Mantenimiento from './pages/Mantenimiento';
+
+// Rutas que son estrictamente públicas: no requieren sesión, y no deben
+// disparar NINGUNA petición privada (me/permissions, dashboard_resumen,
+// etc.) para renderizarse.
+const RUTAS_PUBLICAS = ['/', '/login'];
 
 const Layout = () => {
     const location = useLocation();
     const { user } = useContext(AuthContext);
-    const esLogin = location.pathname === '/login';
+    const esPublica = RUTAS_PUBLICAS.includes(location.pathname);
 
-    if (!user && !esLogin) return <Navigate to="/login" replace />;
+    // Alguien intenta entrar directo a una ruta privada por URL sin
+    // sesión -> fuera antes de montar Sidebar o cualquier página privada.
+    if (!user && !esPublica) return <Navigate to="/login" replace />;
+
+    // Sesión ya activa intentando ver landing o login -> no tiene sentido,
+    // lo mandamos directo a su home.
+    if (user && esPublica) return <Navigate to="/dashboard" replace />;
 
     return (
-        <div className={esLogin ? 'h-screen w-screen bg-slate-50' : 'flex h-screen bg-slate-100 font-sans text-slate-900'}>
-            {!esLogin && <Sidebar />}
-            <main className={`flex-1 overflow-y-auto ${esLogin ? 'p-0 h-full' : 'p-8'}`}>
+        <div className={esPublica ? 'min-h-screen w-screen' : 'flex h-screen bg-slate-100 font-sans text-slate-900'}>
+            {!esPublica && <Sidebar />}
+            <main className={esPublica ? 'w-full' : 'flex-1 overflow-y-auto p-8'}>
                 <Routes>
+                    {/* Públicas */}
+                    <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
-                    <Route path="/roles" element={<ProtectedRoute adminOnly><Roles /></ProtectedRoute>} />
-                    <Route path="/permisos" element={<ProtectedRoute adminOnly><Permisos /></ProtectedRoute>} />
-                    <Route path="/usuarios" element={<ProtectedRoute adminOnly><Usuarios /></ProtectedRoute>} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+
+                    {/* Privadas: cada una refleja el permission_class real
+                        del endpoint que consume en el backend. */}
+                    <Route path="/dashboard" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
+                    <Route
+                        path="/dispositivos"
+                        element={<ProtectedRoute roles={['Líder Comunitario', 'Técnico de Campo', 'Administrador']}><Dispositivos /></ProtectedRoute>}
+                    />
+                    <Route
+                        path="/mantenimiento"
+                        element={<ProtectedRoute roles={['Técnico de Campo', 'Administrador']}><Mantenimiento /></ProtectedRoute>}
+                    />
+                    <Route path="/catalogos" element={<ProtectedRoute adminOnly><Catalogos /></ProtectedRoute>} />
+                    <Route path="/roles" element={<ProtectedRoute adminOnly><RolesPermisos /></ProtectedRoute>} />
+                    {/* Rutas antiguas: quien tenga el link guardado cae en la pantalla unificada */}
+                    <Route path="/permisos" element={<Navigate to="/roles" replace />} />
+                    <Route path="/usuarios" element={<Navigate to="/roles" replace />} />
+
+                    <Route path="*" element={<Navigate to={user ? '/dashboard' : '/'} replace />} />
                 </Routes>
             </main>
         </div>

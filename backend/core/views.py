@@ -9,6 +9,7 @@ from django.utils import timezone
 from .models import OrdenTrabajo
 from .serializers import OrdenTrabajoSerializer
 from security.permissions import IsAdminRole, HasRole, ReadOnlyOrManager, HasPermission
+from security.models import has_effective_role
 from .models import (
     Alerta,
     EstadoAlerta,
@@ -183,18 +184,37 @@ class TipoMedicionViewSet(viewsets.ModelViewSet):
     queryset = TipoMedicion.objects.all().order_by("id_tipo_medicion")
     serializer_class = TipoMedicionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]    
-    recurso_nombre = 'Catálogos' # NUEVO
+    recurso_nombre = 'Catálogos'
     permission_classes = [IsAuthenticated, IsAdminRole]
-    
+
 class OrdenTrabajoViewSet(viewsets.ModelViewSet):
+    """
+    Permisos por rol para Órdenes de Trabajo (RF-17 a RF-24):
+      - Ver (list/retrieve): Administrador ve todas; Técnico de Campo ve
+        solo las suyas; Líder Comunitario ve las de su comunidad. Esto lo
+        resuelve get_queryset(), así que no hace falta repetirlo aquí: si
+        la orden no le corresponde, el usuario ni siquiera la ve (404),
+        en vez de que la API se la entregue y solo la bloquee al editar.
+      - Crear: solo Administrador (RF-17, "el administrador debe poder
+        generar y asignar una orden de trabajo a un técnico").
+      - Editar (diagnóstico, solución, repuestos, estado): Administrador
+        o el Técnico de Campo asignado — y como get_queryset() ya filtra
+        por "tecnico=usuario", un técnico no puede ni llegar al update()
+        de una orden ajena.
+      - Eliminar: solo Administrador.
+
+    IMPORTANTE: antes este método tenía un `get_permissions()` que
+    devolvía `[IsAuthenticated()]` para TODO excepto crear, sin revisar
+    el rol — por eso cualquier usuario autenticado (incluido un Líder
+    Comunitario / rol de solo lectura) podía editar o borrar cualquier
+    orden de trabajo. Ese era el bug de "el consultor puede hacer lo que
+    sea". Ahora cada acción exige el rol correcto.
+    """
     serializer_class = OrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]    
     recurso_nombre = 'Órdenes de Trabajo'
-    permission_classes = [IsAuthenticated, HasRole]
-    allowed_roles = ['Empleado', 'Administrador'] # Variable requerida por HasRole
-    
+    allowed_roles = ['Técnico de Campo', 'Administrador']  # usado por HasRole
+
     def get_queryset(self):
         queryset = OrdenTrabajo.objects.select_related(
             "instalacion",
@@ -203,16 +223,24 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             "estado",
         ).order_by("-fecha_creacion")
 
-        if self.request.user.is_staff:
+        user = self.request.user
+        if user.is_superuser or has_effective_role(user, "Administrador"):
             return queryset
-
-        return queryset.filter(tecnico=self.request.user)
+        if has_effective_role(user, "Técnico de Campo"):
+            return queryset.filter(tecnico=user)
+        if has_effective_role(user, "Líder Comunitario"):
+            return queryset.filter(instalacion__comunidad=user.comunidad)
+        return queryset.none()
 
     def get_permissions(self):
-        if self.action == "create":
-            return [IsAdminUser()]
-
+        if self.action in ("create", "destroy"):
+            return [IsAuthenticated(), IsAdminRole()]
+        if self.action in ("update", "partial_update"):
+            return [IsAuthenticated(), HasRole()]
+        # list / retrieve: cualquier usuario autenticado con un rol
+        # válido; get_queryset() ya decide qué le toca ver a cada quién.
         return [IsAuthenticated()]
+
     def perform_create(self, serializer):
         orden = serializer.save()
 
@@ -358,35 +386,45 @@ class RepuestoViewSet(viewsets.ModelViewSet):
     recurso_nombre = 'Repuestos' # NUEVO
 
 class RepuestoOrdenTrabajoViewSet(viewsets.ModelViewSet):
+    """
+    Mismo criterio que OrdenTrabajoViewSet: Técnico de Campo solo ve y
+    registra repuestos en SUS órdenes (RF-22); Administrador ve todo;
+    Líder Comunitario solo puede consultar (ReadOnlyOrManager, heredado
+    de permission_classes a nivel de clase).
+
+    (Aquí también había un `get_permissions()` que devolvía
+    `[IsAuthenticated()]` para toda acción, incluyendo "create" —
+    anulando el `ReadOnlyOrManager` de arriba y dejando que cualquier
+    rol, de solo lectura incluido, registrara o editara repuestos. Se
+    quitó: ahora manda el permission_classes de la clase.)
+    """
     serializer_class = RepuestoOrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]    
-    recurso_nombre = 'Órdenes de Trabajo' # NUEVO
+    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    recurso_nombre = 'Órdenes de Trabajo'
+
     def get_queryset(self):
         queryset = RepuestoOrdenTrabajo.objects.select_related(
             "orden_trabajo",
             "repuesto",
         ).order_by("-id_repuesto_orden_trabajo")
 
-        if self.request.user.is_staff:
+        user = self.request.user
+        if user.is_superuser or has_effective_role(user, "Administrador"):
             return queryset
-
-        return queryset.filter(
-            orden_trabajo__tecnico=self.request.user
-        )
-
-    def get_permissions(self):
-        if self.action == "create":
-            return [IsAuthenticated()]
-
-        return [IsAuthenticated()]
+        if has_effective_role(user, "Técnico de Campo"):
+            return queryset.filter(orden_trabajo__tecnico=user)
+        if has_effective_role(user, "Líder Comunitario"):
+            return queryset.filter(orden_trabajo__instalacion__comunidad=user.comunidad)
+        return queryset.none()
 
     def perform_create(self, serializer):
         orden = serializer.validated_data["orden_trabajo"]
 
+        user = self.request.user
         if (
-            not self.request.user.is_staff
-            and orden.tecnico != self.request.user
+            not (user.is_superuser or has_effective_role(user, "Administrador"))
+            and orden.tecnico != user
         ):
             raise PermissionDenied(
                 "No puedes registrar repuestos "

@@ -19,13 +19,31 @@ export default function Dashboard() {
         fetchStats();
     }, []);
 
-    if (error) return <p className="text-red-500">Error al cargar datos. Verifica permisos o el backend.</p>;
-    if (!stats) return <p className="text-slate-500">Cargando métricas...</p>;
+    if (error) {
+        return (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                No se pudieron cargar las métricas. Verifica tu conexión o permisos.
+            </div>
+        );
+    }
+
+    if (!stats) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[76px] animate-pulse">
+                        <div className="h-3 w-20 bg-slate-100 rounded mb-3" />
+                        <div className="h-5 w-10 bg-slate-100 rounded" />
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-slate-800">Panel de Control</h1>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
                     <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><Activity size={24} /></div>

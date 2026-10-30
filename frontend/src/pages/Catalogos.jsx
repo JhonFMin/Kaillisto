@@ -8,7 +8,7 @@ export default function Catalogos() {
     useEffect(() => {
         const fetchTipos = async () => {
             try {
-                const response = await api.get('/tipomedicion/');
+                const response = await api.get('/tipos-medicion/');
                 setTipos(response.data);
             } catch (error) {
                 console.error("Error cargando catálogos:", error);

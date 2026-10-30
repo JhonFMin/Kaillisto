@@ -17,6 +17,19 @@ from .models import (
     TipoMedicion,
     Usuario,
 )
+from security.models import Role, UserRole
+
+
+def _asignar_rol_seguridad(usuario, nombre_rol):
+    """
+    Asigna el rol RBAC real (security.Role/UserRole), que es el que
+    revisan los permission_classes de las vistas. `core.Rol` (el que se
+    asigna más abajo) es un campo aparte que solo usa el envío de
+    notificaciones a líderes comunitarios (ver notificaciones.py).
+    """
+    rol, _ = Role.objects.get_or_create(name=nombre_rol)
+    UserRole.objects.get_or_create(usuario=usuario, rol=rol)
+    return rol
 
 
 class FlujosApiAdicionalesTests(APITestCase):
@@ -28,7 +41,9 @@ class FlujosApiAdicionalesTests(APITestCase):
             email="admin_flujo_test@example.test",
             password="TestPass_12345!",
             is_staff=True,
+            is_superuser=True,
         )
+        _asignar_rol_seguridad(self.admin, "Administrador")
         self.rol_tecnico = Rol.objects.create(nombre="Técnico de campo")
         # La vista valida el texto "lider" en minúscula.
         self.rol_lider = Rol.objects.create(nombre="lider comunitario")
@@ -44,6 +59,8 @@ class FlujosApiAdicionalesTests(APITestCase):
             password="TestPass_12345!",
             rol=self.rol_tecnico,
         )
+        _asignar_rol_seguridad(self.tecnico, "Técnico de Campo")
+        _asignar_rol_seguridad(self.otro_tecnico, "Técnico de Campo")
         self.comunidad_a = Comunidad.objects.create(
             nombre="Comunidad A test", ubicacion="Riohacha"
         )

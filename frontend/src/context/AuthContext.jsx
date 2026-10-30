@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
             };
             setUser(userData);
             await refreshPermisos();
-            navigate('/');
+            navigate('/dashboard');
             return { success: true };
         } catch (error) {
             return {
@@ -83,12 +83,35 @@ export const AuthProvider = ({ children }) => {
         return user.es_superuser || roles.includes('Administrador');
     };
 
+    // Verifica si el usuario tiene AL MENOS UNO de los roles dados.
+    // Un superusuario u "Administrador" siempre pasa (igual que el backend,
+    // ver security/models.py -> has_effective_role).
+    const hasRole = (...nombresRol) => {
+        if (!user) return false;
+        if (isAdmin()) return true;
+        return nombresRol.some((nombre) => roles.includes(nombre));
+    };
+
     return (
         <AuthContext.Provider value={{
             user, permisos, roles, login, logout,
-            loading, hasPermission, isAdmin, refreshPermisos
+            loading, hasPermission, isAdmin, hasRole, refreshPermisos
         }}>
-            {!loading && children}
+            {loading ? <PantallaCarga /> : children}
         </AuthContext.Provider>
     );
 };
+
+// Pantalla de carga mientras se resuelve la verificación de sesión inicial
+// (GET /security/me/permissions/). Antes esto renderizaba "nada" (null),
+// lo que en una conexión lenta se ve como una app rota en blanco.
+function PantallaCarga() {
+    return (
+        <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+                <p className="text-sm text-slate-400">Verificando sesión...</p>
+            </div>
+        </div>
+    );
+}

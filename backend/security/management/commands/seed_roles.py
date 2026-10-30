@@ -5,18 +5,23 @@ class Command(BaseCommand):
     help = 'Crea los roles iniciales del sistema RBAC sin duplicar ni borrar datos'
 
     def handle(self, *args, **kwargs):
+        # Estos 3 roles son los actores reales definidos en la propuesta
+        # del proyecto (ver diagrama de casos de uso y RF-01 a RF-33):
+        # Administrador, Técnico de Campo y Líder Comunitario. El ESP32
+        # no es un rol de usuario: se autentica aparte (RNF-11) y solo
+        # envía mediciones por RecepcionMedicionView.
         roles_iniciales = [
             {
                 "name": "Administrador",
-                "description": "Acceso total al sistema. Puede gestionar roles, usuarios y configuraciones."
+                "description": "Acceso total: gestiona usuarios, roles, comunidades, instalaciones, dispositivos, umbrales y asigna órdenes de trabajo a los técnicos."
             },
             {
-                "name": "Empleado",
-                "description": "Acceso limitado a la operación diaria según módulos asignados."
+                "name": "Técnico de Campo",
+                "description": "Consulta las órdenes de trabajo que tiene asignadas, la ficha técnica de la instalación, y registra diagnóstico, solución, repuestos usados y el cierre de la orden."
             },
             {
-                "name": "Consulta",
-                "description": "Acceso de solo lectura. No puede modificar ni eliminar registros."
+                "name": "Líder Comunitario",
+                "description": "Solo lectura: consulta el estado de las instalaciones de su comunidad, recibe las alertas generadas y ve qué técnico fue asignado — no puede crear ni modificar nada."
             }
         ]
 

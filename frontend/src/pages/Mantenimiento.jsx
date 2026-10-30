@@ -9,8 +9,7 @@ export default function Mantenimiento() {
     useEffect(() => {
         const fetchOrdenes = async () => {
             try {
-                // Ajusta la ruta si tu router de Django le puso otro nombre (ej. /orden_trabajo/)
-                const response = await api.get('/ordenestrabajo/'); 
+                const response = await api.get('/ordenes-trabajo/');
                 setOrdenes(response.data);
             } catch (error) {
                 console.error("Error cargando órdenes:", error);

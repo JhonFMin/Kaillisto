@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Shield } from 'lucide-react';
+import Dashboard from './Dashboard';
 
 export default function Inicio() {
     const { user, roles } = useContext(AuthContext);
@@ -18,7 +19,10 @@ export default function Inicio() {
                     <h2 className="font-semibold text-slate-700">Tus roles activos</h2>
                 </div>
                 {roles.length === 0 ? (
-                    <p className="text-sm text-slate-500">Sin roles asignados.</p>
+                    <p className="text-sm text-slate-500">
+                        Sin roles asignados. Pide a un administrador que te asigne uno
+                        para ver más secciones en el menú.
+                    </p>
                 ) : (
                     <div className="flex flex-wrap gap-2">
                         {roles.map((r) => (
@@ -29,6 +33,11 @@ export default function Inicio() {
                     </div>
                 )}
             </div>
+
+            {/* El panel de métricas solo requiere estar autenticado en el
+                backend (dashboard_resumen usa IsAuthenticated), así que se
+                muestra siempre, con su propio loading/error controlado. */}
+            <Dashboard />
         </div>
     );
 }

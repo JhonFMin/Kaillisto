@@ -9,7 +9,7 @@ class IsAdminRole(BasePermission):
 class HasRole(BasePermission):
     """
     Permite el acceso si el usuario tiene al menos uno de los roles definidos en la vista.
-    Uso en la vista: allowed_roles = ['Empleado', 'Administrador']
+    Uso en la vista: allowed_roles = ['Técnico de Campo', 'Administrador']
     """
     def has_permission(self, request, view):
         allowed_roles = getattr(view, 'allowed_roles', [])
@@ -33,8 +33,10 @@ class HasPermission(BasePermission):
 
 class ReadOnlyOrManager(BasePermission):
     """
-    GET/HEAD/OPTIONS permitidos para 'Consulta'.
-    POST/PUT/PATCH/DELETE requieren 'Empleado' o 'Administrador'.
+    GET/HEAD/OPTIONS permitidos para 'Líder Comunitario' (RF-31, RF-33:
+    solo puede consultar el estado de sus instalaciones y el técnico
+    asignado, nunca modificar).
+    POST/PUT/PATCH/DELETE requieren 'Técnico de Campo' o 'Administrador'.
     """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -42,9 +44,9 @@ class ReadOnlyOrManager(BasePermission):
             
         # Si es un método seguro (solo lectura)
         if request.method in SAFE_METHODS:
-            return (has_effective_role(request.user, "Consulta") or 
-                    has_effective_role(request.user, "Empleado") or 
+            return (has_effective_role(request.user, "Líder Comunitario") or
+                    has_effective_role(request.user, "Técnico de Campo") or
                     has_effective_role(request.user, "Administrador"))
         
         # Si es un método de escritura
-        return has_effective_role(request.user, "Empleado") or has_effective_role(request.user, "Administrador")
+        return has_effective_role(request.user, "Técnico de Campo") or has_effective_role(request.user, "Administrador")

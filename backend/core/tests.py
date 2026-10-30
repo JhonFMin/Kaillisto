@@ -23,6 +23,21 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from .notificaciones import notificar_alerta_a_lideres
+from security.models import Role, UserRole
+
+
+def _asignar_rol_seguridad(usuario, nombre_rol):
+    """
+    Da de alta (si no existe) el rol RBAC real en `security.Role` y lo
+    asigna al usuario mediante `security.UserRole`. Esto es lo que de
+    verdad revisan los permission_classes (IsAdminRole, HasRole,
+    ReadOnlyOrManager) — el campo `core.Rol` de Usuario es un dato
+    aparte que solo usa el envío de notificaciones.
+    """
+    rol, _ = Role.objects.get_or_create(name=nombre_rol)
+    UserRole.objects.get_or_create(usuario=usuario, rol=rol)
+    return rol
+
 
 class InstalacionAPITests(APITestCase):
     def setUp(self):
@@ -31,7 +46,9 @@ class InstalacionAPITests(APITestCase):
             email="admin_pruebas@example.com",
             password="ClaveSoloParaPruebas_2026!",
             is_staff=True,
+            is_superuser=True,
         )
+        _asignar_rol_seguridad(self.admin, "Administrador")
 
         self.comunidad = Comunidad.objects.create(
             nombre="Comunidad de pruebas",
@@ -163,6 +180,8 @@ class FlujoOrdenTrabajoTests(APITestCase):
             password="ClaveSoloParaPruebas_2026!",
             rol=rol,
         )
+        _asignar_rol_seguridad(self.tecnico, "Técnico de Campo")
+        _asignar_rol_seguridad(self.otro_tecnico, "Técnico de Campo")
 
         self.pendiente = EstadoOrdenTrabajo.objects.create(nombre="Pendiente")
         self.en_proceso = EstadoOrdenTrabajo.objects.create(nombre="En proceso")
