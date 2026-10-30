@@ -23,6 +23,10 @@ export default function RoleMatrix({ user }) {
     [error, setError] = useState(""),
     [saved, setSaved] = useState(""),
     [creating, setCreating] = useState(false);
+  const canManageRoles =
+    user.is_superuser || user.permisos.includes("change_role");
+  const canCreateRoles =
+    user.is_superuser || user.permisos.includes("add_role");
   async function load() {
     const [r, m] = await Promise.all([
       api.get("/security/roles/"),
@@ -135,8 +139,17 @@ export default function RoleMatrix({ user }) {
     setError("");
     setSaved("");
     try {
-      await api.post(`/security/roles/${role.id}/restore-defaults/`);
-      await load();
+      const result = await api.post(
+        `/security/roles/${role.id}/restore-defaults/`,
+      );
+      const updatedRole = result.data;
+      setRoles((current) =>
+        current.map((item) => (item.id === updatedRole.id ? updatedRole : item)),
+      );
+      setDraft((current) => ({
+        ...current,
+        [updatedRole.id]: updatedRole.permissions,
+      }));
       notifyPermissionChanges();
       setSaved(`Permisos predeterminados restaurados para ${role.name}.`);
     } catch (e) {
@@ -157,7 +170,16 @@ export default function RoleMatrix({ user }) {
           }),
         ),
       );
-      await load();
+      const updatedRoles = roles.map((role) => ({
+        ...role,
+        permissions: draft[role.id] || [],
+      }));
+      setRoles(updatedRoles);
+      setDraft(
+        Object.fromEntries(
+          updatedRoles.map((role) => [role.id, role.permissions]),
+        ),
+      );
       notifyPermissionChanges();
       setSaved(
         "Permisos guardados. El servidor aplica los cambios inmediatamente.",
@@ -196,7 +218,9 @@ export default function RoleMatrix({ user }) {
         <div className="actions">
           {mode === "role" && (
             <button
-              disabled={busy || dirty.length > 0 || !roleDefaultCodes}
+              disabled={
+                busy || dirty.length > 0 || !roleDefaultCodes || !canManageRoles
+              }
               title={
                 roleDefaultCodes
                   ? "Reemplaza los permisos de este rol por sus valores iniciales"
@@ -209,7 +233,7 @@ export default function RoleMatrix({ user }) {
             </button>
           )}
           <button
-            disabled={busy || dirty.length > 0}
+            disabled={busy || dirty.length > 0 || !canCreateRoles}
             onClick={() => setCreating(true)}
           >
             <Plus size={16} />
@@ -217,7 +241,7 @@ export default function RoleMatrix({ user }) {
           </button>
           <button
             className="primary"
-            disabled={busy || !dirty.length}
+            disabled={busy || !dirty.length || !canManageRoles}
             onClick={save}
           >
             <Save size={16} />
@@ -248,6 +272,11 @@ export default function RoleMatrix({ user }) {
           Estás conectado como superadministrador. Este usuario conserva acceso total aunque desmarques permisos del rol Administrador; prueba esos cambios con una cuenta Administrador normal.
         </p>
       )}
+      {!canManageRoles && (
+        <p className="notice" role="status">
+          Puedes consultar la matriz, pero necesitas el permiso de edición de roles para guardar cambios.
+        </p>
+      )}
       {saved && (
         <p role="status" className="notice">
           <Check size={15} /> {saved}
@@ -274,13 +303,17 @@ export default function RoleMatrix({ user }) {
             aria-label="Acciones masivas de permisos"
           >
             <button
-              disabled={busy || !bulkPermissionIds.length || bulkAllChecked}
+              disabled={
+                busy || !canManageRoles || !bulkPermissionIds.length || bulkAllChecked
+              }
               onClick={() => setBulkPermissions(true)}
             >
               Marcar todo
             </button>
             <button
-              disabled={busy || !bulkPermissionIds.length || bulkNoneChecked}
+              disabled={
+                busy || !canManageRoles || !bulkPermissionIds.length || bulkNoneChecked
+              }
               onClick={() => setBulkPermissions(false)}
             >
               Desmarcar todo
@@ -364,7 +397,7 @@ export default function RoleMatrix({ user }) {
                                   draft[row.role.id]?.includes(permission.id) ||
                                   false
                                 }
-                                disabled={busy}
+                                disabled={busy || !canManageRoles}
                                 onChange={(e) =>
                                   toggle(
                                     row.role.id,
@@ -384,7 +417,9 @@ export default function RoleMatrix({ user }) {
                           type="checkbox"
                           aria-label={`Todos los permisos: ${row.label}`}
                           checked={checked}
-                          disabled={busy || !row.role || !ids.length}
+                          disabled={
+                            busy || !canManageRoles || !row.role || !ids.length
+                          }
                           onChange={(e) =>
                             toggle(row.role.id, ids, e.target.checked)
                           }

@@ -2,9 +2,36 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 from .models import has_effective_role, get_effective_permissions
 
 class IsAdminRole(BasePermission):
-    """Acceso exclusivo para el rol Administrador."""
+    """Autoriza la operación según el permiso RBAC del modelo de la vista."""
     def has_permission(self, request, view):
-        return has_effective_role(request.user, "Administrador")
+        if not request.user.is_authenticated:
+            return False
+        permissions = get_effective_permissions(request.user)
+        if "ALL" in permissions:
+            return True
+        model_name = getattr(view, "rbac_model_name", None)
+        queryset = getattr(view, "queryset", None)
+        if model_name is None and queryset is not None:
+            model_name = queryset.model._meta.model_name
+        if model_name is None:
+            model_name = "role"
+        action = getattr(view, "action", None)
+        verb = (
+            "change" if action == "restore_defaults" else
+            {"GET": "view", "HEAD": "view", "OPTIONS": "view",
+             "POST": "add", "PUT": "change", "PATCH": "change",
+             "DELETE": "delete"}.get(request.method)
+        )
+        return bool(verb and f"{verb}_{model_name}" in permissions)
+
+
+class HasUserViewPermission(BasePermission):
+    """Permite consultar usuarios si el rol tiene el permiso RBAC explícito."""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.is_superuser or
+            "view_usuario" in get_effective_permissions(request.user)
+        )
 
 class HasRole(BasePermission):
     """

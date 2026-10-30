@@ -17,9 +17,18 @@ from .models import Role, UserRole, has_effective_role, get_effective_permission
 def admin(user):
     return has_effective_role(user, 'Administrador')
 
+
+def effective_permissions(user):
+    permissions = getattr(user, '_kaillisto_effective_permissions', None)
+    if permissions is None:
+        permissions = get_effective_permissions(user)
+        user._kaillisto_effective_permissions = permissions
+    return permissions
+
+
 def scoped(user, model):
     qs = model.objects.all().order_by(model._meta.pk.name)
-    if admin(user):
+    if admin(user) or has_full_resource_access(user):
         return qs
     technician = has_effective_role(user, 'Técnico de Campo')
     leader = has_effective_role(user, 'Líder Comunitario')
@@ -66,6 +75,10 @@ class UserSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.is_superuser and not self.context['request'].user.is_superuser:
             raise PermissionDenied('Solo un superadministrador puede modificar esta cuenta.')
         request_user = self.context['request'].user
+        if 'roles' in attrs and not request_user.is_superuser:
+            role_permission = 'change_userrole' if self.instance else 'add_userrole'
+            if role_permission not in effective_permissions(request_user):
+                raise PermissionDenied('Tu rol no puede asignar roles a usuarios.')
         is_self = self.instance and self.instance.pk == request_user.pk
         if is_self and not request_user.is_superuser:
             if attrs.get('is_active') is False or 'roles' in attrs:
@@ -108,8 +121,12 @@ class Users(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if not admin(request.user):
-            raise PermissionDenied('Acceso administrativo requerido.')
+        if request.method == 'OPTIONS':
+            return
+        verb = {'GET': 'view', 'HEAD': 'view', 'POST': 'add', 'PUT': 'change', 'PATCH': 'change', 'DELETE': 'delete'}.get(request.method)
+        required = f'{verb}_usuario' if verb else None
+        if not request.user.is_superuser and required not in effective_permissions(request.user):
+            raise PermissionDenied('Tu rol no tiene este permiso para usuarios.')
     def destroy(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object(), data={'is_active': False}, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -151,6 +168,19 @@ RESOURCES = {
     'prioridades': m.PrioridadAlerta, 'tipos-alerta': m.TipoAlerta,
 }
 
+ALL_VIEW_PERMISSIONS = {
+    f"view_{model._meta.model_name}"
+    for model in (*RESOURCES.values(), get_user_model(), Role, UserRole)
+}
+
+
+def has_full_resource_access(user):
+    """Full read access grants the same global data scope as the admin role."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    permissions = set(effective_permissions(user))
+    return "ALL" in permissions or ALL_VIEW_PERMISSIONS.issubset(permissions)
+
 class PortalMetadata(SimpleMetadata):
     def determine_actions(self, request, view):
         return {"POST": self.get_serializer_info(view.get_serializer())}
@@ -188,17 +218,26 @@ def resource_view(model):
             if not request.user.is_superuser and request.method != 'OPTIONS':
                 verb = {'GET': 'view', 'HEAD': 'view', 'POST': 'add', 'PATCH': 'change', 'PUT': 'change', 'DELETE': 'delete'}[request.method]
                 required = f'{verb}_{model._meta.model_name}'
-                if required not in get_effective_permissions(request.user):
+                if required not in effective_permissions(request.user):
                     raise PermissionDenied('Tu rol no tiene este permiso activo.')
-            if request.method not in ('GET', 'HEAD', 'OPTIONS') and not admin(request.user):
+            if (
+                request.method in ('PUT', 'PATCH')
+                and model == m.OrdenTrabajo
+                and has_effective_role(request.user, 'Técnico de Campo')
+                and not admin(request.user)
+                and not has_full_resource_access(request.user)
+            ):
                 tech = has_effective_role(request.user, 'Técnico de Campo')
-                if not tech or not (model == m.OrdenTrabajo and request.method in ('PATCH', 'PUT') or model == m.RepuestoOrdenTrabajo and request.method == 'POST'):
-                    raise PermissionDenied('Tu rol permite únicamente consultar este apartado.')
-                allowed = {'diagnostico', 'solucion_aplicada', 'estado'} if model == m.OrdenTrabajo else {'orden_trabajo', 'repuesto', 'cantidad'}
+                allowed = {'diagnostico', 'solucion_aplicada', 'estado'} if tech else set()
                 if set(request.data) - allowed:
                     raise PermissionDenied('No puedes modificar la asignación de la orden.')
         def perform_create(self, serializer):
-            if model == m.RepuestoOrdenTrabajo and not admin(self.request.user):
+            if (
+                model == m.RepuestoOrdenTrabajo
+                and has_effective_role(self.request.user, 'Técnico de Campo')
+                and not admin(self.request.user)
+                and not has_full_resource_access(self.request.user)
+            ):
                 if serializer.validated_data['orden_trabajo'].tecnico_id != self.request.user.pk:
                     raise PermissionDenied('La orden no te pertenece.')
             serializer.save()
@@ -228,9 +267,10 @@ def resource_view(model):
 def session(request):
     u = request.user
     return Response({'id': u.pk, 'username': u.username, 'is_superuser': u.is_superuser,
-        'is_staff': u.is_staff, 'admin': admin(u), 'comunidad': u.comunidad_id,
+        'is_staff': u.is_staff, 'admin': admin(u),
+        'full_resource_access': has_full_resource_access(u), 'comunidad': u.comunidad_id,
         'roles': list(u.roles_asignados.filter(rol__is_active=True).values_list('rol__name', flat=True)),
-        'permisos': get_effective_permissions(u)})
+        'permisos': effective_permissions(u)})
 
 
 @api_view(['GET'])
@@ -238,7 +278,7 @@ def session(request):
 def dashboard_summary(request):
     """Entrega solo los conteos permitidos, sin descargar todas las filas."""
     user = request.user
-    permissions = set(get_effective_permissions(user))
+    permissions = set(effective_permissions(user))
     resources = {
         'comunidades': m.Comunidad,
         'instalaciones': m.Instalacion,

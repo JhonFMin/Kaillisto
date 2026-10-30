@@ -12,7 +12,7 @@ from .serializers import (
     RoleSerializer, UserRoleSerializer,
     PermissionSerializer, UsuarioResumenSerializer
 )
-from .permissions import IsAdminRole
+from .permissions import HasUserViewPermission, IsAdminRole
 from .defaults import default_permissions
 
 Usuario = get_user_model()
@@ -112,7 +112,7 @@ def lista_permisos(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated, IsAdminRole])
+@permission_classes([IsAuthenticated, HasUserViewPermission])
 def lista_usuarios(request):
     """Lista usuarios del sistema para la asignación de roles."""
     usuarios = Usuario.objects.prefetch_related(

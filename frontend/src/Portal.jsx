@@ -31,6 +31,8 @@ import { ListIcon as Menu } from "@phosphor-icons/react/dist/csr/List";
 import api from "./api/axios";
 
 const definitions = {
+  usuarios: ["Usuarios", Users],
+  roles: ["Roles y permisos", Shield],
   comunidades: ["Comunidades", MapPin],
   instalaciones: ["Instalaciones solares", Layers],
   dispositivos: ["Dispositivos IoT", Radio],
@@ -91,6 +93,25 @@ const endpoint = (kind) =>
     : kind === "roles"
       ? "/security/roles/"
       : `/security/portal/${kind}/`;
+const permissionModelByKind = {
+  usuarios: "usuario",
+  roles: "role",
+  comunidades: "comunidad",
+  instalaciones: "instalacion",
+  dispositivos: "dispositivo",
+  umbrales: "umbral",
+  alertas: "alerta",
+  ordenes: "ordentrabajo",
+  repuestos: "repuesto",
+  consumos: "repuestoordentrabajo",
+  notificaciones: "notificacion",
+  "estados-instalacion": "estadoinstalacion",
+  "estados-orden": "estadoordentrabajo",
+  "tipos-medicion": "tipomedicion",
+  "estados-alerta": "estadoalerta",
+  prioridades: "prioridadalerta",
+  "tipos-alerta": "tipoalerta",
+};
 const idOf = (row) =>
   row.id ?? Object.entries(row).find(([k]) => k.startsWith("id_"))?.[1];
 const labelOf = (row) =>
@@ -375,13 +396,26 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
   const [choices, setChoices] = useState({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const permissionModel = permissionModelByKind[kind];
+  const canEditKind =
+    user.is_superuser || user.permisos.includes(`change_${permissionModel}`);
+  const canCreateKind =
+    user.is_superuser || user.permisos.includes(`add_${permissionModel}`);
   const fields = Object.entries(schema).filter(
     ([k, f]) =>
       !f.read_only &&
       (!row || k !== "username") &&
+      (row ? canEditKind : canCreateKind) &&
       (user.admin ||
+        user.full_resource_access ||
         kind !== "ordenes" ||
-        ["diagnostico", "solucion_aplicada", "estado"].includes(k)),
+        ["diagnostico", "solucion_aplicada", "estado"].includes(k)) &&
+      (k !== "roles" ||
+        user.is_superuser ||
+        (user.permisos.includes("view_role") &&
+          (row
+            ? user.permisos.includes("change_userrole")
+            : user.permisos.includes("add_userrole")))),
   );
   useEffect(() => {
     let active = true;
@@ -588,7 +622,13 @@ function Records({ kind, user, title, readonly = false }) {
                   : null
               : relations[field],
           )
-          .filter((rel) => rel && (rel !== "usuarios" || user.admin)),
+          .filter(
+            (rel) =>
+              rel &&
+              (rel !== "usuarios" ||
+                user.admin ||
+                user.permisos.includes("view_usuario")),
+          ),
       );
       Promise.all(
         [...neededRelations].map(async (rel) => {
@@ -642,42 +682,15 @@ function Records({ kind, user, title, readonly = false }) {
       ? labelOf(lookup[rel].find((r) => String(idOf(r)) === String(v)))
       : String(v);
   }
-  const canEditRole =
-    !readonly &&
-    (user.admin ||
-      (kind === "ordenes" && user.permisos.includes("change_ordentrabajo")) ||
-      (kind === "consumos" &&
-        user.permisos.includes("add_repuestoordentrabajo")));
-  const permissionModel = {
-    comunidades: "comunidad",
-    instalaciones: "instalacion",
-    dispositivos: "dispositivo",
-    umbrales: "umbral",
-    alertas: "alerta",
-    ordenes: "ordentrabajo",
-    repuestos: "repuesto",
-    consumos: "repuestoordentrabajo",
-    usuarios: "usuario",
-    "estados-instalacion": "estadoinstalacion",
-    "estados-orden": "estadoordentrabajo",
-    "tipos-medicion": "tipomedicion",
-    "estados-alerta": "estadoalerta",
-    prioridades: "prioridadalerta",
-    "tipos-alerta": "tipoalerta",
-  }[kind];
-  const canEdit =
-    canEditRole &&
-    (user.is_superuser || user.permisos.includes(`change_${permissionModel}`));
+  const canEdit = !readonly && canEditKind;
   const canCreate =
-    !readonly &&
-    (user.admin || kind === "consumos") &&
-    (user.is_superuser || user.permisos.includes(`add_${permissionModel}`));
+    !readonly && canCreateKind;
   return (
     <>
       <div className="page-heading">
         <div>
           <span className="eyebrow">
-            ESPACIO DE TRABAJO / {user.admin ? "GESTIÓN" : "CONSULTA"}
+            ESPACIO DE TRABAJO / {user.admin || user.full_resource_access ? "GESTIÓN" : "CONSULTA"}
           </span>
           <h1>
             {title ||
@@ -687,7 +700,7 @@ function Records({ kind, user, title, readonly = false }) {
           <p>
             {kind === "usuarios"
               ? "Administra las cuentas y el acceso a la plataforma."
-              : kind === "ordenes" && !user.admin
+              : kind === "ordenes" && !user.admin && !user.full_resource_access
                 ? "Tus órdenes asignadas, de principio a fin."
                 : "Información de tu red de energía solar."}
           </p>
@@ -793,12 +806,12 @@ function Records({ kind, user, title, readonly = false }) {
                 <Layers size={28} />
                 <h3>Aún no hay registros</h3>
                 <p>
-                  {user.admin
+                  {user.admin || user.full_resource_access
                     ? "Crea el primer registro para comenzar."
                     : kind === "consumos" &&
                         user.roles.includes("Técnico de Campo")
                       ? "Aquí aparecen los repuestos de tus órdenes asignadas. Pide que te asignen una orden y registra allí los materiales."
-                      : user.roles.includes("Técnico de Campo")
+                      : user.roles.includes("Técnico de Campo") && !user.full_resource_access
                         ? "Los permisos abren módulos; los datos de Técnico siguen limitados a sus órdenes e instalaciones asignadas."
                     : "Los registros de tu ámbito aparecerán aquí."}
                 </p>
@@ -875,7 +888,7 @@ function Dashboard({ user }) {
         <span className="muted">Accesos rápidos</span>
       </div>
       <div className="three-grid quick-links">
-        {(user.admin
+        {(user.admin || user.full_resource_access
           ? ["instalaciones", "dispositivos", "ordenes"]
           : user.roles.includes("Técnico de Campo")
             ? ["ordenes", "instalaciones", "consumos"]
@@ -898,7 +911,7 @@ function Dashboard({ user }) {
               key={k}
               className="feature"
               to={
-                user.admin
+                user.admin || user.full_resource_access
                   ? `/${k === "ordenes" ? "mantenimiento" : k}`
                   : k === "ordenes"
                     ? "/mis-casos"
@@ -907,7 +920,9 @@ function Dashboard({ user }) {
                         ? "/ficha-tecnica"
                         : "/mi-comunidad"
                       : k === "alertas"
-                        ? "/notificaciones"
+                        ? user.roles.includes("Líder Comunitario")
+                          ? "/mi-alertas"
+                          : "/alertas"
                         : `/${k}`
               }
             >
@@ -954,6 +969,7 @@ function Workspace({ user, onLogout }) {
     "/prioridades": "view_prioridadalerta",
     "/tipos-alerta": "view_tipoalerta",
     "/usuarios": "view_usuario",
+    "/roles": "view_role",
     "/mis-casos": "view_ordentrabajo",
     "/ficha-tecnica": "view_instalacion",
     "/consumos": "view_repuestoordentrabajo",
@@ -964,7 +980,7 @@ function Workspace({ user, onLogout }) {
     user.is_superuser ||
     (path === "/catalogos"
       ? catalogs.some((kind) => user.permisos.includes(catalogPermissions[kind]))
-      : path === "/notificaciones" && user.roles.includes("Líder Comunitario")
+        : path === "/mi-alertas" && user.roles.includes("Líder Comunitario")
         ? user.permisos.includes("view_alerta")
         : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
   const baseLinks = user.admin
@@ -997,7 +1013,7 @@ function Workspace({ user, onLogout }) {
         ? [
             ["/dashboard", "Mi espacio", LayoutDashboard],
             ["/mi-comunidad", "Mi comunidad", MapPin],
-            ["/notificaciones", "Alertas de mi zona", Bell],
+            ["/mi-alertas", "Alertas de mi zona", Bell],
             ["/tecnicos", "Técnicos asignados", Wrench],
           ]
         : [];
@@ -1021,11 +1037,13 @@ function Workspace({ user, onLogout }) {
       : user.roles.includes("Líder Comunitario")
         ? {
             "/mi-comunidad": ["instalaciones", "Mi comunidad", true],
-            "/notificaciones": ["alertas", "Alertas de mi comunidad", true],
+            "/mi-alertas": ["alertas", "Alertas de mi comunidad", true],
             "/tecnicos": ["ordenes", "Técnicos asignados", true],
           }
         : {};
   const resourceRoutes = [
+    ["/usuarios", "usuarios", "view_usuario"],
+    ["/roles", "roles", "view_role"],
     ["/comunidades", "comunidades", "view_comunidad"],
     ["/instalaciones", "instalaciones", "view_instalacion"],
     ["/dispositivos", "dispositivos", "view_dispositivo"],
@@ -1043,13 +1061,9 @@ function Workspace({ user, onLogout }) {
     ["/tipos-alerta", "tipos-alerta", "view_tipoalerta"],
   ];
   const linkedPaths = new Set(baseLinks.map(([path]) => path));
-  const linkedKinds = new Set(
-    baseLinks.map(([path]) => baseRoutes[path]?.[0]).filter(Boolean),
-  );
   const extras = resourceRoutes.filter(
     ([path, kind, permission]) =>
       !linkedPaths.has(path) &&
-      !linkedKinds.has(kind) &&
       (user.is_superuser || user.permisos.includes(permission)),
   );
   const links = [
@@ -1153,7 +1167,7 @@ function Workspace({ user, onLogout }) {
                   }
                 />
               ))}
-            {user.admin && canOpen("/catalogos") && (
+            {canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

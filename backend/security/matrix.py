@@ -21,6 +21,7 @@ class Resources(viewsets.ReadOnlyModelViewSet):
     queryset = Resource.objects.select_related('content_type').all()
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+    rbac_model_name = 'role'
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminRole])
