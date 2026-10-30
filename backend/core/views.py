@@ -106,7 +106,10 @@ class DispositivoViewSet(viewsets.ModelViewSet):
     recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Dispositivos' # NUEVO
     
+from security.authentication import DeviceAuthentication
+
 class RecepcionMedicionView(generics.CreateAPIView):
+    authentication_classes = [DeviceAuthentication]
     serializer_class = MedicionSerializer
     permission_classes = []
     def perform_create(self, serializer):
@@ -170,7 +173,7 @@ class RecepcionMedicionView(generics.CreateAPIView):
             instalacion=dispositivo.instalacion,
             tipo_medicion=tipo_medicion,
             tipo_alerta=tipo_alerta,
-            estado=estado_vigente,
+            estado__nombre__in=["Vigente", "En atención"],
         ).exists()
 
         if alerta_ya_vigente:
@@ -1102,3 +1105,23 @@ def ficha_instalacion_tecnico(request, id_instalacion):
             "comunidad": instalacion.comunidad.nombre,
         }
     )
+
+# Keep legacy URLs subject to the same scope rules as the local portal.
+from security.portal import scoped, admin as portal_admin
+
+def _scoped_queryset(model):
+    return lambda self: scoped(self.request.user, model)
+
+for _view, _model in [(ComunidadViewSet, Comunidad), (InstalacionViewSet, Instalacion),
+    (DispositivoViewSet, Dispositivo), (UmbralViewSet, Umbral), (AlertaViewSet, Alerta)]:
+    _view.get_queryset = _scoped_queryset(_model)
+
+# Operational edits use the scoped portal, preventing legacy reassignment paths.
+class LegacyWritePermission(IsAuthenticated):
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and (request.method in ('GET', 'HEAD', 'OPTIONS') or portal_admin(request.user))
+
+for _view in [ComunidadViewSet, InstalacionViewSet, DispositivoViewSet, UmbralViewSet,
+    EstadoInstalacionViewSet, TipoMedicionViewSet, RepuestoViewSet, RepuestoOrdenTrabajoViewSet, OrdenTrabajoViewSet]:
+    _view.permission_classes = [LegacyWritePermission]
+    _view.get_permissions = lambda self: [LegacyWritePermission()]

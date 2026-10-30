@@ -1,6 +1,23 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+
+class Resource(models.Model):
+    """Cada recurso agrupa los permisos Django de un modelo del dominio."""
+    code = models.SlugField(max_length=60, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    content_type = models.OneToOneField(ContentType, on_delete=models.PROTECT, related_name='rbac_resource')
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Recurso'
+        verbose_name_plural = 'Recursos'
+
+    def __str__(self):
+        return self.name
 
 class Role(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="Nombre del Rol")
@@ -71,7 +88,7 @@ def get_effective_permissions(user):
     Retorna una lista aplanada y sin duplicados de los 'codenames' 
     de los permisos que posee el usuario a través de sus roles ACTIVOS.
     """
-    if not user.is_authenticated:
+    if not user.is_authenticated or not user.is_active:
         return []
         
     if user.is_superuser:
@@ -81,7 +98,7 @@ def get_effective_permissions(user):
     active_roles = user.roles_asignados.filter(rol__is_active=True).values_list('rol', flat=True)
     
     # 2. Extraemos los permisos únicos (codenames) asociados a esos roles
-    perms = Permission.objects.filter(roles__in=active_roles).values_list('codename', flat=True)
+    perms = Permission.objects.filter(roles__in=active_roles, content_type__rbac_resource__is_active=True).values_list('codename', flat=True)
     
     return list(set(perms))
 
@@ -89,7 +106,7 @@ def has_effective_role(user, role_name):
     """
     Verifica si el usuario tiene un rol activo con el nombre exacto.
     """
-    if not user.is_authenticated:
+    if not user.is_authenticated or not user.is_active:
         return False
     if user.is_superuser:
         return True

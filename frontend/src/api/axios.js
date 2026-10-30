@@ -11,7 +11,7 @@ import axios from 'axios';
 // demás después del login, porque la cookie de sesión jamás llegaba
 // de vuelta al backend. El backend debe correr en
 // "python manage.py runserver localhost:8000" (no 127.0.0.1:8000).
-const BASE = 'http://localhost:8000/api';
+const BASE = '/api';
 
 const api = axios.create({
     baseURL: BASE,

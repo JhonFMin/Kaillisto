@@ -28,3 +28,6 @@ htmlcov/
 Thumbs.db
 staticfiles/
 media/
+
+node_modules/
+frontend/dist/

@@ -1,11 +1,14 @@
 from django.contrib import admin
 from django.http import JsonResponse
-from django.urls import include, path
+from django.http import FileResponse, Http404
+from django.urls import include, path, re_path
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
+from pathlib import Path
+from django.conf import settings
 
 from core import views
 
@@ -13,6 +16,13 @@ from core import views
 @ensure_csrf_cookie
 def csrf_token_view(request):
     return JsonResponse({"detail": "CSRF cookie set"})
+
+
+def frontend_app(request):
+    index = Path(settings.FRONTEND_DIST) / "index.html"
+    if not index.is_file():
+        raise Http404("Frontend build not found")
+    return FileResponse(index.open("rb"), content_type="text/html; charset=utf-8")
 
 
 urlpatterns = [
@@ -26,4 +36,5 @@ urlpatterns = [
     path("api/", include("core.urls")),
     path("api-auth/", include("rest_framework.urls")),
     path('api/security/', include('security.urls')),
+    re_path(r"^(?!api/|admin/|static/).*$", frontend_app),
 ]
