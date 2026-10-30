@@ -313,8 +313,11 @@ from security.models import get_effective_permissions # <--- Esta es la importac
 
 
 
-@csrf_exempt
-@api_view(["POST"])
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth import authenticate, login, logout
+
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def iniciar_sesion(request):
     username = request.data.get("username")
@@ -328,9 +331,9 @@ def iniciar_sesion(request):
     if usuario is None:
         return Response({"detail": "Usuario o contraseña inválidos."}, status=401)
 
-    login(request, usuario)
+    login(request, usuario)   # <-- esto crea el sessionid
 
-    # --- NUEVA LÓGICA RBAC CON LOS NUEVOS MODELOS ---
+    from security.models import get_effective_permissions
     permisos_lista = get_effective_permissions(usuario)
 
     return Response({
