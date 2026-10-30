@@ -43,14 +43,13 @@ const Layout = () => {
                     <Route path="/dashboard" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
                     <Route
                         path="/dispositivos"
-                        element={<ProtectedRoute roles={['Líder Comunitario', 'Técnico de Campo', 'Administrador']}><Dispositivos /></ProtectedRoute>}
+                        element={<ProtectedRoute permission="view_dispositivo"><Dispositivos /></ProtectedRoute>}
                     />
                     <Route
                         path="/mantenimiento"
-                        element={<ProtectedRoute roles={['Técnico de Campo', 'Administrador']}><Mantenimiento /></ProtectedRoute>}
+                        element={<ProtectedRoute permission="view_ordentrabajo"><Mantenimiento /></ProtectedRoute>}
                     />
-                    <Route path="/catalogos" element={<ProtectedRoute adminOnly><Catalogos /></ProtectedRoute>} />
-                    <Route path="/roles" element={<ProtectedRoute adminOnly><RolesPermisos /></ProtectedRoute>} />
+                    <Route path="/catalogos" element={<ProtectedRoute permission="view_tipomedicion"><Catalogos /></ProtectedRoute>} />                    <Route path="/roles" element={<ProtectedRoute adminOnly><RolesPermisos /></ProtectedRoute>} />
                     {/* Rutas antiguas: quien tenga el link guardado cae en la pantalla unificada */}
                     <Route path="/permisos" element={<Navigate to="/roles" replace />} />
                     <Route path="/usuarios" element={<Navigate to="/roles" replace />} />

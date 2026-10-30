@@ -26,16 +26,47 @@ from .notificaciones import notificar_alerta_a_lideres
 from security.models import Role, UserRole
 
 
+from django.contrib.auth.models import Permission
+
+# Permisos base por rol, reflejando lo mismo que seed_roles.py le da a
+# cada rol en producción. Antes del fix de TienePermisoAsignado esto no
+# hacía falta (los permission_classes miraban el nombre del rol); ahora
+# un rol de prueba sin permisos reales se queda sin acceso, igual que
+# le pasaría a un usuario real mal configurado.
+PERMISOS_BASE_POR_ROL = {
+    "Administrador": None,  # None = todos los permisos del dominio
+    "Técnico de Campo": [
+        "view_instalacion", "view_dispositivo", "view_umbral",
+        "view_ordentrabajo", "change_ordentrabajo",
+        "view_repuesto", "add_repuestoordentrabajo", "change_repuestoordentrabajo",
+        "view_alerta",
+    ],
+    "Líder Comunitario": [
+        "view_instalacion", "view_alerta", "view_ordentrabajo", "view_dispositivo",
+    ],
+}
+
+
 def _asignar_rol_seguridad(usuario, nombre_rol):
     """
-    Da de alta (si no existe) el rol RBAC real en `security.Role` y lo
-    asigna al usuario mediante `security.UserRole`. Esto es lo que de
-    verdad revisan los permission_classes (IsAdminRole, HasRole,
-    ReadOnlyOrManager) — el campo `core.Rol` de Usuario es un dato
-    aparte que solo usa el envío de notificaciones.
+    Da de alta (si no existe) el rol RBAC real en `security.Role`, lo
+    asigna al usuario mediante `security.UserRole` y le otorga los
+    permisos base que ese rol necesita (TienePermisoAsignado ya no
+    concede nada solo por el nombre del rol).
     """
-    rol, _ = Role.objects.get_or_create(name=nombre_rol)
+    rol, creado = Role.objects.get_or_create(name=nombre_rol)
     UserRole.objects.get_or_create(usuario=usuario, rol=rol)
+
+    if creado or not rol.permissions.exists():
+        codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
+        if codenames is None:
+            permisos = Permission.objects.filter(
+                content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
+            )
+        else:
+            permisos = Permission.objects.filter(codename__in=codenames)
+        rol.permissions.set(permisos)
+
     return rol
 
 

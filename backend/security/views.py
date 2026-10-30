@@ -48,7 +48,14 @@ class UserRoleViewSet(viewsets.ModelViewSet):
     queryset = UserRole.objects.select_related('usuario', 'rol', 'asignado_por').all()
     serializer_class = UserRoleSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
-
+    def perform_destroy(self, instance):
+        if instance.rol.name == "Administrador":
+            otros_admins = UserRole.objects.filter(
+                rol__name="Administrador", rol__is_active=True
+            ).exclude(pk=instance.pk).exists()
+            if not otros_admins:
+                raise ValidationError({"detail": "No puedes quitar al último Administrador del sistema."})
+        instance.delete()   
     def perform_create(self, serializer):
         usuario_destino = serializer.validated_data['usuario']
         if self.request.user.pk == usuario_destino.pk:

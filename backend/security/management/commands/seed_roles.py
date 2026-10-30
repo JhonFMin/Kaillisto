@@ -40,3 +40,16 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f'[EXISTE] Rol "{rol.name}" ya existía en la base de datos. Saltando...'))
 
         self.stdout.write(self.style.SUCCESS('Proceso de seed finalizado.'))
+        # Le damos al Administrador TODOS los permisos de los apps del dominio,
+        # para que no se quede afuera de su propio sistema al activar
+        # TienePermisoAsignado. Técnico/Líder se configuran a mano desde
+        # la pantalla "Roles y Permisos" (ahora sí tiene efecto real).
+        from django.contrib.auth.models import Permission
+        admin_role = Role.objects.get(name="Administrador")
+        permisos_dominio = Permission.objects.filter(
+            content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
+        )
+        admin_role.permissions.set(permisos_dominio)
+        self.stdout.write(self.style.SUCCESS(
+            f'Administrador recibió {permisos_dominio.count()} permisos por defecto.'
+        ))

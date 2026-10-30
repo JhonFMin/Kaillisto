@@ -20,15 +20,41 @@ from .models import (
 from security.models import Role, UserRole
 
 
+from django.contrib.auth.models import Permission
+
+PERMISOS_BASE_POR_ROL = {
+    "Administrador": None,
+    "Técnico de Campo": [
+        "view_instalacion", "view_dispositivo", "view_umbral",
+        "view_ordentrabajo", "change_ordentrabajo",
+        "view_repuesto", "add_repuestoordentrabajo", "change_repuestoordentrabajo",
+        "view_alerta",
+    ],
+    "Líder Comunitario": [
+        "view_instalacion", "view_alerta", "view_ordentrabajo", "view_dispositivo",
+    ],
+}
+
+
 def _asignar_rol_seguridad(usuario, nombre_rol):
     """
-    Asigna el rol RBAC real (security.Role/UserRole), que es el que
-    revisan los permission_classes de las vistas. `core.Rol` (el que se
-    asigna más abajo) es un campo aparte que solo usa el envío de
-    notificaciones a líderes comunitarios (ver notificaciones.py).
+    Da de alta (si no existe) el rol RBAC real en `security.Role`, lo
+    asigna al usuario mediante `security.UserRole` y le otorga los
+    permisos base que ese rol necesita.
     """
-    rol, _ = Role.objects.get_or_create(name=nombre_rol)
+    rol, creado = Role.objects.get_or_create(name=nombre_rol)
     UserRole.objects.get_or_create(usuario=usuario, rol=rol)
+
+    if creado or not rol.permissions.exists():
+        codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
+        if codenames is None:
+            permisos = Permission.objects.filter(
+                content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
+            )
+        else:
+            permisos = Permission.objects.filter(codename__in=codenames)
+        rol.permissions.set(permisos)
+
     return rol
 
 
@@ -140,7 +166,7 @@ class FlujosApiAdicionalesTests(APITestCase):
 
     def test_login_valido_devuelve_usuario(self):
         respuesta = self.client.post(
-            reverse("iniciar-sesion"),
+            reverse("iniciar_sesion"),
             {"username": self.tecnico.username, "password": "TestPass_12345!"},
             format="json",
         )
@@ -149,7 +175,7 @@ class FlujosApiAdicionalesTests(APITestCase):
 
     def test_login_con_clave_incorrecta_es_rechazado(self):
         respuesta = self.client.post(
-            reverse("iniciar-sesion"),
+            reverse("iniciar_sesion"),
             {"username": self.tecnico.username, "password": "incorrecta"},
             format="json",
         )

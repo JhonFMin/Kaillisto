@@ -10,6 +10,7 @@ from .models import OrdenTrabajo
 from .serializers import OrdenTrabajoSerializer
 from security.permissions import IsAdminRole, HasRole, ReadOnlyOrManager, HasPermission
 from security.models import has_effective_role
+from security.permissions import IsAdminRole, HasRole, ReadOnlyOrManager, HasPermission, TienePermisoAsignado
 from .models import (
     Alerta,
     EstadoAlerta,
@@ -62,14 +63,30 @@ class ComunidadViewSet(viewsets.ModelViewSet):
     queryset = Comunidad.objects.all().order_by("id_comunidad")
     serializer_class = ComunidadSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]    
     recurso_nombre = 'Catálogos' # NUEVO
+def _verificar_acceso_instalacion(usuario, instalacion):
+    """
+    Administrador: ve cualquier instalación.
+    Técnico de Campo: solo instalaciones donde tenga una orden asignada.
+    Líder Comunitario: solo instalaciones de su propia comunidad.
+    Cualquier otro caso: 403.
+    """
+    if has_effective_role(usuario, "Administrador"):
+        return
+    if has_effective_role(usuario, "Técnico de Campo"):
+        if OrdenTrabajo.objects.filter(instalacion=instalacion, tecnico=usuario).exists():
+            return
+    if has_effective_role(usuario, "Líder Comunitario"):
+        if usuario.comunidad_id == instalacion.comunidad_id:
+            return
+    raise PermissionDenied("No tienes acceso a esta instalación.")
 
 class EstadoInstalacionViewSet(viewsets.ModelViewSet):
     queryset = EstadoInstalacion.objects.all().order_by("id_estado_instalacion")
     serializer_class = EstadoInstalacionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]        
     recurso_nombre = 'Catálogos' # NUEVO
 
 
@@ -77,14 +94,16 @@ class InstalacionViewSet(viewsets.ModelViewSet):
     queryset = Instalacion.objects.select_related("comunidad", "estado_instalacion").order_by("id_instalacion")
     serializer_class = InstalacionSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]        
+    recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Instalaciones' # NUEVO
 
 class DispositivoViewSet(viewsets.ModelViewSet):
     queryset = Dispositivo.objects.select_related("instalacion").order_by("id_dispositivo")
     serializer_class = DispositivoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]        
+    recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Dispositivos' # NUEVO
     
 class RecepcionMedicionView(generics.CreateAPIView):
@@ -185,8 +204,7 @@ class TipoMedicionViewSet(viewsets.ModelViewSet):
     serializer_class = TipoMedicionSerializer
     authentication_classes = [SessionAuthentication]
     recurso_nombre = 'Catálogos'
-    permission_classes = [IsAuthenticated, IsAdminRole]
-
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]
 class OrdenTrabajoViewSet(viewsets.ModelViewSet):
     """
     Permisos por rol para Órdenes de Trabajo (RF-17 a RF-24):
@@ -234,9 +252,9 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("create", "destroy"):
-            return [IsAuthenticated(), IsAdminRole()]
+            return [IsAuthenticated(), TienePermisoAsignado()]
         if self.action in ("update", "partial_update"):
-            return [IsAuthenticated(), HasRole()]
+            return [IsAuthenticated(), TienePermisoAsignado()]
         # list / retrieve: cualquier usuario autenticado con un rol
         # válido; get_queryset() ya decide qué le toca ver a cada quién.
         return [IsAuthenticated()]
@@ -326,14 +344,16 @@ class UmbralViewSet(viewsets.ModelViewSet):
     queryset = Umbral.objects.select_related("instalacion", "tipo_medicion").order_by("id_umbral")
     serializer_class = UmbralSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]        
+    recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Umbrales' # NUEVO
 
 class AlertaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Alerta.objects.select_related("instalacion", "tipo_medicion", "tipo_alerta", "prioridad", "estado").order_by("-fecha_creacion")
     serializer_class = AlertaSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]       
+    recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Alertas' # NUEVO
 from security.models import get_effective_permissions    
 from django.views.decorators.csrf import csrf_exempt
@@ -400,7 +420,8 @@ class RepuestoOrdenTrabajoViewSet(viewsets.ModelViewSet):
     """
     serializer_class = RepuestoOrdenTrabajoSerializer
     authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated, ReadOnlyOrManager]
+    permission_classes = [IsAuthenticated, TienePermisoAsignado]        
+    recurso_nombre = 'Catálogos' # NUEVO
     recurso_nombre = 'Órdenes de Trabajo'
 
     def get_queryset(self):
@@ -436,6 +457,9 @@ class RepuestoOrdenTrabajoViewSet(viewsets.ModelViewSet):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_resumen(request):
+    if not has_effective_role(request.user, "Administrador"):
+        raise PermissionDenied("Este panel es exclusivo del Administrador.")
+
     limite_fuera_linea = timezone.now() - timedelta(hours=24)
 
     estado_vigente = EstadoAlerta.objects.filter(
@@ -529,7 +553,7 @@ def historial_mediciones_instalacion(request, id_instalacion):
         Instalacion,
         id_instalacion=id_instalacion,
     )
-
+    _verificar_acceso_instalacion(request.user, instalacion)
     mediciones = Medicion.objects.select_related(
         "dispositivo",
         "tipo_medicion",
@@ -589,7 +613,7 @@ def historial_mantenimientos_instalacion(
         Instalacion,
         id_instalacion=id_instalacion,
     )
-
+    _verificar_acceso_instalacion(request.user, instalacion)
     estado_cerrada = EstadoOrdenTrabajo.objects.filter(
         nombre="Cerrada"
     ).first()
@@ -649,7 +673,7 @@ def exportar_mediciones_csv(request, id_instalacion):
         Instalacion,
         id_instalacion=id_instalacion,
     )
-
+    _verificar_acceso_instalacion(request.user, instalacion)
     mediciones = Medicion.objects.select_related(
         "dispositivo",
         "tipo_medicion",
@@ -744,6 +768,8 @@ def exportar_mantenimientos_csv(request, id_instalacion):
         Instalacion,
         id_instalacion=id_instalacion,
     )
+
+    _verificar_acceso_instalacion(request.user, instalacion)
 
     estado_cerrada = EstadoOrdenTrabajo.objects.filter(
         nombre="Cerrada"

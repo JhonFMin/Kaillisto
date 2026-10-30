@@ -50,3 +50,36 @@ class ReadOnlyOrManager(BasePermission):
         
         # Si es un método de escritura
         return has_effective_role(request.user, "Técnico de Campo") or has_effective_role(request.user, "Administrador")
+class TienePermisoAsignado(BasePermission):
+    """
+    Permiso genérico: exige el permiso Django estándar (view_/add_/change_/delete_
+    + nombre del modelo) que corresponda al método HTTP, verificando los permisos
+    EFECTIVOS del usuario (los que de verdad están marcados en su Rol).
+    Reemplaza los checks por nombre de rol: ahora lo que decides en la pantalla
+    de Roles y Permisos tiene efecto real.
+    """
+    perms_map = {
+        'GET': 'view_%(model_name)s',
+        'OPTIONS': 'view_%(model_name)s',
+        'HEAD': 'view_%(model_name)s',
+        'POST': 'add_%(model_name)s',
+        'PUT': 'change_%(model_name)s',
+        'PATCH': 'change_%(model_name)s',
+        'DELETE': 'delete_%(model_name)s',
+    }
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        user_perms = get_effective_permissions(request.user)
+        if "ALL" in user_perms:
+            return True
+        queryset = getattr(view, 'queryset', None)
+        if queryset is None and hasattr(view, 'get_queryset'):
+            queryset = view.get_queryset()
+        if queryset is None:
+            return False
+        codename = self.perms_map[request.method] % {
+            'model_name': queryset.model._meta.model_name
+        }
+        return codename in user_perms

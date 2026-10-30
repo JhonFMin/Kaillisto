@@ -28,8 +28,7 @@ import {
  *     por Rol y Usuarios y Roles — ver pages/RolesPermisos.jsx)
  */
 export default function Sidebar() {
-    const { user, logout, isAdmin, hasRole } = useContext(AuthContext);
-    const location = useLocation();
+    const { user, logout, isAdmin, hasPermission } = useContext(AuthContext);    const location = useLocation();
 
     const grupos = useMemo(() => ([
         {
@@ -41,9 +40,9 @@ export default function Sidebar() {
         {
             titulo: 'Operación',
             items: [
-                { to: '/dispositivos', icon: Cpu, label: 'Dispositivos', visible: hasRole('Líder Comunitario', 'Técnico de Campo', 'Administrador') },
-                { to: '/mantenimiento', icon: Wrench, label: 'Mantenimiento', visible: hasRole('Técnico de Campo', 'Administrador') },
-                { to: '/catalogos', icon: Package, label: 'Catálogos', visible: isAdmin() },
+                { to: '/dispositivos', icon: Cpu, label: 'Dispositivos', visible: hasPermission('view_dispositivo') },
+                { to: '/mantenimiento', icon: Wrench, label: 'Mantenimiento', visible: hasPermission('view_ordentrabajo') },
+                { to: '/catalogos', icon: Package, label: 'Catálogos', visible: hasPermission('view_tipomedicion') },
             ],
         },
         {
@@ -53,7 +52,7 @@ export default function Sidebar() {
             ],
         },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    ]), [user, isAdmin, hasRole]);
+    ]), [user, isAdmin, hasPermission]);
 
     return (
         <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col h-screen shrink-0 border-r border-slate-800">
