@@ -590,6 +590,11 @@ function Records({ kind, user, title, readonly = false }) {
     [search, setSearch] = useState("");
   const [lookup, setLookup] = useState({});
   const [schemaLoading, setSchemaLoading] = useState(false);
+  const permissionModel = permissionModelByKind[kind];
+  const canEditKind =
+    user.is_superuser || user.permisos.includes(`change_${permissionModel}`);
+  const canCreateKind =
+    user.is_superuser || user.permisos.includes(`add_${permissionModel}`);
   async function openEditor(row = {}) {
     setSchemaLoading(true);
     setError("");
