@@ -1,10 +1,11 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.db import transaction
 
 from .models import Role, UserRole, get_effective_permissions
 from .serializers import (
@@ -12,6 +13,7 @@ from .serializers import (
     PermissionSerializer, UsuarioResumenSerializer
 )
 from .permissions import IsAdminRole
+from .defaults import default_permissions
 
 Usuario = get_user_model()
 
@@ -21,6 +23,16 @@ class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.prefetch_related('permissions__content_type').all()
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+
+    @action(detail=True, methods=['post'], url_path='restore-defaults')
+    @transaction.atomic
+    def restore_defaults(self, request, pk=None):
+        role = self.get_object()
+        permissions = default_permissions(role.name)
+        if permissions is None:
+            raise ValidationError({"detail": "Este rol personalizado no tiene permisos predeterminados."})
+        role.permissions.set(permissions)
+        return Response(self.get_serializer(role).data)
 
     def destroy(self, request, *args, **kwargs):
         """Borrado lógico: inactiva el rol, no lo elimina físicamente."""

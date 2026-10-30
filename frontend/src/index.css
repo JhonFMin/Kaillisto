@@ -170,9 +170,29 @@ small,
   padding: 0 28px;
   margin: auto;
 }
+.landing {
+  min-height: 100vh;
+  background-color: #050908;
+  background-image:
+    radial-gradient(ellipse at 50% 16%, rgb(198 157 92 / 15%), transparent 42%),
+    radial-gradient(ellipse at 8% 68%, rgb(63 123 111 / 12%), transparent 38%);
+}
 .hero {
+  position: relative;
+  isolation: isolate;
   text-align: center;
   padding: 90px 0 100px;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -36px -18vw 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse at 50% 34%, rgb(229 177 100 / 12%), transparent 42%),
+    repeating-linear-gradient(165deg, transparent 0 42px, rgb(213 190 151 / 3%) 43px 44px);
+  mask-image: radial-gradient(ellipse at center, #000 22%, transparent 76%);
 }
 .hero h1 {
   font-size: clamp(42px, 5.5vw, 68px);
@@ -300,10 +320,14 @@ footer > a:last-child {
   display: grid;
   grid-template-columns: 1.05fr 1fr;
   min-height: 100vh;
+  background-color: #050807;
+  background-image:
+    radial-gradient(ellipse at 74% 50%, rgb(190 145 83 / 10%), transparent 39%),
+    radial-gradient(ellipse at 8% 90%, rgb(42 102 88 / 10%), transparent 35%);
 }
 .login-story {
   padding: 48px 60px;
-  background: #121212;
+  background: rgb(18 19 18 / 92%);
   border-right: 1px solid #333;
   display: flex;
   flex-direction: column;
@@ -349,6 +373,10 @@ footer > a:last-child {
 .workspace {
   display: flex;
   min-height: 100vh;
+  background-color: #070908;
+  background-image:
+    radial-gradient(ellipse at 84% 2%, rgb(180 129 68 / 11%), transparent 32%),
+    radial-gradient(ellipse at 72% 72%, rgb(39 91 80 / 8%), transparent 36%);
 }
 .sidebar {
   position: fixed;
@@ -356,7 +384,7 @@ footer > a:last-child {
   width: 245px;
   padding: 28px 18px 18px;
   border-right: 1px solid #333;
-  background: #080808;
+  background: rgb(8 9 8 / 97%);
   display: flex;
   flex-direction: column;
   z-index: 10;
@@ -826,6 +854,22 @@ tr:hover td {
 }
 .matrix-toolbar .tabs {
   margin: 0;
+}
+.role-defaults {
+  display: grid;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+  background: rgb(202 163 104 / 5%);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.role-defaults strong {
+  color: #e7c892;
+  font-weight: 500;
+}
+.role-defaults span {
+  color: #c3c1b9;
 }
 .matrix-bulk-actions {
   display: flex;

@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Resource
 from .permissions import IsAdminRole
+from .defaults import default_permission_codes
 
 ACTIONS = [('view', 'Consultar'), ('add', 'Crear'), ('change', 'Editar'), ('delete', 'Eliminar')]
 
@@ -35,4 +36,8 @@ def matrix(request):
             if permission:
                 cells[action] = {'id': permission.pk, 'code': code, 'label': label}
         resources.append({**ResourceSerializer(resource).data, 'permissions': cells})
-    return Response({'actions': [{'code': code, 'label': label} for code, label in ACTIONS], 'resources': resources})
+    return Response({
+        'actions': [{'code': code, 'label': label} for code, label in ACTIONS],
+        'resources': resources,
+        'defaults': default_permission_codes(),
+    })

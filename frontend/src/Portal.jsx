@@ -10,26 +10,24 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import {
-  Sun,
-  LayoutDashboard,
-  Users,
-  MapPin,
-  Layers,
-  Radio,
-  SlidersHorizontal,
-  Bell,
-  Wrench,
-  Package,
-  Shield,
-  ArrowUpRight,
-  LogOut,
-  ArrowRight,
-  Plus,
-  X,
-  Search,
-  Menu,
-} from "lucide-react";
+import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
+import { SquaresFourIcon as LayoutDashboard } from "@phosphor-icons/react/dist/csr/SquaresFour";
+import { UsersThreeIcon as Users } from "@phosphor-icons/react/dist/csr/UsersThree";
+import { MapPinIcon as MapPin } from "@phosphor-icons/react/dist/csr/MapPin";
+import { StackIcon as Layers } from "@phosphor-icons/react/dist/csr/Stack";
+import { BroadcastIcon as Radio } from "@phosphor-icons/react/dist/csr/Broadcast";
+import { SlidersHorizontalIcon as SlidersHorizontal } from "@phosphor-icons/react/dist/csr/SlidersHorizontal";
+import { BellIcon as Bell } from "@phosphor-icons/react/dist/csr/Bell";
+import { WrenchIcon as Wrench } from "@phosphor-icons/react/dist/csr/Wrench";
+import { PackageIcon as Package } from "@phosphor-icons/react/dist/csr/Package";
+import { ShieldIcon as Shield } from "@phosphor-icons/react/dist/csr/Shield";
+import { ArrowUpRightIcon as ArrowUpRight } from "@phosphor-icons/react/dist/csr/ArrowUpRight";
+import { SignOutIcon as LogOut } from "@phosphor-icons/react/dist/csr/SignOut";
+import { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
+import { XIcon as X } from "@phosphor-icons/react/dist/csr/X";
+import { MagnifyingGlassIcon as Search } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
+import { ListIcon as Menu } from "@phosphor-icons/react/dist/csr/List";
 import api from "./api/axios";
 
 const definitions = {
@@ -118,7 +116,7 @@ const relations = {
 function Brand() {
   return (
     <Link className="brand" to="/">
-      <Sun size={25} />
+      <Sun size={25} weight="duotone" />
       <span>
         ka’illisto<span className="brand-dot">.</span>
       </span>
@@ -175,7 +173,7 @@ function Landing() {
           </div>
           <div className="feature-grid">
             <article className="feature">
-              <Radio />
+              <Radio weight="duotone" />
               <h3>Infraestructura conectada</h3>
               <p>
                 Instalaciones y dispositivos organizados por comunidad. Una base
@@ -192,7 +190,7 @@ function Landing() {
               </div>
             </article>
             <article className="feature">
-              <Wrench />
+              <Wrench weight="duotone" />
               <h3>Atención con seguimiento</h3>
               <p>
                 Órdenes asignadas, diagnóstico y soluciones. Todo el contexto
@@ -913,7 +911,7 @@ function Dashboard({ user }) {
                         : `/${k}`
               }
             >
-              <Icon />
+              <Icon weight="duotone" />
               <h3>{definitions[k][0]}</h3>
               <p>Consulta la información y continúa con tu trabajo.</p>
               <ArrowUpRight size={18} />
@@ -922,7 +920,7 @@ function Dashboard({ user }) {
         })}
       </div>
       <section className="territory">
-        <Sun size={36} />
+        <Sun size={36} weight="duotone" />
         <div>
           <span className="eyebrow">UNA PLATAFORMA, UN PROPÓSITO</span>
           <h2>Energía para seguir adelante.</h2>
@@ -1074,7 +1072,7 @@ function Workspace({ user, onLogout }) {
             .filter(([path]) => canOpen(path))
             .map(([path, label, Icon]) => (
               <NavLink key={path} to={path}>
-                <Icon size={18} />
+                <Icon size={18} weight="duotone" />
                 {label}
               </NavLink>
             ))}

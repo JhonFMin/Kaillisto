@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Check, Save, Plus, Shield, X } from "lucide-react";
+import { CheckIcon as Check } from "@phosphor-icons/react/dist/csr/Check";
+import { FloppyDiskIcon as Save } from "@phosphor-icons/react/dist/csr/FloppyDisk";
+import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
+import { ShieldIcon as Shield } from "@phosphor-icons/react/dist/csr/Shield";
+import { XIcon as X } from "@phosphor-icons/react/dist/csr/X";
+import { ArrowCounterClockwiseIcon as Reset } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
 import api from "../api/axios";
 
 const message = (e) =>
@@ -40,6 +45,16 @@ export default function RoleMatrix({ user }) {
   const resource = matrix?.resources.find(
     (r) => String(r.id) === selectedResource,
   );
+  const roleDefaultCodes = role ? matrix?.defaults?.[role.name] : null;
+  const roleDefaultSet = new Set(roleDefaultCodes || []);
+  const defaultResources = (matrix?.resources || [])
+    .map((item) => {
+      const actions = matrix.actions
+        .filter((action) => roleDefaultSet.has(item.permissions?.[action.code]?.code))
+        .map((action) => action.label.toLowerCase());
+      return actions.length ? `${item.name} (${actions.join(", ")})` : null;
+    })
+    .filter(Boolean);
   const dirty = roles.filter((r) => !same(r.permissions, draft[r.id] || []));
   const rolePermissionIds = [
     ...new Set(
@@ -94,6 +109,42 @@ export default function RoleMatrix({ user }) {
       return next;
     });
   }
+  function notifyPermissionChanges() {
+    window.dispatchEvent(new Event("kaillisto:permissions"));
+    if ("BroadcastChannel" in window) {
+      const channel = new BroadcastChannel("kaillisto:permissions");
+      channel.postMessage("updated");
+      channel.close();
+    }
+    try {
+      localStorage.setItem("kaillisto:permissions-updated", String(Date.now()));
+    } catch {
+      // La pestaña actual y BroadcastChannel siguen sincronizados si el almacenamiento está bloqueado.
+    }
+  }
+  async function restoreDefaults() {
+    if (!role || !roleDefaultCodes || busy || dirty.length) return;
+    if (
+      !window.confirm(
+        `Se reemplazarán los permisos de “${role.name}” por los predeterminados. ¿Continuar?`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setSaved("");
+    try {
+      await api.post(`/security/roles/${role.id}/restore-defaults/`);
+      await load();
+      notifyPermissionChanges();
+      setSaved(`Permisos predeterminados restaurados para ${role.name}.`);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   async function save() {
     setBusy(true);
     setError("");
@@ -107,17 +158,7 @@ export default function RoleMatrix({ user }) {
         ),
       );
       await load();
-      window.dispatchEvent(new Event("kaillisto:permissions"));
-      if ("BroadcastChannel" in window) {
-        const channel = new BroadcastChannel("kaillisto:permissions");
-        channel.postMessage("updated");
-        channel.close();
-      }
-      try {
-        localStorage.setItem("kaillisto:permissions-updated", String(Date.now()));
-      } catch {
-        // La pestaña actual y BroadcastChannel siguen sincronizados si el almacenamiento está bloqueado.
-      }
+      notifyPermissionChanges();
       setSaved(
         "Permisos guardados. El servidor aplica los cambios inmediatamente.",
       );
@@ -153,6 +194,20 @@ export default function RoleMatrix({ user }) {
           <p>Recursos → permisos → roles → usuarios.</p>
         </div>
         <div className="actions">
+          {mode === "role" && (
+            <button
+              disabled={busy || dirty.length > 0 || !roleDefaultCodes}
+              title={
+                roleDefaultCodes
+                  ? "Reemplaza los permisos de este rol por sus valores iniciales"
+                  : "Los roles personalizados no tienen permisos predeterminados"
+              }
+              onClick={restoreDefaults}
+            >
+              <Reset size={16} />
+              Restablecer predeterminados
+            </button>
+          )}
           <button
             disabled={busy || dirty.length > 0}
             onClick={() => setCreating(true)}
@@ -171,6 +226,18 @@ export default function RoleMatrix({ user }) {
           </button>
         </div>
       </div>
+        {mode === "role" && role && (
+          <div className="role-defaults" aria-live="polite">
+            <strong>
+              {roleDefaultCodes ? "Permisos predeterminados:" : "Sin predeterminados:"}
+            </strong>
+            <span>
+              {roleDefaultCodes
+                ? defaultResources.join(" · ") || "Sin recursos activos asignados"
+                : "Este rol personalizado conserva su configuración propia."}
+            </span>
+          </div>
+        )}
       {error && (
         <p role="alert" className="notice">
           {error}
