@@ -99,6 +99,8 @@ const relations = {
   comunidad: "comunidades",
   instalacion: "instalaciones",
   tipo_medicion: "tipos-medicion",
+  tipo_alerta: "tipos-alerta",
+  prioridad: "prioridades",
   estado_instalacion: "estados-instalacion",
   tecnico: "usuarios",
   alerta: "alertas",
@@ -378,8 +380,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
   useEffect(() => {
     let active = true;
     async function load() {
-      const out = {};
-      for (const [k, f] of fields) {
+      const requests = fields.map(([k]) => {
         let rel = relations[k];
         if (k === "estado")
           rel =
@@ -388,15 +389,16 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
               : kind === "alertas"
                 ? "estados-alerta"
                 : null;
-        if (rel) {
-          const res = await api.get(endpoint(rel));
-          out[k] = res.data;
-        } else if (k === "roles") {
-          out[k] = (await api.get("/security/roles/")).data;
-        } else if (k === "permissions") {
-          out[k] = (await api.get("/security/permissions/")).data;
-        }
-      }
+        const url = rel
+          ? endpoint(rel)
+          : k === "roles"
+            ? "/security/roles/"
+            : k === "permissions"
+              ? "/security/permissions/"
+              : null;
+        return url ? api.get(url).then((res) => [k, res.data]) : null;
+      }).filter(Boolean);
+      const out = Object.fromEntries(await Promise.all(requests));
       if (active) setChoices(out);
     }
     load().catch((e) => setError(errorText(e)));
@@ -547,28 +549,50 @@ function Records({ kind, user, title, readonly = false }) {
     [editing, setEditing] = useState(null),
     [search, setSearch] = useState("");
   const [lookup, setLookup] = useState({});
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  async function openEditor(row = {}) {
+    setSchemaLoading(true);
+    setError("");
+    try {
+      const response = await api.options(endpoint(kind));
+      setSchema(response.data.actions?.POST || {});
+      setEditing(row);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setSchemaLoading(false);
+    }
+  }
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [r, s] = await Promise.all([
-        api.get(endpoint(kind)),
-        api.options(endpoint(kind)),
-      ]);
+      const r = await api.get(endpoint(kind));
       setRows(r.data);
-      setSchema(s.data.actions?.POST || {});
-      const refs = {};
-      for (const rel of [...new Set(Object.values(relations))]) {
-        if (rel === "usuarios" && !user.admin) continue;
-        try {
-          refs[rel] = (await api.get(endpoint(rel))).data;
-        } catch {
-          /* Optional labels do not block the table. */
-        }
-      }
-      for (const rel of ["estados-orden", "estados-alerta"])
-        refs[rel] = (await api.get(endpoint(rel))).data;
-      setLookup(refs);
+      setLoading(false);
+      const relationFields = new Set(r.data.flatMap((row) => Object.keys(row)));
+      const neededRelations = new Set(
+        [...relationFields]
+          .map((field) =>
+            field === "estado"
+              ? kind === "ordenes"
+                ? "estados-orden"
+                : kind === "alertas"
+                  ? "estados-alerta"
+                  : null
+              : relations[field],
+          )
+          .filter((rel) => rel && (rel !== "usuarios" || user.admin)),
+      );
+      Promise.all(
+        [...neededRelations].map(async (rel) => {
+          try {
+            return [rel, (await api.get(endpoint(rel))).data];
+          } catch {
+            return [rel, []];
+          }
+        }),
+      ).then((lookupResults) => setLookup(Object.fromEntries(lookupResults)));
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -663,9 +687,9 @@ function Records({ kind, user, title, readonly = false }) {
           </p>
         </div>
         {canCreate && (
-          <button className="primary" onClick={() => setEditing({})}>
+          <button className="primary" disabled={schemaLoading} onClick={() => openEditor()}>
             <Plus size={16} />
-            Nuevo registro
+            {schemaLoading ? "Cargando…" : "Nuevo registro"}
           </button>
         )}
       </div>
@@ -716,7 +740,7 @@ function Records({ kind, user, title, readonly = false }) {
                       ))}
                       {canEdit && (
                         <td className="row-actions">
-                          <button onClick={() => setEditing(row)}>
+                          <button disabled={schemaLoading} onClick={() => openEditor(row)}>
                             Editar
                           </button>
                           {kind === "usuarios" &&
@@ -765,7 +789,7 @@ function Records({ kind, user, title, readonly = false }) {
           </div>
         )}
       </section>
-      {editing && (
+          {editing && (
         <Editor
           key={`${kind}-${idOf(editing) || "new"}`}
           kind={kind}
@@ -789,16 +813,8 @@ function Dashboard({ user }) {
   const [stats, setStats] = useState(null),
     [error, setError] = useState("");
   useEffect(() => {
-    Promise.all(
-      [
-        "comunidades",
-        "instalaciones",
-        "dispositivos",
-        "alertas",
-        "ordenes",
-      ].map((k) => api.get(endpoint(k)).then((r) => [k, r.data])),
-    )
-      .then((v) => setStats(Object.fromEntries(v)))
+    api.get("/security/portal/resumen/")
+      .then((r) => setStats(r.data))
       .catch((e) => setError(errorText(e)));
   }, []);
   return (
@@ -822,7 +838,7 @@ function Dashboard({ user }) {
               <article key={k}>
                 <Icon size={18} />
                 <span>{definitions[k][0]}</span>
-                <strong>{stats ? stats[k].length : "—"}</strong>
+                <strong>{stats ? stats[k] : "—"}</strong>
                 <small>Registros en tu ámbito</small>
               </article>
             );
@@ -839,7 +855,18 @@ function Dashboard({ user }) {
           : user.roles.includes("Técnico de Campo")
             ? ["ordenes", "instalaciones", "consumos"]
             : ["instalaciones", "alertas", "notificaciones"]
-        ).map((k) => {
+        ).filter((k) => {
+          const path = `/${k === "ordenes" ? "mantenimiento" : k}`;
+          const permission = {
+            instalaciones: "view_instalacion",
+            dispositivos: "view_dispositivo",
+            ordenes: "view_ordentrabajo",
+            alertas: "view_alerta",
+            notificaciones: "view_alerta",
+            consumos: "view_repuestoordentrabajo",
+          }[k];
+          return user.is_superuser || !permission || user.permisos.includes(permission);
+        }).map((k) => {
           const Icon = definitions[k][1];
           return (
             <Link
@@ -1044,7 +1071,7 @@ function Workspace({ user, onLogout }) {
                   path={path}
                   element={
                     kind === "roles" ? (
-                      <RoleMatrix />
+                      <RoleMatrix user={user} />
                     ) : (
                       <Records
                         key={kind}

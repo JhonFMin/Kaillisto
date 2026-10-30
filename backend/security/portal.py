@@ -215,6 +215,28 @@ def session(request):
         'permisos': get_effective_permissions(u)})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_summary(request):
+    """Entrega solo los conteos permitidos, sin descargar todas las filas."""
+    user = request.user
+    permissions = set(get_effective_permissions(user))
+    resources = {
+        'comunidades': m.Comunidad,
+        'instalaciones': m.Instalacion,
+        'dispositivos': m.Dispositivo,
+        'ordenes': m.OrdenTrabajo,
+    }
+    counts = {}
+    for key, model in resources.items():
+        codename = f'view_{model._meta.model_name}'
+        if user.is_superuser or 'ALL' in permissions or codename in permissions:
+            counts[key] = scoped(user, model).count()
+        else:
+            counts[key] = 0
+    return Response(counts)
+
+
 # Login uses Django's CSRF middleware even for anonymous sessions.
 import json
 from django.contrib.auth import authenticate, login

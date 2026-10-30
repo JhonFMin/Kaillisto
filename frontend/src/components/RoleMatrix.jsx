@@ -7,7 +7,7 @@ const message = (e) =>
   "No se pudieron guardar los cambios. Revisa la conexión.";
 const same = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
 
-export default function RoleMatrix() {
+export default function RoleMatrix({ user }) {
   const [roles, setRoles] = useState([]),
     [matrix, setMatrix] = useState(null),
     [draft, setDraft] = useState({});
@@ -118,6 +118,11 @@ export default function RoleMatrix() {
       {error && (
         <p role="alert" className="notice">
           {error}
+        </p>
+      )}
+      {user?.is_superuser && (
+        <p className="notice" role="status">
+          Estás conectado como superadministrador. Este usuario conserva acceso total aunque desmarques permisos del rol Administrador; prueba esos cambios con una cuenta Administrador normal.
         </p>
       )}
       {saved && (
