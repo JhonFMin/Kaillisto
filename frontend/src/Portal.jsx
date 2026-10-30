@@ -789,6 +789,11 @@ function Records({ kind, user, title, readonly = false }) {
                 <p>
                   {user.admin
                     ? "Crea el primer registro para comenzar."
+                    : kind === "consumos" &&
+                        user.roles.includes("Técnico de Campo")
+                      ? "Aquí aparecen los repuestos de tus órdenes asignadas. Pide que te asignen una orden y registra allí los materiales."
+                      : user.roles.includes("Técnico de Campo")
+                        ? "Los permisos abren módulos; los datos de Técnico siguen limitados a sus órdenes e instalaciones asignadas."
                     : "Los registros de tu ámbito aparecerán aquí."}
                 </p>
               </div>
@@ -935,6 +940,13 @@ function Workspace({ user, onLogout }) {
     "/alertas": "view_alerta",
     "/mantenimiento": "view_ordentrabajo",
     "/repuestos": "view_repuesto",
+    "/notificaciones": "view_notificacion",
+    "/estados-instalacion": "view_estadoinstalacion",
+    "/estados-orden": "view_estadoordentrabajo",
+    "/tipos-medicion": "view_tipomedicion",
+    "/estados-alerta": "view_estadoalerta",
+    "/prioridades": "view_prioridadalerta",
+    "/tipos-alerta": "view_tipoalerta",
     "/usuarios": "view_usuario",
     "/mis-casos": "view_ordentrabajo",
     "/ficha-tecnica": "view_instalacion",
@@ -945,9 +957,10 @@ function Workspace({ user, onLogout }) {
   };
   const canOpen = (path) =>
     user.is_superuser ||
-    !routePermissions[path] ||
-    user.permisos.includes(routePermissions[path]);
-  const links = user.admin
+    (path === "/notificaciones" && user.roles.includes("Líder Comunitario")
+      ? user.permisos.includes("view_alerta")
+      : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
+  const baseLinks = user.admin
     ? [
         ["/dashboard", "Resumen", LayoutDashboard],
         ["/usuarios", "Usuarios", Users],
@@ -981,7 +994,7 @@ function Workspace({ user, onLogout }) {
             ["/tecnicos", "Técnicos asignados", Wrench],
           ]
         : [];
-  const routes = user.admin
+  const baseRoutes = user.admin
     ? {
         "/usuarios": ["usuarios"],
         "/roles": ["roles"],
@@ -1005,6 +1018,41 @@ function Workspace({ user, onLogout }) {
             "/tecnicos": ["ordenes", "Técnicos asignados", true],
           }
         : {};
+  const resourceRoutes = [
+    ["/comunidades", "comunidades", "view_comunidad"],
+    ["/instalaciones", "instalaciones", "view_instalacion"],
+    ["/dispositivos", "dispositivos", "view_dispositivo"],
+    ["/umbrales", "umbrales", "view_umbral"],
+    ["/alertas", "alertas", "view_alerta"],
+    ["/mantenimiento", "ordenes", "view_ordentrabajo"],
+    ["/repuestos", "repuestos", "view_repuesto"],
+    ["/consumos", "consumos", "view_repuestoordentrabajo"],
+    ["/notificaciones", "notificaciones", "view_notificacion"],
+    ["/estados-instalacion", "estados-instalacion", "view_estadoinstalacion"],
+    ["/estados-orden", "estados-orden", "view_estadoordentrabajo"],
+    ["/tipos-medicion", "tipos-medicion", "view_tipomedicion"],
+    ["/estados-alerta", "estados-alerta", "view_estadoalerta"],
+    ["/prioridades", "prioridades", "view_prioridadalerta"],
+    ["/tipos-alerta", "tipos-alerta", "view_tipoalerta"],
+  ];
+  const existingPaths = new Set(Object.keys(baseRoutes));
+  const existingKinds = new Set(Object.values(baseRoutes).map(([kind]) => kind));
+  const extras = user.admin
+    ? []
+    : resourceRoutes.filter(
+        ([path, kind, permission]) =>
+          !existingPaths.has(path) &&
+          !existingKinds.has(kind) &&
+          (user.is_superuser || user.permisos.includes(permission)),
+      );
+  const links = [
+    ...baseLinks,
+    ...extras.map(([path, kind]) => [path, ...definitions[kind]]),
+  ];
+  const routes = {
+    ...baseRoutes,
+    ...Object.fromEntries(extras.map(([path, kind]) => [path, [kind]])),
+  };
   return (
     <div className="workspace">
       <aside className={open ? "sidebar open" : "sidebar"}>
