@@ -94,13 +94,30 @@ def get_effective_permissions(user):
     if user.is_superuser:
         return ["ALL"]
         
-    # 1. Obtenemos los roles asignados al usuario QUE ESTÉN ACTIVOS
-    active_roles = user.roles_asignados.filter(rol__is_active=True).values_list('rol', flat=True)
+    active_roles = _active_role_rows(user)
+    role_ids = [role_id for role_id, _ in active_roles]
+    if not role_ids:
+        return []
     
-    # 2. Extraemos los permisos únicos (codenames) asociados a esos roles
-    perms = Permission.objects.filter(roles__in=active_roles, content_type__rbac_resource__is_active=True).values_list('codename', flat=True)
-    
-    return list(set(perms))
+    perms = Permission.objects.filter(
+        roles__in=role_ids,
+        content_type__rbac_resource__is_active=True,
+    ).values_list('codename', flat=True).distinct()
+    result = list(perms)
+    user._kaillisto_effective_permissions = result
+    return result
+
+
+def _active_role_rows(user):
+    """Fetch active role IDs and names once per request/user instance."""
+    rows = getattr(user, '_kaillisto_active_role_rows', None)
+    if rows is None:
+        rows = tuple(
+            user.roles_asignados.filter(rol__is_active=True)
+            .values_list('rol_id', 'rol__name')
+        )
+        user._kaillisto_active_role_rows = rows
+    return rows
 
 def has_effective_role(user, role_name):
     """
@@ -111,4 +128,4 @@ def has_effective_role(user, role_name):
     if user.is_superuser:
         return True
         
-    return user.roles_asignados.filter(rol__name=role_name, rol__is_active=True).exists()
+    return any(name == role_name for _, name in _active_role_rows(user))

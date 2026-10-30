@@ -588,7 +588,6 @@ function Records({ kind, user, title, readonly = false }) {
     [loading, setLoading] = useState(true),
     [editing, setEditing] = useState(null),
     [search, setSearch] = useState("");
-  const [lookup, setLookup] = useState({});
   const [schemaLoading, setSchemaLoading] = useState(false);
   const permissionModel = permissionModelByKind[kind];
   const canEditKind =
@@ -614,36 +613,6 @@ function Records({ kind, user, title, readonly = false }) {
     try {
       const r = await api.get(endpoint(kind));
       setRows(r.data);
-      setLoading(false);
-      const relationFields = new Set(r.data.flatMap((row) => Object.keys(row)));
-      const neededRelations = new Set(
-        [...relationFields]
-          .map((field) =>
-            field === "estado"
-              ? kind === "ordenes"
-                ? "estados-orden"
-                : kind === "alertas"
-                  ? "estados-alerta"
-                  : null
-              : relations[field],
-          )
-          .filter(
-            (rel) =>
-              rel &&
-              (rel !== "usuarios" ||
-                user.admin ||
-                user.permisos.includes("view_usuario")),
-          ),
-      );
-      Promise.all(
-        [...neededRelations].map(async (rel) => {
-          try {
-            return [rel, (await api.get(endpoint(rel))).data];
-          } catch {
-            return [rel, []];
-          }
-        }),
-      ).then((lookupResults) => setLookup(Object.fromEntries(lookupResults)));
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -658,6 +627,7 @@ function Records({ kind, user, title, readonly = false }) {
   const columns = rows.length
     ? Object.keys(rows[0]).filter(
         (k) =>
+          !k.endsWith("_display") &&
           ![
             "password",
             "permissions_detail",
@@ -669,23 +639,15 @@ function Records({ kind, user, title, readonly = false }) {
           ].includes(k),
       )
     : [];
-  function display(k, v) {
+  function display(k, v, row) {
+    const relationLabel = row?.[`${k}_display`];
+    if (relationLabel != null) return String(relationLabel);
     if (v == null || v === "") return "—";
     if (typeof v === "boolean") return v ? "Sí" : "No";
     if (k === "roles_detail")
       return v.map((r) => r.rol__name).join(", ") || "Sin rol";
     if (Array.isArray(v)) return `${v.length} asignados`;
-    let rel = relations[k];
-    if (k === "estado")
-      rel =
-        kind === "ordenes"
-          ? "estados-orden"
-          : kind === "alertas"
-            ? "estados-alerta"
-            : null;
-    return lookup[rel]?.find((r) => String(idOf(r)) === String(v))
-      ? labelOf(lookup[rel].find((r) => String(idOf(r)) === String(v)))
-      : String(v);
+    return String(v);
   }
   const canEdit = !readonly && canEditKind;
   const canCreate =
@@ -752,7 +714,7 @@ function Records({ kind, user, title, readonly = false }) {
                 {rows
                   .filter((r) =>
                     Object.entries(r).some(([k, v]) =>
-                      display(k, v)
+                      display(k, v, r)
                         .toLowerCase()
                         .includes(search.toLowerCase()),
                     ),
@@ -760,7 +722,7 @@ function Records({ kind, user, title, readonly = false }) {
                   .map((row) => (
                     <tr key={idOf(row)}>
                       {columns.map((k) => (
-                        <td key={k}>{display(k, row[k])}</td>
+                        <td key={k}>{display(k, row[k], row)}</td>
                       ))}
                       {canEdit && (
                         <td className="row-actions">

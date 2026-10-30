@@ -47,6 +47,9 @@ class InstalacionSerializer(serializers.ModelSerializer):
         return value
 
 class DispositivoSerializer(serializers.ModelSerializer):
+    instalacion_display = serializers.CharField(
+        source="instalacion.nombre", read_only=True
+    )
     api_key = serializers.CharField(
         write_only=True,
         min_length=32,
@@ -60,6 +63,7 @@ class DispositivoSerializer(serializers.ModelSerializer):
         fields = [
             "id_dispositivo",
             "instalacion",
+            "instalacion_display",
             "codigo",
             "modelo",
             "fecha_registro",

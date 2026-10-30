@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import Count, IntegerField, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.db.models.deletion import ProtectedError
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -58,12 +60,19 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     roles = serializers.PrimaryKeyRelatedField(queryset=Role.objects.filter(is_active=True), many=True, write_only=True, required=False)
     roles_detail = serializers.SerializerMethodField()
+    comunidad_display = serializers.CharField(
+        source='comunidad.nombre', read_only=True, allow_null=True, default=None
+    )
     class Meta:
         model = get_user_model()
-        fields = ['id_usuario', 'username', 'first_name', 'last_name', 'email', 'telefono', 'comunidad', 'is_active', 'is_staff', 'is_superuser', 'password', 'roles', 'roles_detail']
+        fields = ['id_usuario', 'username', 'first_name', 'last_name', 'email', 'telefono', 'comunidad', 'comunidad_display', 'is_active', 'is_staff', 'is_superuser', 'password', 'roles', 'roles_detail']
         read_only_fields = ['is_staff', 'is_superuser']
     def get_roles_detail(self, obj):
-        return list(obj.roles_asignados.filter(rol__is_active=True).values('rol_id', 'rol__name'))
+        return [
+            {'rol_id': assignment.rol_id, 'rol__name': assignment.rol.name}
+            for assignment in obj.roles_asignados.all()
+            if assignment.rol.is_active
+        ]
     def validate(self, attrs):
         if not self.instance and not attrs.get('password'):
             raise ValidationError({'password': 'Introduce una contraseña.'})
@@ -116,7 +125,9 @@ class UserSerializer(serializers.ModelSerializer):
         return obj
 
 class Users(viewsets.ModelViewSet):
-    queryset = get_user_model().objects.all().order_by('username')
+    queryset = get_user_model().objects.select_related('comunidad').prefetch_related(
+        'roles_asignados__rol'
+    ).order_by('username')
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     def initial(self, request, *args, **kwargs):
@@ -186,6 +197,11 @@ class PortalMetadata(SimpleMetadata):
         return {"POST": self.get_serializer_info(view.get_serializer())}
 
 def resource_view(model):
+    relation_fields = tuple(
+        field for field in model._meta.concrete_fields
+        if field.is_relation and field.many_to_one
+    )
+
     class Serializer(serializers.ModelSerializer):
         class Meta:
             fields = '__all__'
@@ -205,6 +221,34 @@ def resource_view(model):
             if model == m.RepuestoOrdenTrabajo and attrs.get('cantidad', 1) <= 0:
                 raise ValidationError('La cantidad debe ser positiva.')
             return attrs
+
+        def to_representation(self, instance):
+            data = super().to_representation(instance)
+            request = self.context.get('request')
+            can_view_users = bool(
+                request and (
+                    request.user.is_superuser
+                    or 'view_usuario' in effective_permissions(request.user)
+                )
+            )
+            for field in relation_fields:
+                related = getattr(instance, field.name, None)
+                if related is None:
+                    label = None
+                elif (
+                    field.remote_field.model == get_user_model()
+                    and not can_view_users
+                ):
+                    label = None
+                else:
+                    label = next((
+                        str(value) for name in (
+                            'nombre', 'name', 'username', 'codigo', 'mensaje', 'descripcion'
+                        )
+                        if (value := getattr(related, name, None)) not in (None, '')
+                    ), f'#{related.pk}')
+                data[f'{field.name}_display'] = label
+            return data
     Serializer.Meta.model = model
     class Resource(viewsets.ModelViewSet):
         metadata_class = PortalMetadata
@@ -212,7 +256,9 @@ def resource_view(model):
         serializer_class = DispositivoSerializer if model == m.Dispositivo else Serializer
         permission_classes = [IsAuthenticated]
         def get_queryset(self):
-            return scoped(self.request.user, model)
+            return scoped(self.request.user, model).select_related(
+                *(field.name for field in relation_fields)
+            )
         def initial(self, request, *args, **kwargs):
             super().initial(request, *args, **kwargs)
             if not request.user.is_superuser and request.method != 'OPTIONS':
@@ -276,7 +322,7 @@ def session(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
-    """Entrega solo los conteos permitidos, sin descargar todas las filas."""
+    """Entrega los conteos autorizados con una sola consulta a la base."""
     user = request.user
     permissions = set(effective_permissions(user))
     resources = {
@@ -285,13 +331,29 @@ def dashboard_summary(request):
         'dispositivos': m.Dispositivo,
         'ordenes': m.OrdenTrabajo,
     }
-    counts = {}
+    annotations = {}
     for key, model in resources.items():
         codename = f'view_{model._meta.model_name}'
         if user.is_superuser or 'ALL' in permissions or codename in permissions:
-            counts[key] = scoped(user, model).count()
+            count_query = (
+                scoped(user, model)
+                .order_by()
+                .values(_kaillisto_group=Value(1))
+                .annotate(_kaillisto_count=Count('pk', distinct=True))
+                .values('_kaillisto_count')[:1]
+            )
+            annotations[key] = Coalesce(
+                Subquery(count_query, output_field=IntegerField()),
+                Value(0),
+            )
         else:
-            counts[key] = 0
+            annotations[key] = Value(0, output_field=IntegerField())
+    counts = (
+        get_user_model().objects.filter(pk=user.pk)
+        .annotate(**annotations)
+        .values(*resources.keys())
+        .get()
+    )
     return Response(counts)
 
 
