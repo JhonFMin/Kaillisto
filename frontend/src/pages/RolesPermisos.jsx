@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
-import { agruparPermisos, ACTION_LABELS, ACTION_ORDER, todosLosIds } from '../utils/permisosLabels';
+import { agruparPermisos, ACTION_LABELS, ACTION_ORDER } from '../utils/permisosLabels';
 import {
     Shield, Plus, X, Check, Search, Users, Key, Pencil, Save, Trash2,
     UserPlus, AlertCircle, CircleDot, ChevronDown, Loader2,
@@ -539,7 +539,6 @@ function TabPermisos({ estructura, estadoCelda, toggleCelda, toggleFilaCompleta,
     return (
         <div className="space-y-6">
             {estructura.map((cat) => {
-                const idsCategoria = cat.grupos.flatMap((g) => Object.values(g.acciones).flat());
                 return (
                     <div key={cat.categoria}>
                         <div className="flex items-center justify-between mb-2">

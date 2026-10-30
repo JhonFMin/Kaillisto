@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import RoleMatrix from "./components/RoleMatrix";
 import {
   BrowserRouter,
@@ -899,7 +899,6 @@ function Dashboard({ user }) {
             ? ["ordenes", "instalaciones", "consumos"]
             : ["instalaciones", "alertas", "notificaciones"]
         ).filter((k) => {
-          const path = `/${k === "ordenes" ? "mantenimiento" : k}`;
           const permission = {
             instalaciones: "view_instalacion",
             dispositivos: "view_dispositivo",
@@ -1067,7 +1066,7 @@ function Workspace({ user, onLogout }) {
   ];
   const linkedPaths = new Set(baseLinks.map(([path]) => path));
   const extras = resourceRoutes.filter(
-    ([path, kind, permission]) =>
+    ([path, , permission]) =>
       !linkedPaths.has(path) &&
       (user.is_superuser || user.permisos.includes(permission)),
   );
@@ -1219,11 +1218,11 @@ function Shell() {
     [error, setError] = useState("");
   const loc = useLocation(),
     navigate = useNavigate();
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const r = await api.get("/security/session/");
     setUser(r.data);
     return r.data;
-  }
+  }, []);
   useEffect(() => {
     if (loc.pathname === "/" || loc.pathname === "/login") {
       setLoading(false);
@@ -1237,8 +1236,12 @@ function Shell() {
     refresh()
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, [loc.pathname, user]);
+  }, [loc.pathname, user, refresh]);
   useEffect(() => {
+    // Las páginas públicas no consultan sesión ni reaccionan a eventos de
+    // foco/otras pestañas. La sincronización solo existe dentro del portal.
+    if (!user || loc.pathname === "/" || loc.pathname === "/login") return;
+
     const update = () => refresh().catch(() => setUser(null));
     const onStorage = (event) => {
       if (event.key === "kaillisto:permissions-updated") update();
@@ -1268,7 +1271,7 @@ function Shell() {
       window.clearTimeout(refreshTimer);
       channel?.close();
     };
-  }, []);
+  }, [user?.id, loc.pathname, refresh]);
   if (loading) return <div className="boot">Conectando con Ka’illisto…</div>;
   return (
     <>
