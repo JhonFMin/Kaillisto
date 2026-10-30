@@ -217,29 +217,10 @@ def session(request):
 
 # Login uses Django's CSRF middleware even for anonymous sessions.
 import json
-import secrets
-import time
-from django.views.decorators.http import require_GET
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
-
-CHALLENGE_SESSION_KEY = 'login_math_challenges'
-CHALLENGE_TTL_SECONDS = 300
-
-@require_GET
-def login_challenge(request):
-    """Issue a short-lived, one-use addition challenge tied to this session."""
-    left = secrets.randbelow(8) + 2
-    right = secrets.randbelow(8) + 2
-    challenge_id = secrets.token_urlsafe(18)
-    now = int(time.time())
-    challenges = request.session.get(CHALLENGE_SESSION_KEY, {})
-    challenges = {key: value for key, value in challenges.items() if value['expires'] > now}
-    challenges[challenge_id] = {'answer': left + right, 'expires': now + CHALLENGE_TTL_SECONDS}
-    request.session[CHALLENGE_SESSION_KEY] = challenges
-    return JsonResponse({'id': challenge_id, 'question': f'{left} + {right}'})
 
 @csrf_protect
 @require_POST
@@ -250,14 +231,15 @@ def login_view(request):
         return JsonResponse({'detail': 'JSON invalido.'}, status=400)
     if not isinstance(data, dict):
         return JsonResponse({'detail': 'JSON invalido.'}, status=400)
-    challenges = request.session.get(CHALLENGE_SESSION_KEY, {})
-    challenge = challenges.pop(str(data.get('challenge_id', '')), None)
-    request.session[CHALLENGE_SESSION_KEY] = challenges
     try:
+        left = int(data.get('challenge_left'))
+        right = int(data.get('challenge_right'))
         answer = int(data.get('challenge_answer'))
     except (TypeError, ValueError):
+        left = right = None
         answer = None
-    if not challenge or challenge['expires'] <= int(time.time()) or answer != challenge['answer']:
+    if (left is None or right is None or not 2 <= left <= 9 or not 2 <= right <= 9
+            or answer != left + right):
         return JsonResponse({'detail': 'Resuelve correctamente la suma para continuar.'}, status=400)
     user = authenticate(request, username=data.get('username'), password=data.get('password'))
     if user is None:

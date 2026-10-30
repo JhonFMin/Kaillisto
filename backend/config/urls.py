@@ -18,6 +18,7 @@ def csrf_token_view(request):
     return JsonResponse({"detail": "CSRF cookie set"})
 
 
+@ensure_csrf_cookie
 def frontend_app(request):
     index = Path(settings.FRONTEND_DIST) / "index.html"
     if not index.is_file():

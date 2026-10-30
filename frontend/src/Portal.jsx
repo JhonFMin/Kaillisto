@@ -252,21 +252,14 @@ function Landing() {
 function Login({ onLogin, user }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [challenge, setChallenge] = useState(null);
-  const [challengeError, setChallengeError] = useState("");
-  const refreshChallenge = async () => {
-    try {
-      const { data } = await api.get("/security/login/challenge/");
-      setChallenge(data);
-      setChallengeError("");
-    } catch {
-      setChallenge(null);
-      setChallengeError("No fue posible cargar la suma. Intenta recargar la página.");
-    }
-  };
-  useEffect(() => {
-    refreshChallenge();
-  }, []);
+  const [challenge, setChallenge] = useState(() => ({
+    left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
+    right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
+  }));
+  const refreshChallenge = () => setChallenge({
+    left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
+    right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
+  });
   if (user) return <Navigate to="/dashboard" replace />;
   return (
     <div className="login-layout">
@@ -302,12 +295,13 @@ function Login({ onLogin, user }) {
               try {
                 await api.post("/security/login/", {
                   ...Object.fromEntries(f),
-                  challenge_id: challenge.id,
+                  challenge_left: challenge.left,
+                  challenge_right: challenge.right,
                 });
                 await onLogin();
               } catch (e) {
                 setError(errorText(e));
-                await refreshChallenge();
+                refreshChallenge();
               } finally {
                 setBusy(false);
               }
@@ -332,23 +326,21 @@ function Login({ onLogin, user }) {
               />
             </label>
             <label>
-              Verificación: ¿cuánto es {challenge?.question || "…"}?
+              Verificación: ¿cuánto es {challenge.left} + {challenge.right}?
               <input
                 name="challenge_answer"
                 type="number"
                 inputMode="numeric"
                 required
-                disabled={!challenge}
                 aria-label="Resultado de la suma"
               />
             </label>
-            {challengeError && <p role="alert" className="notice">{challengeError}</p>}
             {error && (
               <p role="alert" className="notice">
                 {error}
               </p>
             )}
-            <button className="primary" disabled={busy || !challenge}>
+            <button className="primary" disabled={busy}>
               {busy ? "Ingresando…" : "Iniciar sesión"}
               <ArrowRight size={16} />
             </button>
@@ -1106,10 +1098,19 @@ function Shell() {
     return r.data;
   }
   useEffect(() => {
+    if (loc.pathname === "/" || loc.pathname === "/login") {
+      setLoading(false);
+      return;
+    }
+    if (user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     refresh()
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, []);
+  }, [loc.pathname, user]);
   useEffect(() => {
     const update = () => refresh().catch(() => setUser(null));
     window.addEventListener("kaillisto:permissions", update);
