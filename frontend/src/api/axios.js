@@ -1,6 +1,17 @@
 import axios from 'axios';
 
-const BASE = 'http://127.0.0.1:8000/api';
+// IMPORTANTE: debe usar el MISMO host que el frontend (localhost),
+// nunca 127.0.0.1. Para el navegador, "localhost" y "127.0.0.1" son
+// *sitios distintos* (cross-site), así que con SESSION_COOKIE_SAMESITE
+// = 'Lax' la cookie sessionid que Django pone en 127.0.0.1 nunca se
+// envía en los XHR/fetch hechos desde una página servida en
+// http://localhost:5173. Esto provocaba: (1) document.cookie vacío en
+// el navegador (la cookie existe, pero para el dominio 127.0.0.1, no
+// localhost) y (2) 403 en /api/security/me/permissions/ y en todo lo
+// demás después del login, porque la cookie de sesión jamás llegaba
+// de vuelta al backend. El backend debe correr en
+// "python manage.py runserver localhost:8000" (no 127.0.0.1:8000).
+const BASE = 'http://localhost:8000/api';
 
 const api = axios.create({
     baseURL: BASE,

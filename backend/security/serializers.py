@@ -40,7 +40,7 @@ class UsuarioResumenSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['id', 'id_usuario', 'username', 'email', 'is_active', 'is_superuser', 'roles_activos']
+        fields = ['id_usuario', 'username', 'email', 'is_active', 'is_superuser', 'roles_activos']
 
     def get_roles_activos(self, obj):
         return list(

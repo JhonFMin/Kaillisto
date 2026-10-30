@@ -95,7 +95,7 @@ export default function Usuarios() {
                         >
                             <option value="">— Seleccionar —</option>
                             {usuarios.map(u => (
-                                <option key={u.id} value={u.id}>{u.username}</option>
+                                <option key={u.id_usuario} value={u.id_usuario}>{u.username}</option>
                             ))}
                         </select>
                     </div>
@@ -144,7 +144,7 @@ export default function Usuarios() {
                         {loading ? (
                             <tr><td colSpan="3" className="p-6 text-center text-slate-400">Cargando...</td></tr>
                         ) : usuarios.map((u) => (
-                            <tr key={u.id} className="hover:bg-slate-50">
+                            <tr key={u.id_usuario} className="hover:bg-slate-50">
                                 <td className="p-4 font-medium">
                                     {u.username}
                                     {u.is_superuser && (
@@ -160,7 +160,7 @@ export default function Usuarios() {
                                             <span key={r} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
                                                 {r}
                                                 <button
-                                                    onClick={() => quitarRol(u.id, r)}
+                                                    onClick={() => quitarRol(u.id_usuario, r)}
                                                     className="text-slate-400 hover:text-red-500 transition-colors"
                                                     title="Quitar rol"
                                                 >
