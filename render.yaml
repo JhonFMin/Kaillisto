@@ -3,7 +3,7 @@ services:
     name: kaillisto
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/csrf/
