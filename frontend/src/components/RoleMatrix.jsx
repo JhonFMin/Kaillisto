@@ -41,6 +41,35 @@ export default function RoleMatrix({ user }) {
     (r) => String(r.id) === selectedResource,
   );
   const dirty = roles.filter((r) => !same(r.permissions, draft[r.id] || []));
+  const rolePermissionIds = [
+    ...new Set(
+      (matrix?.resources || []).flatMap((item) =>
+        Object.values(item.permissions || {}).map((permission) => permission.id),
+      ),
+    ),
+  ];
+  const resourcePermissionIds = Object.values(resource?.permissions || {}).map(
+    (permission) => permission.id,
+  );
+  const bulkPermissionIds =
+    mode === "role" ? rolePermissionIds : resourcePermissionIds;
+  const bulkTargets =
+    mode === "role"
+      ? role
+        ? [{ id: role.id, permissions: draft[role.id] || [] }]
+        : []
+      : roles.map((item) => ({
+          id: item.id,
+          permissions: draft[item.id] || [],
+        }));
+  const bulkAllChecked =
+    bulkPermissionIds.length > 0 &&
+    bulkTargets.every((target) =>
+      bulkPermissionIds.every((id) => target.permissions.includes(id)),
+    );
+  const bulkNoneChecked = bulkTargets.every((target) =>
+    bulkPermissionIds.every((id) => !target.permissions.includes(id)),
+  );
   function toggle(roleId, ids, checked) {
     setSaved("");
     setDraft((current) => ({
@@ -50,18 +79,45 @@ export default function RoleMatrix({ user }) {
         : (current[roleId] || []).filter((id) => !ids.includes(id)),
     }));
   }
+  function setBulkPermissions(checked) {
+    setSaved("");
+    setDraft((current) => {
+      const next = { ...current };
+      bulkTargets.forEach(({ id }) => {
+        const currentIds = current[id] || [];
+        next[id] = checked
+          ? [...new Set([...currentIds, ...bulkPermissionIds])]
+          : currentIds.filter(
+              (permissionId) => !bulkPermissionIds.includes(permissionId),
+            );
+      });
+      return next;
+    });
+  }
   async function save() {
     setBusy(true);
     setError("");
     setSaved("");
     try {
-      for (const r of dirty) {
-        await api.patch(`/security/roles/${r.id}/`, {
-          permissions: draft[r.id],
-        });
-      }
+      await Promise.all(
+        dirty.map((r) =>
+          api.patch(`/security/roles/${r.id}/`, {
+            permissions: draft[r.id],
+          }),
+        ),
+      );
       await load();
       window.dispatchEvent(new Event("kaillisto:permissions"));
+      if ("BroadcastChannel" in window) {
+        const channel = new BroadcastChannel("kaillisto:permissions");
+        channel.postMessage("updated");
+        channel.close();
+      }
+      try {
+        localStorage.setItem("kaillisto:permissions-updated", String(Date.now()));
+      } catch {
+        // La pestaña actual y BroadcastChannel siguen sincronizados si el almacenamiento está bloqueado.
+      }
       setSaved(
         "Permisos guardados. El servidor aplica los cambios inmediatamente.",
       );
@@ -144,6 +200,23 @@ export default function RoleMatrix({ user }) {
               onClick={() => setMode("resource")}
             >
               Por recurso
+            </button>
+          </div>
+          <div
+            className="matrix-bulk-actions"
+            aria-label="Acciones masivas de permisos"
+          >
+            <button
+              disabled={busy || !bulkPermissionIds.length || bulkAllChecked}
+              onClick={() => setBulkPermissions(true)}
+            >
+              Marcar todo
+            </button>
+            <button
+              disabled={busy || !bulkPermissionIds.length || bulkNoneChecked}
+              onClick={() => setBulkPermissions(false)}
+            >
+              Desmarcar todo
             </button>
           </div>
           <label>

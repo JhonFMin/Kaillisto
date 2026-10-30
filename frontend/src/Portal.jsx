@@ -57,6 +57,14 @@ const catalogs = [
   "prioridades",
   "tipos-alerta",
 ];
+const catalogPermissions = {
+  "estados-instalacion": "view_estadoinstalacion",
+  "estados-orden": "view_estadoordentrabajo",
+  "tipos-medicion": "view_tipomedicion",
+  "estados-alerta": "view_estadoalerta",
+  prioridades: "view_prioridadalerta",
+  "tipos-alerta": "view_tipoalerta",
+};
 const nice = (key) =>
   ({
     id_usuario: "ID",
@@ -952,14 +960,15 @@ function Workspace({ user, onLogout }) {
     "/ficha-tecnica": "view_instalacion",
     "/consumos": "view_repuestoordentrabajo",
     "/mi-comunidad": "view_instalacion",
-    "/notificaciones": "view_alerta",
     "/tecnicos": "view_ordentrabajo",
   };
   const canOpen = (path) =>
     user.is_superuser ||
-    (path === "/notificaciones" && user.roles.includes("Líder Comunitario")
-      ? user.permisos.includes("view_alerta")
-      : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
+    (path === "/catalogos"
+      ? catalogs.some((kind) => user.permisos.includes(catalogPermissions[kind]))
+      : path === "/notificaciones" && user.roles.includes("Líder Comunitario")
+        ? user.permisos.includes("view_alerta")
+        : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
   const baseLinks = user.admin
     ? [
         ["/dashboard", "Resumen", LayoutDashboard],
@@ -1035,16 +1044,16 @@ function Workspace({ user, onLogout }) {
     ["/prioridades", "prioridades", "view_prioridadalerta"],
     ["/tipos-alerta", "tipos-alerta", "view_tipoalerta"],
   ];
-  const existingPaths = new Set(Object.keys(baseRoutes));
-  const existingKinds = new Set(Object.values(baseRoutes).map(([kind]) => kind));
-  const extras = user.admin
-    ? []
-    : resourceRoutes.filter(
-        ([path, kind, permission]) =>
-          !existingPaths.has(path) &&
-          !existingKinds.has(kind) &&
-          (user.is_superuser || user.permisos.includes(permission)),
-      );
+  const linkedPaths = new Set(baseLinks.map(([path]) => path));
+  const linkedKinds = new Set(
+    baseLinks.map(([path]) => baseRoutes[path]?.[0]).filter(Boolean),
+  );
+  const extras = resourceRoutes.filter(
+    ([path, kind, permission]) =>
+      !linkedPaths.has(path) &&
+      !linkedKinds.has(kind) &&
+      (user.is_superuser || user.permisos.includes(permission)),
+  );
   const links = [
     ...baseLinks,
     ...extras.map(([path, kind]) => [path, ...definitions[kind]]),
@@ -1146,7 +1155,7 @@ function Workspace({ user, onLogout }) {
                   }
                 />
               ))}
-            {user.admin && (
+            {user.admin && canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -1157,11 +1166,19 @@ function Workspace({ user, onLogout }) {
   );
 }
 function Catalogs({ user }) {
-  const [kind, setKind] = useState(catalogs[0]);
+  const availableCatalogs = catalogs.filter(
+    (item) => user.is_superuser || user.permisos.includes(catalogPermissions[item]),
+  );
+  const [kind, setKind] = useState(availableCatalogs[0] || catalogs[0]);
+  useEffect(() => {
+    if (!availableCatalogs.includes(kind) && availableCatalogs.length) {
+      setKind(availableCatalogs[0]);
+    }
+  }, [kind, availableCatalogs.join(",")]);
   return (
     <>
       <div className="tabs">
-        {catalogs.map((k) => (
+        {availableCatalogs.map((k) => (
           <button
             className={kind === k ? "active" : ""}
             key={k}
@@ -1171,7 +1188,11 @@ function Catalogs({ user }) {
           </button>
         ))}
       </div>
-      <Records key={kind} kind={kind} user={user} />
+      {availableCatalogs.length ? (
+        <Records key={kind} kind={kind} user={user} />
+      ) : (
+        <p className="notice">Tu rol no tiene acceso a estos catálogos.</p>
+      )}
     </>
   );
 }
@@ -1202,8 +1223,34 @@ function Shell() {
   }, [loc.pathname, user]);
   useEffect(() => {
     const update = () => refresh().catch(() => setUser(null));
+    const onStorage = (event) => {
+      if (event.key === "kaillisto:permissions-updated") update();
+    };
+    const onFocus = () => {
+      if (document.visibilityState === "visible") update();
+    };
+    let refreshTimer;
+    const scheduleUpdate = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(update, 150);
+    };
+    let channel;
+    if ("BroadcastChannel" in window) {
+      channel = new BroadcastChannel("kaillisto:permissions");
+      channel.addEventListener("message", update);
+    }
     window.addEventListener("kaillisto:permissions", update);
-    return () => window.removeEventListener("kaillisto:permissions", update);
+    window.addEventListener("focus", scheduleUpdate);
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("kaillisto:permissions", update);
+      window.removeEventListener("focus", scheduleUpdate);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onFocus);
+      window.clearTimeout(refreshTimer);
+      channel?.close();
+    };
   }, []);
   if (loading) return <div className="boot">Conectando con Ka’illisto…</div>;
   return (
