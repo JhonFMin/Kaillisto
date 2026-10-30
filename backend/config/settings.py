@@ -134,6 +134,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Vite versiona los recursos de producción en /assets/<nombre>-<hash>.<ext>.
+# WhiteNoise puede conservarlos en el navegador por un año: cada compilación
+# cambia el hash, así que una versión nueva obtiene otra URL sin invalidar la vieja.
+WHITENOISE_IMMUTABLE_FILE_TEST = r"^/assets/.+-[A-Za-z0-9_-]{8}\.[^/]+$"
 FRONTEND_DIST = BASE_DIR.parent / 'frontend' / 'dist'
 if FRONTEND_DIST.is_dir():
     WHITENOISE_ROOT = str(FRONTEND_DIST)
