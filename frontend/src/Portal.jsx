@@ -147,7 +147,7 @@ const relations = {
 function Brand() {
   return (
     <Link className="brand" to="/">
-      <Sun size={25} weight="duotone" />
+      <img className="brand-mark" src="/favicon.svg" alt="" aria-hidden="true" width="27" height="27" />
       <span>
         ka’illisto<span className="brand-dot">.</span>
       </span>
@@ -226,7 +226,7 @@ function Landing() {
                 Órdenes asignadas, diagnóstico y soluciones. Todo el contexto
                 que necesita un técnico en campo.
               </p>
-              <img className="feature-image" src="/solar-operations.jpg" alt="Técnico revisando un inversor solar" loading="lazy" />
+              <img className="feature-image" src="/solar-technician.jpg" alt="Técnico revisando el inversor de una instalación solar" loading="lazy" />
               <div className="steps">
                 {[
                   "01 / Asignar una orden",

@@ -123,6 +123,11 @@ small,
   font-weight: 600;
   letter-spacing: -1px;
 }
+.brand-mark {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+}
 .brand svg,
 .brand-dot {
   color: #cbb0f7;
@@ -232,6 +237,9 @@ small,
 }
 .quick-links .feature:nth-child(3n + 2) {
   background-image: linear-gradient(120deg, rgb(9 9 13 / 93%), rgb(9 9 13 / 64%)), url("/solar-operations.jpg");
+}
+.quick-links .feature:nth-child(3n) {
+  background-image: linear-gradient(120deg, rgb(9 9 13 / 93%), rgb(9 9 13 / 64%)), url("/solar-dawn.jpg");
 }
 .territory {
   overflow: hidden;
@@ -492,7 +500,11 @@ footer > a:last-child {
 }
 .login-story {
   padding: 48px 60px;
-  background: rgb(18 19 18 / 92%);
+  background-image:
+    linear-gradient(180deg, rgb(8 8 12 / 38%), rgb(8 8 12 / 68%)),
+    url("/solar-login.jpg");
+  background-size: cover;
+  background-position: center;
   border-right: 1px solid #333;
   display: flex;
   flex-direction: column;
@@ -512,6 +524,11 @@ footer > a:last-child {
   flex-direction: column;
   justify-content: center;
   position: relative;
+  background-image:
+    linear-gradient(145deg, rgb(7 7 11 / 95%) 0%, rgb(7 7 11 / 91%) 62%, rgb(7 7 11 / 82%) 100%),
+    url("/solar-dawn.jpg");
+  background-size: cover;
+  background-position: center;
 }
 .login-form > div {
   width: 100%;
@@ -951,10 +968,21 @@ tr:hover td {
     align-items: flex-start;
   }
   .login-story {
+    display: flex;
+    min-height: 275px;
+    padding: 24px;
+    gap: 24px;
+    background-position: 70% center;
+  }
+  .login-story h1 {
+    max-width: 540px;
+    font-size: clamp(30px, 8vw, 42px);
+  }
+  .login-story > .muted {
     display: none;
   }
   .login-form {
-    min-height: 100vh;
+    min-height: calc(100vh - 275px);
     padding: 30px;
   }
   .sidebar {
@@ -1012,6 +1040,37 @@ tr:hover td {
   .landing main {
     padding: 0 20px;
   }
+}
+
+/* Fotografías locales comprimidas para dar contexto visual sin servicios externos. */
+.workspace {
+  background-color: #09090d;
+  background-image:
+    linear-gradient(125deg, rgb(9 9 13 / 96%), rgb(9 9 13 / 90%)),
+    url("/solar-dawn.jpg");
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+.quick-links .feature:nth-child(3n + 1),
+.quick-links .feature:nth-child(3n + 2),
+.quick-links .feature:nth-child(3n) {
+  background-size: cover;
+  background-position: center;
+}
+.quick-links .feature:nth-child(3n + 1) {
+  background-image: linear-gradient(120deg, rgb(9 9 13 / 92%), rgb(9 9 13 / 70%)), url("/solar-home.jpg");
+}
+.quick-links .feature:nth-child(3n + 2) {
+  background-image: linear-gradient(120deg, rgb(9 9 13 / 92%), rgb(9 9 13 / 70%)), url("/solar-technician.jpg");
+}
+.quick-links .feature:nth-child(3n) {
+  background-image: linear-gradient(120deg, rgb(9 9 13 / 92%), rgb(9 9 13 / 70%)), url("/solar-dawn.jpg");
+}
+.territory {
+  background-image: linear-gradient(95deg, rgb(10 10 14 / 91%), rgb(10 10 14 / 58%)), url("/solar-dawn.jpg");
+  background-size: cover;
+  background-position: center 58%;
 }
 
 /* Ka’illisto: midnight terminal theme with restrained violet highlights. */
@@ -1143,7 +1202,11 @@ footer,
   background-image: radial-gradient(ellipse at 75% 45%, rgb(175 80 255 / 9%), transparent 38%);
 }
 .login-story {
-  background: rgb(247 249 250 / 2%);
+  background-image:
+    linear-gradient(180deg, rgb(8 8 12 / 38%), rgb(8 8 12 / 68%)),
+    url("/solar-login.jpg");
+  background-size: cover;
+  background-position: center;
   border-color: rgb(247 249 250 / 13%);
 }
 .workspace {
@@ -1440,7 +1503,7 @@ body,
   border-radius: inherit;
   background-image:
     linear-gradient(90deg, rgb(4 5 8 / 86%) 0%, rgb(4 5 8 / 53%) 58%, rgb(4 5 8 / 29%) 100%),
-    url("/solar-home.jpg");
+    url("/solar-login.jpg");
   background-position: center, center 56%;
   background-size: cover;
   mask-image: none;
