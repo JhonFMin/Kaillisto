@@ -3,6 +3,16 @@
 from django.db import migrations, models
 
 
+def completar_datos_residenciales_existentes(apps, schema_editor):
+    Instalacion = apps.get_model('core', 'Instalacion')
+    Instalacion.objects.filter(tipo='residencial').filter(
+        models.Q(direccion='') | models.Q(direccion__isnull=True)
+    ).update(direccion='Dirección pendiente de actualizar')
+    Instalacion.objects.filter(tipo='residencial').filter(
+        models.Q(barrio='') | models.Q(barrio__isnull=True)
+    ).update(barrio='Sector pendiente de actualizar')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,6 +24,7 @@ class Migration(migrations.Migration):
             model_name='instalacion',
             name='instalacion_scope_has_owner_or_community',
         ),
+        migrations.RunPython(completar_datos_residenciales_existentes, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name='instalacion',
             constraint=models.CheckConstraint(condition=models.Q(models.Q(('comunidad__isnull', False), ('tipo', 'comunitaria')), models.Q(('barrio__gt', ''), ('direccion__gt', ''), ('responsable__isnull', False), ('tipo', 'residencial')), _connector='OR'), name='instalacion_scope_has_owner_or_community'),
