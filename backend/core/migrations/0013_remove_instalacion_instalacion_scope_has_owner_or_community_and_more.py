@@ -20,13 +20,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name='instalacion',
-            name='instalacion_scope_has_owner_or_community',
-        ),
         migrations.RunPython(completar_datos_residenciales_existentes, migrations.RunPython.noop),
-        migrations.AddConstraint(
-            model_name='instalacion',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('comunidad__isnull', False), ('tipo', 'comunitaria')), models.Q(('barrio__gt', ''), ('direccion__gt', ''), ('responsable__isnull', False), ('tipo', 'residencial')), _connector='OR'), name='instalacion_scope_has_owner_or_community'),
-        ),
     ]
