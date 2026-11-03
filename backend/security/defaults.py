@@ -29,6 +29,18 @@ ROLE_PERMISSION_PRESETS = {
         "ordentrabajo": ("view",),
         "notificacion": ("view",),
     },
+    "Propietario Solar": {
+        "instalacion": ("view",),
+        "dispositivo": ("view",),
+        "alerta": ("view",),
+        "notificacion": ("view",),
+    },
+}
+
+# Operational actions are separate from generic CRUD permissions so a role
+# can update an order without automatically receiving authority to close it.
+ROLE_EXTRA_PERMISSION_PRESETS = {
+    "Técnico de Campo": ("close_ordentrabajo",),
 }
 
 
@@ -48,6 +60,7 @@ def default_permissions(role_name):
         for model, actions in preset.items()
         for action in actions
     ]
+    codenames.extend(ROLE_EXTRA_PERMISSION_PRESETS.get(role_name, ()))
     return Permission.objects.filter(
         content_type__rbac_resource__is_active=True,
         content_type__app_label="core",

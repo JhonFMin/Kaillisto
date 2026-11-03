@@ -5,6 +5,7 @@ import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
 import { ShieldIcon as Shield } from "@phosphor-icons/react/dist/csr/Shield";
 import { XIcon as X } from "@phosphor-icons/react/dist/csr/X";
 import { ArrowCounterClockwiseIcon as Reset } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
+import { InfoIcon as Info } from "@phosphor-icons/react/dist/csr/Info";
 import api from "../api/axios";
 
 const message = (e) =>
@@ -23,6 +24,7 @@ export default function RoleMatrix({ user }) {
     [error, setError] = useState(""),
     [saved, setSaved] = useState(""),
     [creating, setCreating] = useState(false);
+  const [showDefaultInfo, setShowDefaultInfo] = useState(false);
   const canManageRoles =
     user.is_superuser || user.permisos.includes("change_role");
   const canCreateRoles =
@@ -56,7 +58,7 @@ export default function RoleMatrix({ user }) {
       const actions = matrix.actions
         .filter((action) => roleDefaultSet.has(item.permissions?.[action.code]?.code))
         .map((action) => action.label.toLowerCase());
-      return actions.length ? `${item.name} (${actions.join(", ")})` : null;
+      return actions.length ? { name: item.name, actions } : null;
     })
     .filter(Boolean);
   const dirty = roles.filter((r) => !same(r.permissions, draft[r.id] || []));
@@ -217,20 +219,18 @@ export default function RoleMatrix({ user }) {
         </div>
         <div className="actions">
           {mode === "role" && (
-            <button
-              disabled={
-                busy || dirty.length > 0 || !roleDefaultCodes || !canManageRoles
-              }
-              title={
-                roleDefaultCodes
-                  ? "Reemplaza los permisos de este rol por sus valores iniciales"
-                  : "Los roles personalizados no tienen permisos predeterminados"
-              }
-              onClick={restoreDefaults}
-            >
-              <Reset size={16} />
-              Restablecer predeterminados
-            </button>
+            <>
+              <button type="button" onClick={() => setShowDefaultInfo(true)}>
+                <Info size={16} /> Valores iniciales
+              </button>
+              <button
+                disabled={busy || dirty.length > 0 || !roleDefaultCodes || !canManageRoles}
+                title={roleDefaultCodes ? "Reemplaza los permisos por los valores iniciales" : "Este rol no tiene valores iniciales"}
+                onClick={restoreDefaults}
+              >
+                <Reset size={16} /> Restablecer
+              </button>
+            </>
           )}
           <button
             disabled={busy || dirty.length > 0 || !canCreateRoles}
@@ -250,18 +250,16 @@ export default function RoleMatrix({ user }) {
           </button>
         </div>
       </div>
-        {mode === "role" && role && (
-          <div className="role-defaults" aria-live="polite">
-            <strong>
-              {roleDefaultCodes ? "Permisos predeterminados:" : "Sin predeterminados:"}
-            </strong>
-            <span>
-              {roleDefaultCodes
-                ? defaultResources.join(" · ") || "Sin recursos activos asignados"
-                : "Este rol personalizado conserva su configuración propia."}
-            </span>
-          </div>
-        )}
+      {showDefaultInfo && role && (
+        <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowDefaultInfo(false)}>
+          <section className="modal defaults-modal" role="dialog" aria-modal="true" aria-labelledby="defaults-title">
+            <header><div><span className="eyebrow">CONFIGURACIÓN INICIAL</span><h2 id="defaults-title">Permisos de {role.name}</h2></div><button className="icon-button" aria-label="Cerrar" onClick={() => setShowDefaultInfo(false)}><X size={18} /></button></header>
+            <p>Estos son los accesos con los que empieza este rol. Puedes modificarlos en la matriz o restaurarlos cuando quieras.</p>
+            {roleDefaultCodes ? defaultResources.length ? <ul className="defaults-list">{defaultResources.map((item) => <li key={item.name}><strong>{item.name}</strong><span>{item.actions.join(" · ")}</span></li>)}</ul> : <p>Este rol empieza sin permisos asignados.</p> : <p>Los roles creados por el equipo no tienen una plantilla inicial. Sus permisos actuales se conservan hasta que los edites.</p>}
+            <footer><button className="primary" onClick={() => setShowDefaultInfo(false)}>Entendido</button></footer>
+          </section>
+        </div>
+      )}
       {error && (
         <p role="alert" className="notice">
           {error}

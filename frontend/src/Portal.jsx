@@ -28,6 +28,10 @@ import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
 import { XIcon as X } from "@phosphor-icons/react/dist/csr/X";
 import { MagnifyingGlassIcon as Search } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { ListIcon as Menu } from "@phosphor-icons/react/dist/csr/List";
+import { ClipboardTextIcon as ClipboardText } from "@phosphor-icons/react/dist/csr/ClipboardText";
+import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/UserCircle";
+import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
 import api from "./api/axios";
 
 const definitions = {
@@ -77,6 +81,8 @@ const nice = (key) =>
     roles_detail: "Roles",
     solucion_aplicada: "Solución aplicada",
     api_key: "Clave del dispositivo (mínimo 32 caracteres)",
+    responsable: "Responsable de la vivienda",
+    tipo: "Tipo de instalación",
   })[key] || key.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 const errorText = (e) =>
   typeof e.response?.data === "object"
@@ -124,6 +130,7 @@ const labelOf = (row) =>
   `#${idOf(row)}`;
 const relations = {
   comunidad: "comunidades",
+  responsable: "usuarios",
   instalacion: "instalaciones",
   tipo_medicion: "tipos-medicion",
   tipo_alerta: "tipos-alerta",
@@ -151,7 +158,7 @@ function Landing() {
         <Brand />
         <nav>
           <a href="#plataforma">Plataforma</a>
-          <a href="#comunidades">Comunidades energéticas</a>
+          <a href="#comunidades">Hogares y comunidades</a>
         </nav>
         <Link className="button" to="/login">
           Iniciar sesión <ArrowUpRight size={15} />
@@ -160,18 +167,17 @@ function Landing() {
       <main>
         <section className="hero">
           <span className="tag">
-            <span className="signal" /> Energía que conecta comunidades
+            <span className="signal" /> Sistemas solares para cada escala
           </span>
           <h1>
-            La energía del sol.
+            Sol que llega a cada techo.
             <br />
-            <span>El futuro de La Guajira.</span>
+            <span>Energía que une territorios.</span>
           </h1>
           <p>
-            Una plataforma para acompañar la infraestructura solar rural.
+            Gestiona paneles solares en viviendas y proyectos comunitarios.
             <br />
-            Monitoreo conectado, mantenimiento coordinado y comunidades
-            informadas.
+            Reúne operación, alertas y mantenimiento en un solo espacio.
           </p>
           <Link className="button primary" to="/login">
             Entrar a la plataforma <ArrowRight size={16} />
@@ -197,8 +203,7 @@ function Landing() {
               <Radio weight="duotone" />
               <h3>Infraestructura conectada</h3>
               <p>
-                Instalaciones y dispositivos organizados por comunidad. Una base
-                clara para el monitoreo de energía.
+                Cada instalación se vincula a una comunidad o a quien responde por una vivienda.
               </p>
               <div className="solar-grid" aria-hidden="true">
                 {Array.from({ length: 24 }, (_, i) => (
@@ -239,9 +244,9 @@ function Landing() {
         <section id="comunidades" className="community-section">
           <span className="eyebrow">HECHO PARA EL TERRITORIO</span>
           <h2>
-            Tecnología al servicio
+            Herramientas para cada
             <br />
-            de la comunidad.
+            forma de energía solar.
           </h2>
           <div className="three-grid">
             {[
@@ -257,8 +262,13 @@ function Landing() {
               ],
               [
                 MapPin,
-                "Líderes comunitarios",
-                "Conoce el estado y las alertas de tu comunidad.",
+                "Hogares solares",
+                "Da seguimiento a los paneles y equipos asociados a cada vivienda.",
+              ],
+              [
+                MapPin,
+                "Proyectos comunitarios",
+                "Consulta instalaciones, novedades y tareas de mantenimiento por comunidad.",
               ],
             ].map(([Icon, t, d]) => (
               <article key={t}>
@@ -272,7 +282,7 @@ function Landing() {
       </main>
       <footer>
         <Brand />
-        <span>La Guajira, Colombia · Energía para seguir adelante.</span>
+        <span>Gestión solar para hogares y comunidades · Colombia.</span>
         <Link to="/login">Acceso a la plataforma ↗</Link>
       </footer>
     </div>
@@ -295,15 +305,15 @@ function Login({ onLogin, user }) {
       <div className="login-story">
         <Brand />
         <div>
-          <span className="eyebrow">CONECTAMOS ENERGÍA Y TERRITORIO</span>
+          <span className="eyebrow">GESTIÓN SOLAR PARA CADA ESPACIO</span>
           <h1>
-            Cada instalación.
+            Cada techo.
             <br />
-            Cada comunidad.
+            Cada proyecto.
             <br />
-            <span>Un mismo futuro.</span>
+            <span>Una red más clara.</span>
           </h1>
-          <p>El espacio de trabajo de la energía solar rural en La Guajira.</p>
+          <p>Herramientas para cuidar los sistemas solares de hogares y comunidades.</p>
         </div>
         <span className="muted">Ka’illisto / Plataforma de gestión solar</span>
       </div>
@@ -587,6 +597,7 @@ function Records({ kind, user, title, readonly = false }) {
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
     [editing, setEditing] = useState(null),
+    [compareDevice, setCompareDevice] = useState(null),
     [search, setSearch] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
   const permissionModel = permissionModelByKind[kind];
@@ -707,7 +718,7 @@ function Records({ kind, user, title, readonly = false }) {
                   {columns.map((k) => (
                     <th key={k}>{nice(k)}</th>
                   ))}
-                  {canEdit && <th>Acciones</th>}
+                  {(canEdit || kind === "dispositivos") && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -724,11 +735,14 @@ function Records({ kind, user, title, readonly = false }) {
                       {columns.map((k) => (
                         <td key={k}>{display(k, row[k], row)}</td>
                       ))}
-                      {canEdit && (
+                      {(canEdit || kind === "dispositivos") && (
                         <td className="row-actions">
-                          <button disabled={schemaLoading} onClick={() => openEditor(row)}>
-                            Editar
-                          </button>
+                          {kind === "dispositivos" && (
+                            <button onClick={() => setCompareDevice(row)}>
+                              <ChartLine size={15} /> Comparar lecturas
+                            </button>
+                          )}
+                          {canEdit && <button disabled={schemaLoading} onClick={() => openEditor(row)}>Editar</button>}
                           {kind === "usuarios" &&
                             user.is_superuser &&
                             (idOf(row) !== user.id || row.is_superuser) && (
@@ -787,6 +801,7 @@ function Records({ kind, user, title, readonly = false }) {
           </div>
         )}
       </section>
+      {compareDevice && <DeviceComparison device={compareDevice} onClose={() => setCompareDevice(null)} />}
           {editing && (
         <Editor
           key={`${kind}-${idOf(editing) || "new"}`}
@@ -814,6 +829,28 @@ function Records({ kind, user, title, readonly = false }) {
     </>
   );
 }
+function DeviceComparison({ device, onClose }) {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    api.get(`/security/portal/dispositivos/${idOf(device)}/comparativa/`)
+      .then(({ data }) => { if (active) setReport(data); })
+      .catch((e) => { if (active) setError(errorText(e)); });
+    return () => { active = false; };
+  }, [device]);
+  const formatted = (value) => value == null ? "—" : new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value));
+  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="modal device-comparison" role="dialog" aria-modal="true" aria-labelledby="device-comparison-title">
+      <header><div><span className="eyebrow">TELEMETRÍA / ESP32</span><h2 id="device-comparison-title">Lecturas frente a umbrales</h2></div><button className="icon-button" aria-label="Cerrar" onClick={onClose}><X size={18} /></button></header>
+      {report ? <>
+        <div className="device-summary"><strong>{report.dispositivo}</strong><span>{report.modelo}</span><span>{report.instalacion}</span><small>Último contacto: {report.ultima_comunicacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.ultima_comunicacion)) : "sin registro"}</small></div>
+        {report.mediciones.length ? <div className="table-scroll"><table className="comparison-table"><thead><tr><th>Medida</th><th>Última lectura</th><th>Mínimo</th><th>Máximo</th><th>Evaluación</th><th>Fecha</th></tr></thead><tbody>{report.mediciones.map((row) => <tr key={row.tipo_medicion}><td><strong>{row.tipo_medicion}</strong><small>{row.unidad}</small></td><td>{formatted(row.valor)} {row.valor == null ? "" : row.unidad}</td><td>{formatted(row.minimo)}</td><td>{formatted(row.maximo)}</td><td><span className={`reading-state ${row.estado.toLowerCase().replaceAll(" ", "-")}`}>{row.estado}</span></td><td>{row.fecha_hora ? new Intl.DateTimeFormat("es-CO", { dateStyle: "short", timeStyle: "short" }).format(new Date(row.fecha_hora)) : "Sin lecturas"}</td></tr>)}</tbody></table></div> : <p className="empty">Este dispositivo aún no tiene mediciones ni umbrales configurados.</p>}
+      </> : error ? <p role="alert" className="notice">{error}</p> : <p className="empty">Consultando las últimas mediciones…</p>}
+      <footer><button onClick={onClose}>Cerrar</button></footer>
+    </section>
+  </div>;
+}
 function Dashboard({ user }) {
   const [stats, setStats] = useState(null),
     [error, setError] = useState("");
@@ -827,12 +864,12 @@ function Dashboard({ user }) {
       <div className="page-heading">
         <div>
           <span className="eyebrow">TU RED DE ENERGÍA</span>
-          <h1>Todo comienza con una buena conexión.</h1>
+          <h1>La energía, bajo control.</h1>
           <p>
             Hola, {user.username}. Este es el estado de tu espacio de trabajo.
           </p>
         </div>
-        <span className="tag">LA GUAJIRA / COLOMBIA</span>
+        <span className="tag">HOGARES Y COMUNIDADES / COLOMBIA</span>
       </div>
       {error && <p className="notice">{error}</p>}
       <div className="stat-grid">
@@ -914,10 +951,17 @@ function Dashboard({ user }) {
     </>
   );
 }
-function Workspace({ user, onLogout }) {
+function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event) => event.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
   const tech = user.roles.includes("Técnico de Campo");
   const routePermissions = {
     "/comunidades": "view_comunidad",
@@ -1035,27 +1079,62 @@ function Workspace({ user, onLogout }) {
   const links = [
     ...baseLinks,
     ...extras.map(([path, kind]) => [path, ...definitions[kind]]),
+    ["/perfil", "Mi perfil", UserCircle],
+    ...(user.admin ? [["/auditoria", "Auditoría de seguridad", ClipboardText]] : []),
   ];
   const routes = {
     ...baseRoutes,
     ...Object.fromEntries(extras.map(([path, kind]) => [path, [kind]])),
   };
+  const groups = [
+    { id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", "/mis-casos", "/mi-comunidad", "/mi-alertas", "/ficha-tecnica", "/tecnicos"] },
+    { id: "security", label: "Seguridad", Icon: Shield, paths: ["/usuarios", "/roles", "/auditoria"] },
+    { id: "energy", label: "Red energética", Icon: MapPin, paths: ["/comunidades", "/instalaciones", "/dispositivos", "/umbrales"] },
+    { id: "operations", label: "Operación y mantenimiento", Icon: Wrench, paths: ["/alertas", "/mantenimiento", "/repuestos", "/consumos", "/notificaciones"] },
+    { id: "configuration", label: "Administración", Icon: Layers, paths: ["/catalogos", "/estados-instalacion", "/estados-orden", "/tipos-medicion", "/estados-alerta", "/prioridades", "/tipos-alerta"] },
+  ].map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) })).filter((group) => group.items.length);
   return (
     <div className="workspace">
       <aside className={open ? "sidebar open" : "sidebar"}>
-        <Brand />
+        <div className="sidebar-brand-row"><Brand /><button className="sidebar-close icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={18} /></button></div>
         <div className="workspace-label">
           PLATAFORMA SOLAR <span>01</span>
         </div>
-        <nav aria-label="Navegación principal">
-          {links
-            .filter(([path]) => canOpen(path))
-            .map(([path, label, Icon]) => (
-              <NavLink key={path} to={path}>
-                <Icon size={18} weight="duotone" />
-                {label}
-              </NavLink>
-            ))}
+        <nav aria-label="Navegación principal" className="sidebar-groups">
+          {groups.map((group) => {
+            const visibleItems = group.items.filter(([path]) => canOpen(path));
+            if (!visibleItems.length) return null;
+            const expanded = openGroups.has(group.id) || group.items.some(([path]) => path === loc.pathname);
+            return (
+              <section className={`nav-group${expanded ? " expanded" : ""}`} key={group.id}>
+                <button
+                  className="nav-group-toggle"
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() => setOpenGroups((current) => {
+                    const next = new Set(current);
+                    next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                    return next;
+                  })}
+                >
+                  <group.Icon size={15} />
+                  <span>{group.label}</span>
+                  <small>{visibleItems.length}</small>
+                  <CaretDown size={14} />
+                </button>
+                {expanded && (
+                  <div className="nav-group-items">
+                    {visibleItems.map(([path, label, Icon]) => (
+                      <NavLink key={path} to={path}>
+                        <Icon size={17} weight="regular" />
+                        <span>{label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           {user.is_staff && (
@@ -1077,17 +1156,22 @@ function Workspace({ user, onLogout }) {
               </small>
             </div>
           </div>
+          <Link className="profile-settings" to="/perfil">
+            <UserCircle size={16} /> Configurar mi perfil
+          </Link>
           <button onClick={onLogout}>
             <LogOut size={16} />
             Cerrar sesión
           </button>
         </div>
       </aside>
+      {open && <button className="sidebar-scrim" aria-label="Cerrar menú de navegación" onClick={() => setOpen(false)} />}
       <div className="workspace-body">
         <header className="workspace-header">
           <button
             className="mobile-menu icon-button"
-            aria-label="Abrir menú"
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
             <Menu />
@@ -1136,11 +1220,69 @@ function Workspace({ user, onLogout }) {
             {canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
+            {user.admin && <Route path="/auditoria" element={<SecurityAudit />} />}
+            <Route path="/perfil" element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
       </div>
     </div>
+  );
+}
+function SecurityAudit() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    api.get("/security/audit/")
+      .then(({ data }) => { if (active) setEvents(data); })
+      .catch((e) => { if (active) setError(errorText(e)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  const actionNames = {
+    "role.created": "Rol creado",
+    "role.updated": "Rol o permisos modificados",
+    "role.deactivated": "Rol desactivado",
+    "role.defaults_restored": "Permisos predeterminados restaurados",
+    "user_role.assigned": "Rol asignado",
+    "user_role.revoked": "Rol retirado",
+    "account.created": "Cuenta creada",
+    "account.updated": "Cuenta modificada",
+    "account.profile_updated": "Perfil personal actualizado",
+    "account.superadmin_changed": "Acceso superadministrador cambiado",
+    "work_order.closed": "Orden de trabajo cerrada",
+  };
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">SEGURIDAD / TRAZABILIDAD</span>
+          <h1>Auditoría de seguridad</h1>
+          <p>Últimos 200 cambios de roles, permisos y cuentas.</p>
+        </div>
+      </div>
+      {error && <p role="alert" className="notice">{error}</p>}
+      <section className="data-panel">
+        {loading ? <p className="empty">Cargando historial…</p> : events.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Objetivo</th><th>Cambios</th></tr></thead>
+              <tbody>{events.map((event) => (
+                <tr key={event.id}>
+                  <td>{new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at))}</td>
+                  <td>{event.actor}</td>
+                  <td>{actionNames[event.action] || event.action}</td>
+                  <td>{event.target_label || `${event.target_type} #${event.target_id}`}</td>
+                  <td><details><summary>Ver detalle</summary><pre className="audit-json">{JSON.stringify(event.changes, null, 2)}</pre>{event.reason && <small>Motivo: {event.reason}</small>}</details></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        ) : <p className="empty">Aún no hay cambios de seguridad registrados.</p>}
+      </section>
+    </>
   );
 }
 function Catalogs({ user }) {
@@ -1255,6 +1397,7 @@ function Shell() {
       ) : user ? (
         <Workspace
           user={user}
+          onProfileUpdated={refresh}
           onLogout={async () => {
             try {
               await api.post("/cerrar_sesion/");
@@ -1270,6 +1413,54 @@ function Shell() {
       )}
     </>
   );
+}
+
+function ProfileSettings({ onProfileUpdated }) {
+  const [profile, setProfile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    api.get("/security/profile/").then(({ data }) => setProfile(data)).catch((e) => setError(errorText(e)));
+  }, []);
+  if (!profile) return <p className="empty">{error || "Cargando tus datos…"}</p>;
+  return <>
+    <div className="page-heading"><div><span className="eyebrow">CUENTA / DATOS PERSONALES</span><h1>Mi perfil</h1><p>Actualiza cómo te identificamos y, si quieres, cambia tu contraseña.</p></div></div>
+    {error && <p role="alert" className="notice">{error}</p>}
+    {saved && <p role="status" className="notice">Tus datos quedaron actualizados.</p>}
+    <section className="data-panel profile-panel">
+      <form onSubmit={async (event) => {
+        event.preventDefault(); setBusy(true); setError(""); setSaved(false);
+        const formElement = event.currentTarget;
+        const form = new FormData(formElement);
+        const values = Object.fromEntries(form);
+        if (!values.current_password) delete values.current_password;
+        if (!values.new_password) delete values.new_password;
+        try {
+          const { data } = await api.patch("/security/profile/", values);
+          setProfile(data); formElement.reset();
+          ["first_name", "last_name", "email", "telefono", "documento"].forEach((name) => {
+            const field = formElement.elements.namedItem(name);
+            if (field) field.value = data[name] || "";
+          });
+          setSaved(true); await onProfileUpdated?.();
+        } catch (e) { setError(errorText(e)); }
+        finally { setBusy(false); }
+      }}>
+        <label>Usuario<input value={profile.username} readOnly /></label>
+        <label>Nombre<input name="first_name" defaultValue={profile.first_name} autoComplete="given-name" /></label>
+        <label>Apellido<input name="last_name" defaultValue={profile.last_name} autoComplete="family-name" /></label>
+        <label>Correo electrónico<input name="email" type="email" defaultValue={profile.email} autoComplete="email" /></label>
+        <label>Teléfono<input name="telefono" defaultValue={profile.telefono} autoComplete="tel" /></label>
+        <label>Documento<input name="documento" defaultValue={profile.documento || ""} /></label>
+        <div className="profile-password"><h2>Cambiar contraseña</h2><p>Deja estos campos vacíos si no necesitas cambiarla.</p>
+          <label>Contraseña actual<input name="current_password" type="password" autoComplete="current-password" /></label>
+          <label>Nueva contraseña<input name="new_password" type="password" autoComplete="new-password" /></label>
+        </div>
+        <button className="primary" disabled={busy}>{busy ? "Guardando…" : "Guardar cambios"}</button>
+      </form>
+    </section>
+  </>;
 }
 export default function Portal() {
   return (

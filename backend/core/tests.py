@@ -38,6 +38,7 @@ PERMISOS_BASE_POR_ROL = {
     "Técnico de Campo": [
         "view_instalacion", "view_dispositivo", "view_umbral",
         "view_ordentrabajo", "change_ordentrabajo",
+        "close_ordentrabajo",
         "view_repuesto", "add_repuestoordentrabajo", "change_repuestoordentrabajo",
         "view_alerta",
     ],
@@ -214,9 +215,9 @@ class FlujoOrdenTrabajoTests(APITestCase):
         _asignar_rol_seguridad(self.tecnico, "Técnico de Campo")
         _asignar_rol_seguridad(self.otro_tecnico, "Técnico de Campo")
 
-        self.pendiente = EstadoOrdenTrabajo.objects.create(nombre="Pendiente")
-        self.en_proceso = EstadoOrdenTrabajo.objects.create(nombre="En proceso")
-        self.cerrada = EstadoOrdenTrabajo.objects.create(nombre="Cerrada")
+        self.pendiente, _ = EstadoOrdenTrabajo.objects.get_or_create(nombre="Pendiente")
+        self.en_proceso, _ = EstadoOrdenTrabajo.objects.get_or_create(nombre="En proceso")
+        self.cerrada, _ = EstadoOrdenTrabajo.objects.get_or_create(nombre="Cerrada")
 
         self.orden = OrdenTrabajo.objects.create(
             instalacion=self.instalacion,
@@ -234,7 +235,7 @@ class FlujoOrdenTrabajoTests(APITestCase):
             self.url, {"estado": self.en_proceso.pk}, format="json"
         )
 
-        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK, respuesta.data)
         self.orden.refresh_from_db()
         self.assertIsNotNone(self.orden.fecha_atencion)
         self.assertIsNone(self.orden.fecha_cierre)
@@ -250,13 +251,12 @@ class FlujoOrdenTrabajoTests(APITestCase):
             self.url, {"estado": self.cerrada.pk}, format="json"
         )
 
-        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(respuesta.status_code, status.HTTP_200_OK, respuesta.data)
         self.orden.refresh_from_db()
         self.assertIsNotNone(self.orden.fecha_cierre)
         self.assertEqual(
             Evento.objects.filter(tipo="Orden cerrada").count(), 1
         )
-
     def test_tecnico_no_puede_modificar_orden_ajena(self):
         self.client.force_authenticate(user=self.otro_tecnico)
 

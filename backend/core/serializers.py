@@ -30,7 +30,9 @@ class InstalacionSerializer(serializers.ModelSerializer):
         model = Instalacion
         fields = [
             "id_instalacion",
+            "tipo",
             "comunidad",
+            "responsable",
             "nombre",
             "ubicacion",
             "capacidad",
@@ -38,6 +40,19 @@ class InstalacionSerializer(serializers.ModelSerializer):
             "estado_instalacion",
         ]
         read_only_fields = ["id_instalacion"]
+
+    def validate(self, attrs):
+        instance = self.instance
+        kind = attrs.get("tipo", getattr(instance, "tipo", Instalacion.Tipo.COMUNITARIA))
+        community = attrs.get("comunidad", getattr(instance, "comunidad", None))
+        owner = attrs.get("responsable", getattr(instance, "responsable", None))
+        if kind == Instalacion.Tipo.COMUNITARIA and community is None:
+            raise serializers.ValidationError({"comunidad": "Selecciona la comunidad a la que pertenece la instalación."})
+        if kind == Instalacion.Tipo.RESIDENCIAL and owner is None:
+            raise serializers.ValidationError({"responsable": "Selecciona el usuario responsable de la vivienda."})
+        if owner is not None and not owner.is_active:
+            raise serializers.ValidationError({"responsable": "El responsable debe tener una cuenta activa."})
+        return attrs
 
     def validate_capacidad(self, value):
         if value <= 0:

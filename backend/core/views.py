@@ -6,10 +6,12 @@ from .models import Dispositivo
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
+from django.db import transaction
 from .models import OrdenTrabajo
 from .serializers import OrdenTrabajoSerializer
 from security.permissions import IsAdminRole, HasRole, ReadOnlyOrManager, HasPermission
-from security.models import has_effective_role
+from security.models import has_effective_role, get_effective_permissions
+from security.audit import audit_security_change
 from security.permissions import IsAdminRole, HasRole, ReadOnlyOrManager, HasPermission, TienePermisoAsignado
 from .models import (
     Alerta,
@@ -72,13 +74,19 @@ def _verificar_acceso_instalacion(usuario, instalacion):
     Líder Comunitario: solo instalaciones de su propia comunidad.
     Cualquier otro caso: 403.
     """
-    if has_effective_role(usuario, "Administrador"):
+    if has_effective_role(usuario, "Administrador") or usuario.is_superuser:
+        return
+    from security.portal import has_full_resource_access
+    if has_full_resource_access(usuario):
         return
     if has_effective_role(usuario, "Técnico de Campo"):
         if OrdenTrabajo.objects.filter(instalacion=instalacion, tecnico=usuario).exists():
             return
     if has_effective_role(usuario, "Líder Comunitario"):
         if usuario.comunidad_id == instalacion.comunidad_id:
+            return
+    if has_effective_role(usuario, "Propietario Solar"):
+        if instalacion.responsable_id == usuario.pk:
             return
     raise PermissionDenied("No tienes acceso a esta instalación.")
 
@@ -275,6 +283,7 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
                 f"{orden.tecnico.username}."
             ),
         )
+    @transaction.atomic
     def perform_update(self, serializer):
         orden_anterior = self.get_object()
         estado_anterior = orden_anterior.estado.nombre
@@ -283,6 +292,11 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             orden_anterior.estado,
         )
         estado_nuevo = estado_nuevo_obj.nombre
+
+        if estado_nuevo == "Cerrada" and estado_anterior != "Cerrada":
+            permissions = get_effective_permissions(self.request.user)
+            if "ALL" not in permissions and "close_ordentrabajo" not in permissions:
+                raise PermissionDenied("Tu rol no tiene permiso para cerrar órdenes de trabajo.")
 
         cambios = {}
         evento = None
@@ -316,6 +330,13 @@ class OrdenTrabajoViewSet(viewsets.ModelViewSet):
             }
 
         orden_actualizada = serializer.save(**cambios)
+
+        if estado_anterior != "Cerrada" and estado_nuevo == "Cerrada":
+            audit_security_change(
+                self.request, 'work_order.closed', 'work_order',
+                orden_actualizada.pk, f'Orden #{orden_actualizada.pk}',
+                {'before': estado_anterior, 'after': estado_nuevo},
+            )
 
         if evento:
             Evento.objects.create(

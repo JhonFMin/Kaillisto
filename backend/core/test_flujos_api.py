@@ -27,6 +27,7 @@ PERMISOS_BASE_POR_ROL = {
     "Técnico de Campo": [
         "view_instalacion", "view_dispositivo", "view_umbral",
         "view_ordentrabajo", "change_ordentrabajo",
+        "close_ordentrabajo",
         "view_repuesto", "add_repuestoordentrabajo", "change_repuestoordentrabajo",
         "view_alerta",
     ],
@@ -128,15 +129,15 @@ class FlujosApiAdicionalesTests(APITestCase):
             comunidad=self.comunidad_b,
             telefono="573000000002",
         )
-        self.estado_pendiente = EstadoOrdenTrabajo.objects.create(
+        self.estado_pendiente, _ = EstadoOrdenTrabajo.objects.get_or_create(
             nombre="Pendiente"
         )
         self.tipo_medicion = TipoMedicion.objects.create(
             nombre="Voltaje test", unidad="V"
         )
         self.tipo_alerta = TipoAlerta.objects.create(nombre="Alerta test")
-        self.prioridad = PrioridadAlerta.objects.create(nombre="Alta")
-        self.estado_alerta = EstadoAlerta.objects.create(nombre="Vigente")
+        self.prioridad, _ = PrioridadAlerta.objects.get_or_create(nombre="Alta")
+        self.estado_alerta, _ = EstadoAlerta.objects.get_or_create(nombre="Vigente")
         self.alerta_a = Alerta.objects.create(
             instalacion=self.instalacion_a,
             tipo_medicion=self.tipo_medicion,

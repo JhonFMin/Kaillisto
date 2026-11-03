@@ -2,12 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.db import transaction
 
-from .models import Role, UserRole, get_effective_permissions
+from .models import Role, UserRole, SecurityAuditEvent, get_effective_permissions, has_effective_role
+from .audit import audit_security_change
 from .serializers import (
     RoleSerializer, UserRoleSerializer,
     PermissionSerializer, UsuarioResumenSerializer
@@ -24,6 +25,37 @@ class RoleViewSet(viewsets.ModelViewSet):
     serializer_class = RoleSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @staticmethod
+    def _snapshot(role):
+        return {
+            'name': role.name,
+            'description': role.description,
+            'is_active': role.is_active,
+            'permissions': sorted(role.permissions.values_list('codename', flat=True)),
+        }
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        role = serializer.save()
+        audit_security_change(
+            self.request, 'role.created', 'role', role.pk, role.name,
+            {'after': self._snapshot(role)},
+        )
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        role = self.get_object()
+        before = self._snapshot(role)
+        response = super().update(request, *args, **kwargs)
+        role.refresh_from_db()
+        after = self._snapshot(role)
+        if before != after:
+            audit_security_change(
+                request, 'role.updated', 'role', role.pk, role.name,
+                {'before': before, 'after': after},
+            )
+        return response
+
     @action(detail=True, methods=['post'], url_path='restore-defaults')
     @transaction.atomic
     def restore_defaults(self, request, pk=None):
@@ -31,9 +63,15 @@ class RoleViewSet(viewsets.ModelViewSet):
         permissions = default_permissions(role.name)
         if permissions is None:
             raise ValidationError({"detail": "Este rol personalizado no tiene permisos predeterminados."})
+        before = self._snapshot(role)
         role.permissions.set(permissions)
+        audit_security_change(
+            request, 'role.defaults_restored', 'role', role.pk, role.name,
+            {'before': before, 'after': self._snapshot(role)},
+        )
         return Response(self.get_serializer(role).data)
 
+    @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         """Borrado lógico: inactiva el rol, no lo elimina físicamente."""
         instance = self.get_object()
@@ -42,37 +80,52 @@ class RoleViewSet(viewsets.ModelViewSet):
                 {"detail": "El rol ya está inactivo."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        before = self._snapshot(instance)
         instance.is_active = False
         instance.save()
+        audit_security_change(
+            request, 'role.deactivated', 'role', instance.pk, instance.name,
+            {'before': before, 'after': self._snapshot(instance)},
+        )
         return Response(
             {"detail": "Rol inactivado correctamente."},
             status=status.HTTP_200_OK
         )
-
-    def update(self, request, *args, **kwargs):
-        """Impide reactivar un rol inactivo desde PUT/PATCH sin permiso explícito."""
-        kwargs['partial'] = kwargs.get('partial', False)
-        return super().update(request, *args, **kwargs)
-
 
 class UserRoleViewSet(viewsets.ModelViewSet):
     """Gestión de asignación de roles a usuarios. Solo Administradores."""
     queryset = UserRole.objects.select_related('usuario', 'rol', 'asignado_por').all()
     serializer_class = UserRoleSerializer
     permission_classes = [IsAuthenticated, IsAdminRole]
+    @transaction.atomic
     def perform_destroy(self, instance):
+        if not self.request.user.is_superuser and 'revoke_userrole' not in get_effective_permissions(self.request.user):
+            raise PermissionDenied('Tu rol no puede retirar roles.')
         if instance.rol.name == "Administrador":
             otros_admins = UserRole.objects.filter(
                 rol__name="Administrador", rol__is_active=True
             ).exclude(pk=instance.pk).exists()
             if not otros_admins:
                 raise ValidationError({"detail": "No puedes quitar al último Administrador del sistema."})
-        instance.delete()   
+        audit_security_change(
+            self.request, 'user_role.revoked', 'user', instance.usuario_id,
+            instance.usuario.username,
+            {'role_id': instance.rol_id, 'role': instance.rol.name},
+        )
+        instance.delete()
+    @transaction.atomic
     def perform_create(self, serializer):
         usuario_destino = serializer.validated_data['usuario']
         if self.request.user.pk == usuario_destino.pk:
             raise ValidationError({"detail": "No puedes asignarte roles a ti mismo."})
-        serializer.save(asignado_por=self.request.user)
+        if not self.request.user.is_superuser and 'assign_userrole' not in get_effective_permissions(self.request.user):
+            raise PermissionDenied('Tu rol no puede asignar roles.')
+        assignment = serializer.save(asignado_por=self.request.user)
+        audit_security_change(
+            self.request, 'user_role.assigned', 'user', assignment.usuario_id,
+            assignment.usuario.username,
+            {'role_id': assignment.rol_id, 'role': assignment.rol.name},
+        )
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -80,6 +133,29 @@ class UserRoleViewSet(viewsets.ModelViewSet):
         if usuario_id:
             qs = qs.filter(usuario_id=usuario_id)
         return qs
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def security_audit(request):
+    """Latest security changes, restricted to administrators and superadmins."""
+    if not (request.user.is_superuser or has_effective_role(request.user, 'Administrador')):
+        raise PermissionDenied('Solo los administradores pueden consultar esta bitácora.')
+    events = SecurityAuditEvent.objects.select_related('actor').all()[:200]
+    return Response([
+        {
+            'id': event.pk,
+            'actor': event.actor.username if event.actor_id else 'Cuenta eliminada',
+            'action': event.action,
+            'target_type': event.target_type,
+            'target_id': event.target_id,
+            'target_label': event.target_label,
+            'changes': event.changes,
+            'reason': event.reason,
+            'created_at': event.created_at,
+        }
+        for event in events
+    ])
 
 
 @api_view(['GET'])

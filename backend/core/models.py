@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -101,13 +102,34 @@ class EstadoInstalacion(models.Model):
 
 
 class Instalacion(models.Model):
+    class Tipo(models.TextChoices):
+        COMUNITARIA = "comunitaria", "Comunitaria"
+        RESIDENCIAL = "residencial", "Vivienda"
+
     id_instalacion = models.AutoField(primary_key=True)
+
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.COMUNITARIA,
+        db_index=True,
+    )
 
     comunidad = models.ForeignKey(
         Comunidad,
         on_delete=models.PROTECT,
         db_column="id_comunidad",
         related_name="instalaciones",
+        null=True,
+        blank=True,
+    )
+
+    responsable = models.ForeignKey(
+        Usuario,
+        on_delete=models.PROTECT,
+        related_name="instalaciones_responsable",
+        null=True,
+        blank=True,
     )
 
     nombre = models.CharField(max_length=150)
@@ -129,6 +151,22 @@ class Instalacion(models.Model):
         db_table = "instalacion"
         verbose_name = "Instalación"
         verbose_name_plural = "Instalaciones"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(tipo="comunitaria", comunidad__isnull=False)
+                    | models.Q(tipo="residencial", responsable__isnull=False)
+                ),
+                name="instalacion_scope_has_owner_or_community",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.tipo == self.Tipo.COMUNITARIA and not self.comunidad_id:
+            raise ValidationError({"comunidad": "Las instalaciones comunitarias deben pertenecer a una comunidad."})
+        if self.tipo == self.Tipo.RESIDENCIAL and not self.responsable_id:
+            raise ValidationError({"responsable": "Asigna un usuario responsable a la vivienda."})
 
     def __str__(self):
         return self.nombre

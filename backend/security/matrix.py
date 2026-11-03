@@ -9,6 +9,13 @@ from .permissions import IsAdminRole
 from .defaults import default_permission_codes
 
 ACTIONS = [('view', 'Consultar'), ('add', 'Crear'), ('change', 'Editar'), ('delete', 'Eliminar')]
+SPECIAL_ACTIONS = {
+    'core-ordentrabajo': [('close', 'Cerrar orden', 'close_ordentrabajo')],
+    'security-userrole': [
+        ('assign', 'Asignar rol', 'assign_userrole'),
+        ('revoke', 'Retirar rol', 'revoke_userrole'),
+    ],
+}
 
 class ResourceSerializer(serializers.ModelSerializer):
     model = serializers.CharField(source='content_type.model', read_only=True)
@@ -29,6 +36,12 @@ def matrix(request):
     permissions = Permission.objects.filter(content_type__rbac_resource__isnull=False)
     by_code = {(p.content_type_id, p.codename): p for p in permissions}
     resources = []
+    matrix_actions = [{'code': code, 'label': label} for code, label in ACTIONS]
+    matrix_actions.extend(
+        {'code': code, 'label': label}
+        for actions in SPECIAL_ACTIONS.values()
+        for code, label, _permission in actions
+    )
     for resource in Resource.objects.select_related('content_type'):
         cells = {}
         for action, label in ACTIONS:
@@ -36,9 +49,13 @@ def matrix(request):
             permission = by_code.get((resource.content_type_id, code))
             if permission:
                 cells[action] = {'id': permission.pk, 'code': code, 'label': label}
+        for action, label, codename in SPECIAL_ACTIONS.get(resource.code, ()):
+            permission = by_code.get((resource.content_type_id, codename))
+            if permission:
+                cells[action] = {'id': permission.pk, 'code': codename, 'label': label}
         resources.append({**ResourceSerializer(resource).data, 'permissions': cells})
     return Response({
-        'actions': [{'code': code, 'label': label} for code, label in ACTIONS],
+        'actions': matrix_actions,
         'resources': resources,
         'defaults': default_permission_codes(),
     })
