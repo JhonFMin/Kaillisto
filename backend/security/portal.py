@@ -253,10 +253,16 @@ def resource_view(model):
                 kind = attrs.get('tipo', getattr(self.instance, 'tipo', m.Instalacion.Tipo.COMUNITARIA))
                 community = attrs.get('comunidad', getattr(self.instance, 'comunidad', None))
                 owner = attrs.get('responsable', getattr(self.instance, 'responsable', None))
+                address = attrs.get('direccion', getattr(self.instance, 'direccion', ''))
+                neighborhood = attrs.get('barrio', getattr(self.instance, 'barrio', ''))
                 if kind == m.Instalacion.Tipo.COMUNITARIA and community is None:
                     raise ValidationError({'comunidad': 'Selecciona una comunidad para esta instalación.'})
                 if kind == m.Instalacion.Tipo.RESIDENCIAL and owner is None:
                     raise ValidationError({'responsable': 'Selecciona quién responde por esta vivienda.'})
+                if kind == m.Instalacion.Tipo.RESIDENCIAL and not str(address or '').strip():
+                    raise ValidationError({'direccion': 'Escribe la dirección de la vivienda.'})
+                if kind == m.Instalacion.Tipo.RESIDENCIAL and not str(neighborhood or '').strip():
+                    raise ValidationError({'barrio': 'Escribe el barrio o sector residencial.'})
                 if owner is not None and not owner.is_active:
                     raise ValidationError({'responsable': 'El responsable debe tener una cuenta activa.'})
             if model == m.Umbral:

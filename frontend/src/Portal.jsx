@@ -83,6 +83,9 @@ const nice = (key) =>
     api_key: "Clave del dispositivo (mínimo 32 caracteres)",
     responsable: "Responsable de la vivienda",
     tipo: "Tipo de instalación",
+    direccion: "Dirección",
+    barrio: "Barrio / sector",
+    ubicacion: "Municipio / localidad",
   })[key] || key.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 const errorText = (e) =>
   typeof e.response?.data === "object"
@@ -205,6 +208,7 @@ function Landing() {
               <p>
                 Cada instalación se vincula a una comunidad o a quien responde por una vivienda.
               </p>
+              <img className="feature-image" src="/solar-home.jpg" alt="Vivienda rural con paneles solares al atardecer" loading="lazy" />
               <div className="solar-grid" aria-hidden="true">
                 {Array.from({ length: 24 }, (_, i) => (
                   <span key={i} />
@@ -222,6 +226,7 @@ function Landing() {
                 Órdenes asignadas, diagnóstico y soluciones. Todo el contexto
                 que necesita un técnico en campo.
               </p>
+              <img className="feature-image" src="/solar-operations.jpg" alt="Técnico revisando un inversor solar" loading="lazy" />
               <div className="steps">
                 {[
                   "01 / Asignar una orden",
@@ -399,6 +404,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
       if (row && row[k] !== undefined) d[k] = row[k];
       else if (f.type === "boolean") d[k] = true;
     });
+    if (kind === "instalaciones") d.tipo = row?.tipo || "comunitaria";
     if (kind === "usuarios")
       d.roles = row?.roles_detail?.map((r) => r.rol_id) || [];
     return d;
@@ -411,7 +417,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     user.is_superuser || user.permisos.includes(`change_${permissionModel}`);
   const canCreateKind =
     user.is_superuser || user.permisos.includes(`add_${permissionModel}`);
-  const fields = Object.entries(schema).filter(
+  const allFields = Object.entries(schema).filter(
     ([k, f]) =>
       !f.read_only &&
       (!row || k !== "username") &&
@@ -426,6 +432,10 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
           (row
             ? user.permisos.includes("change_userrole")
             : user.permisos.includes("add_userrole")))),
+  );
+  const installationType = data.tipo || row?.tipo || "comunitaria";
+  const fields = allFields.filter(([key]) =>
+    kind !== "instalaciones" || key !== "responsable" || installationType === "residencial",
   );
   useEffect(() => {
     let active = true;
@@ -455,11 +465,11 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     return () => {
       active = false;
     };
-  }, [kind]);
+  }, [kind, installationType]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section
-        className="modal"
+        className={`modal${kind === "instalaciones" ? " installation-editor" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={row ? "Editar registro" : "Nuevo registro"}
@@ -485,7 +495,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
             setError("");
             try {
               const payload = {};
-              for (const [k] of fields) {
+              for (const [k] of allFields) {
                 let v = data[k];
                 if (k === "password" && !v && row) continue;
                 if (v !== undefined)
@@ -500,9 +510,24 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
             }
           }}
         >
+          {kind === "instalaciones" && <p className="installation-form-intro">Elige si se trata de un sistema de una comunidad o de una vivienda. Para una vivienda pediremos dirección, barrio y responsable; también puedes vincularla a una comunidad si aplica.</p>}
           {fields.map(([k, f]) => (
             <label key={k}>
-              {nice(k)} {f.required && <span aria-hidden="true">*</span>}
+              {kind === "instalaciones" ? ({
+                tipo: "Tipo de sistema",
+                nombre: installationType === "residencial" ? "Nombre de la vivienda o sistema" : "Nombre del sistema comunitario",
+                comunidad: installationType === "residencial" ? "Comunidad vinculada (opcional)" : "Comunidad",
+                responsable: "Persona responsable",
+                direccion: "Dirección de la vivienda / sitio",
+                barrio: "Barrio o sector",
+                ubicacion: installationType === "residencial" ? "Municipio o ciudad" : "Vereda o sector de la comunidad",
+                capacidad: "Capacidad solar (kW)",
+                fecha_instalacion: "Fecha de instalación",
+                estado_instalacion: "Estado del sistema",
+              }[k] || nice(k)) : nice(k)}
+              {kind === "instalaciones" && (k === "comunidad" ? installationType === "comunitaria" : ["responsable", "direccion", "barrio"].includes(k) ? installationType === "residencial" : false) || (kind !== "instalaciones" && f.required) ? <span aria-hidden="true">*</span> : null}
+              {kind === "instalaciones" && k === "comunidad" && installationType === "residencial" && <small className="field-help">Si la vivienda forma parte de una comunidad registrada, selecciónala aquí.</small>}
+              {kind === "instalaciones" && k === "barrio" && installationType === "comunitaria" && <small className="field-help">Opcional para identificar un barrio o sector dentro de la comunidad.</small>}
               {f.type === "boolean" ? (
                 <input
                   type="checkbox"
@@ -543,7 +568,8 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
               ) : f.type === "choice" ? (
                 <select
                   value={data[k] ?? ""}
-                  onChange={(e) => setData({ ...data, [k]: e.target.value })}
+                  required={kind === "instalaciones" ? k === "comunidad" ? installationType === "comunitaria" : k === "responsable" ? installationType === "residencial" : f.required : f.required}
+                  onChange={(e) => setData({ ...data, [k]: e.target.value, ...(kind === "instalaciones" && k === "tipo" ? { responsable: null } : {}) })}
                 >
                   {f.choices.map((c) => (
                     <option value={c.value} key={c.value}>
@@ -566,7 +592,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
                   }
                   step="any"
                   maxLength={f.max_length}
-                  required={f.required && !(row && k === "password")}
+                  required={(kind === "instalaciones" && ["direccion", "barrio"].includes(k) ? installationType === "residencial" : f.required) && !(row && k === "password")}
                   value={data[k] ?? ""}
                   onChange={(e) => setData({ ...data, [k]: e.target.value })}
                 />
@@ -840,12 +866,43 @@ function DeviceComparison({ device, onClose }) {
     return () => { active = false; };
   }, [device]);
   const formatted = (value) => value == null ? "—" : new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value));
+  const getRange = (row) => {
+    const value = row.valor == null ? null : Number(row.valor);
+    const min = row.minimo == null ? null : Number(row.minimo);
+    const max = row.maximo == null ? null : Number(row.maximo);
+    const span = Math.max((max ?? value ?? 1) - (min ?? value ?? 0), Math.abs(value || 0) * 0.12, 1);
+    const low = Math.min(min ?? value - span * 0.25, value ?? min ?? 0) - span * 0.12;
+    const high = Math.max(max ?? value + span * 0.25, value ?? max ?? 1) + span * 0.12;
+    const pct = (number) => Math.max(0, Math.min(100, ((number - low) / (high - low)) * 100));
+    return {
+      low, high,
+      goodStart: min == null || max == null ? 0 : pct(min),
+      goodWidth: min == null || max == null ? 0 : Math.max(0, pct(max) - pct(min)),
+      marker: value == null ? null : pct(value),
+    };
+  };
   return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section className="modal device-comparison" role="dialog" aria-modal="true" aria-labelledby="device-comparison-title">
       <header><div><span className="eyebrow">TELEMETRÍA / ESP32</span><h2 id="device-comparison-title">Lecturas frente a umbrales</h2></div><button className="icon-button" aria-label="Cerrar" onClick={onClose}><X size={18} /></button></header>
       {report ? <>
         <div className="device-summary"><strong>{report.dispositivo}</strong><span>{report.modelo}</span><span>{report.instalacion}</span><small>Último contacto: {report.ultima_comunicacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.ultima_comunicacion)) : "sin registro"}</small></div>
-        {report.mediciones.length ? <div className="table-scroll"><table className="comparison-table"><thead><tr><th>Medida</th><th>Última lectura</th><th>Mínimo</th><th>Máximo</th><th>Evaluación</th><th>Fecha</th></tr></thead><tbody>{report.mediciones.map((row) => <tr key={row.tipo_medicion}><td><strong>{row.tipo_medicion}</strong><small>{row.unidad}</small></td><td>{formatted(row.valor)} {row.valor == null ? "" : row.unidad}</td><td>{formatted(row.minimo)}</td><td>{formatted(row.maximo)}</td><td><span className={`reading-state ${row.estado.toLowerCase().replaceAll(" ", "-")}`}>{row.estado}</span></td><td>{row.fecha_hora ? new Intl.DateTimeFormat("es-CO", { dateStyle: "short", timeStyle: "short" }).format(new Date(row.fecha_hora)) : "Sin lecturas"}</td></tr>)}</tbody></table></div> : <p className="empty">Este dispositivo aún no tiene mediciones ni umbrales configurados.</p>}
+        {report.mediciones.length ? <>
+          <section className="threshold-chart" aria-label="Gráfico de lecturas comparadas con sus umbrales">
+            <div className="threshold-chart-title"><div><span className="eyebrow">LECTURA ACTUAL / RANGO PERMITIDO</span><h3>Comparativa de medidas</h3></div><span className="threshold-legend"><i /> Rango esperado</span></div>
+            {report.mediciones.map((row) => {
+              const range = getRange(row);
+              return <article className="threshold-chart-row" key={row.tipo_medicion}>
+                <div className="threshold-chart-heading"><strong>{row.tipo_medicion}<small>{row.unidad}</small></strong><b>{formatted(row.valor)} {row.valor == null ? "" : row.unidad}</b><span className={`reading-state ${row.estado.toLowerCase().replaceAll(" ", "-")}`}>{row.estado}</span></div>
+                <div className="threshold-track" role="img" aria-label={`${row.tipo_medicion}: ${formatted(row.valor)} ${row.unidad}, rango de ${formatted(row.minimo)} a ${formatted(row.maximo)}`}>
+                  <span className="threshold-zone" style={{ left: `${range.goodStart}%`, width: `${range.goodWidth}%` }} />
+                  {range.marker != null && <i className={`threshold-marker ${row.estado === "Normal" ? "in-range" : "out-range"}`} style={{ left: `${range.marker}%` }} />}
+                </div>
+                <div className="threshold-ticks"><span>{formatted(range.low)}</span><span>Mín. {formatted(row.minimo)}</span><span>Máx. {formatted(row.maximo)}</span><span>{formatted(range.high)}</span></div>
+              </article>;
+            })}
+          </section>
+          <div className="table-scroll"><table className="comparison-table"><thead><tr><th>Medida</th><th>Última lectura</th><th>Mínimo</th><th>Máximo</th><th>Evaluación</th><th>Fecha</th></tr></thead><tbody>{report.mediciones.map((row) => <tr key={row.tipo_medicion}><td><strong>{row.tipo_medicion}</strong><small>{row.unidad}</small></td><td>{formatted(row.valor)} {row.valor == null ? "" : row.unidad}</td><td>{formatted(row.minimo)}</td><td>{formatted(row.maximo)}</td><td><span className={`reading-state ${row.estado.toLowerCase().replaceAll(" ", "-")}`}>{row.estado}</span></td><td>{row.fecha_hora ? new Intl.DateTimeFormat("es-CO", { dateStyle: "short", timeStyle: "short" }).format(new Date(row.fecha_hora)) : "Sin lecturas"}</td></tr>)}</tbody></table></div>
+        </> : <p className="empty">Este dispositivo aún no tiene mediciones ni umbrales configurados.</p>}
       </> : error ? <p role="alert" className="notice">{error}</p> : <p className="empty">Consultando las últimas mediciones…</p>}
       <footer><button onClick={onClose}>Cerrar</button></footer>
     </section>

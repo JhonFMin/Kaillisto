@@ -34,6 +34,8 @@ class InstalacionSerializer(serializers.ModelSerializer):
             "comunidad",
             "responsable",
             "nombre",
+            "direccion",
+            "barrio",
             "ubicacion",
             "capacidad",
             "fecha_instalacion",
@@ -46,10 +48,16 @@ class InstalacionSerializer(serializers.ModelSerializer):
         kind = attrs.get("tipo", getattr(instance, "tipo", Instalacion.Tipo.COMUNITARIA))
         community = attrs.get("comunidad", getattr(instance, "comunidad", None))
         owner = attrs.get("responsable", getattr(instance, "responsable", None))
+        address = attrs.get("direccion", getattr(instance, "direccion", ""))
+        neighborhood = attrs.get("barrio", getattr(instance, "barrio", ""))
         if kind == Instalacion.Tipo.COMUNITARIA and community is None:
             raise serializers.ValidationError({"comunidad": "Selecciona la comunidad a la que pertenece la instalación."})
         if kind == Instalacion.Tipo.RESIDENCIAL and owner is None:
             raise serializers.ValidationError({"responsable": "Selecciona el usuario responsable de la vivienda."})
+        if kind == Instalacion.Tipo.RESIDENCIAL and not str(address or "").strip():
+            raise serializers.ValidationError({"direccion": "Escribe la dirección de la vivienda."})
+        if kind == Instalacion.Tipo.RESIDENCIAL and not str(neighborhood or "").strip():
+            raise serializers.ValidationError({"barrio": "Escribe el barrio o sector residencial."})
         if owner is not None and not owner.is_active:
             raise serializers.ValidationError({"responsable": "El responsable debe tener una cuenta activa."})
         return attrs

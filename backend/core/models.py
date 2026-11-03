@@ -133,6 +133,8 @@ class Instalacion(models.Model):
     )
 
     nombre = models.CharField(max_length=150)
+    direccion = models.CharField(max_length=255, blank=True)
+    barrio = models.CharField(max_length=120, blank=True)
     ubicacion = models.CharField(max_length=255)
     capacidad = models.DecimalField(
         max_digits=10,
@@ -155,7 +157,12 @@ class Instalacion(models.Model):
             models.CheckConstraint(
                 condition=(
                     models.Q(tipo="comunitaria", comunidad__isnull=False)
-                    | models.Q(tipo="residencial", responsable__isnull=False)
+                    | models.Q(
+                        tipo="residencial",
+                        responsable__isnull=False,
+                        direccion__gt="",
+                        barrio__gt="",
+                    )
                 ),
                 name="instalacion_scope_has_owner_or_community",
             ),
@@ -167,6 +174,10 @@ class Instalacion(models.Model):
             raise ValidationError({"comunidad": "Las instalaciones comunitarias deben pertenecer a una comunidad."})
         if self.tipo == self.Tipo.RESIDENCIAL and not self.responsable_id:
             raise ValidationError({"responsable": "Asigna un usuario responsable a la vivienda."})
+        if self.tipo == self.Tipo.RESIDENCIAL and not (self.direccion or "").strip():
+            raise ValidationError({"direccion": "Escribe la dirección de la vivienda."})
+        if self.tipo == self.Tipo.RESIDENCIAL and not (self.barrio or "").strip():
+            raise ValidationError({"barrio": "Escribe el barrio o sector residencial."})
 
     def __str__(self):
         return self.nombre
