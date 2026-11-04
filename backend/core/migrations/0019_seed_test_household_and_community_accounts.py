@@ -29,6 +29,7 @@ def seed_demo_accounts(apps, schema_editor):
     Installation = Model("core", "Instalacion")
     Device = Model("core", "Dispositivo")
     Measurement = Model("core", "Medicion")
+    MeasurementModel = apps.get_model("core", "Medicion")
     MeasurementType = Model("core", "TipoMedicion")
     Threshold = Model("core", "Umbral")
     Alert = Model("core", "Alerta")
@@ -170,7 +171,7 @@ def seed_demo_accounts(apps, schema_editor):
                 for sample in range(72):
                     wave = ((sample * 17 + seed * 11 + type_index * 7) % 19 - 9) / 20
                     value = base + wave * (0.8 if type_index == 0 else 3.0 if type_index == 1 else 6.0)
-                    points.append(Measurement(
+                    points.append(MeasurementModel(
                         dispositivo_id=device.pk, tipo_medicion_id=kind.pk,
                         valor=Decimal(f"{value:.2f}"),
                         fecha_hora=now - timedelta(hours=(71 - sample) * 4),
