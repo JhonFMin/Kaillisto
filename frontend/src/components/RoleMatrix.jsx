@@ -25,6 +25,10 @@ export default function RoleMatrix({ user }) {
     [saved, setSaved] = useState(""),
     [creating, setCreating] = useState(false);
   const [showDefaultInfo, setShowDefaultInfo] = useState(false);
+  const [managingResources, setManagingResources] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [newResourceModel, setNewResourceModel] = useState("");
+  const [resourceDraft, setResourceDraft] = useState({});
   const canManageRoles =
     user.is_superuser || user.permisos.includes("change_role");
   const canCreateRoles =
@@ -36,6 +40,10 @@ export default function RoleMatrix({ user }) {
     ]);
     setRoles(r.data);
     setMatrix(m.data);
+    setResourceDraft(Object.fromEntries((m.data.resources || []).map((item) => [item.id, {
+      name: item.name, description: item.description, menu_group: item.menu_group,
+      menu_icon: item.menu_icon, menu_order: item.menu_order, menu_visible: item.menu_visible, is_active: item.is_active,
+    }])));
     setDraft(
       Object.fromEntries(r.data.map((role) => [role.id, role.permissions])),
     );
@@ -43,6 +51,42 @@ export default function RoleMatrix({ user }) {
     setSelectedResource(
       (current) => current || String(m.data.resources[0]?.id || ""),
     );
+  }
+  async function openResourceManager() {
+    setManagingResources(true);
+    try {
+      const { data } = await api.get("/security/resources/available-models/");
+      setAvailableModels(data);
+      setNewResourceModel(String(data[0]?.id || ""));
+    } catch (e) { setError(message(e)); }
+  }
+  async function saveResource(resource) {
+    setBusy(true); setError(""); setSaved("");
+    try {
+      await api.patch(`/security/resources/${resource.id}/`, resourceDraft[resource.id]);
+      await load();
+      window.dispatchEvent(new Event("kaillisto:permissions"));
+      setSaved(`Recurso “${resourceDraft[resource.id].name}” actualizado.`);
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(false); }
+  }
+  async function addResource() {
+    const model = availableModels.find((item) => String(item.id) === newResourceModel);
+    if (!model) return;
+    setBusy(true); setError(""); setSaved("");
+    try {
+      await api.post("/security/resources/", {
+        content_type: model.id, name: model.name, description: "",
+        menu_group: "Red energética", menu_icon: "layers", menu_order: 100,
+        menu_visible: true, is_active: true,
+      });
+      await load();
+      const { data } = await api.get("/security/resources/available-models/");
+      setAvailableModels(data); setNewResourceModel(String(data[0]?.id || ""));
+      window.dispatchEvent(new Event("kaillisto:permissions"));
+      setSaved(`Recurso “${model.name}” agregado. Asigna sus permisos en la matriz.`);
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(false); }
   }
   useEffect(() => {
     load().catch((e) => setError(message(e)));
@@ -220,6 +264,7 @@ export default function RoleMatrix({ user }) {
         <div className="actions">
           {mode === "role" && (
             <>
+              <button type="button" disabled={!canManageRoles || busy} onClick={openResourceManager}>Administrar recursos</button>
               <button type="button" onClick={() => setShowDefaultInfo(true)}>
                 <Info size={16} /> Valores iniciales
               </button>
@@ -257,6 +302,29 @@ export default function RoleMatrix({ user }) {
             <p>Estos son los accesos con los que empieza este rol. Puedes modificarlos en la matriz o restaurarlos cuando quieras.</p>
             {roleDefaultCodes ? defaultResources.length ? <ul className="defaults-list">{defaultResources.map((item) => <li key={item.name}><strong>{item.name}</strong><span>{item.actions.join(" · ")}</span></li>)}</ul> : <p>Este rol empieza sin permisos asignados.</p> : <p>Los roles creados por el equipo no tienen una plantilla inicial. Sus permisos actuales se conservan hasta que los edites.</p>}
             <footer><button className="primary" onClick={() => setShowDefaultInfo(false)}>Entendido</button></footer>
+          </section>
+        </div>
+      )}
+      {managingResources && (
+        <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setManagingResources(false)}>
+          <section className="modal defaults-modal resource-manager" role="dialog" aria-modal="true" aria-labelledby="resources-title">
+            <header><div><span className="eyebrow">CONFIGURACIÓN DEL SISTEMA</span><h2 id="resources-title">Recursos del menú</h2></div><button className="icon-button" aria-label="Cerrar" onClick={() => setManagingResources(false)}><X size={18} /></button></header>
+            <p>Los recursos activos con permiso de consulta aparecen en el menú de cada usuario. Al agregar un modelo, sus permisos quedan sin asignar hasta que los marques en la matriz.</p>
+            {availableModels.length > 0 && <div className="resource-add-row"><label>Modelo disponible<select value={newResourceModel} onChange={(event) => setNewResourceModel(event.target.value)}>{availableModels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className="primary" disabled={busy || !canManageRoles} onClick={addResource}><Plus size={16}/> Agregar recurso</button></div>}
+            <div className="resource-config-list">{(matrix?.resources || []).map((item) => {
+              const values = resourceDraft[item.id] || {};
+              const changed = JSON.stringify(values) !== JSON.stringify({name:item.name,description:item.description,menu_group:item.menu_group,menu_icon:item.menu_icon,menu_order:item.menu_order,menu_visible:item.menu_visible,is_active:item.is_active});
+              return <article key={item.id} className="resource-config-row"><strong>{item.code}</strong><div className="resource-config-fields">
+                <label>Nombre<input value={values.name || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],name:event.target.value}}))}/></label>
+                <label>Grupo del menú<input value={values.menu_group || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_group:event.target.value}}))}/></label>
+                <label>Icono<input value={values.menu_icon || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_icon:event.target.value}}))}/></label>
+                <label>Orden<input type="number" min="0" max="32767" value={values.menu_order ?? 100} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_order:Number(event.target.value)}}))}/></label>
+                <label className="resource-visible"><input type="checkbox" checked={Boolean(values.menu_visible)} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_visible:event.target.checked}}))}/> Mostrar en menú</label>
+                <label className="resource-visible"><input type="checkbox" checked={Boolean(values.is_active)} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],is_active:event.target.checked}}))}/> Recurso activo</label>
+                <button disabled={busy || !changed || !canManageRoles} onClick={() => saveResource(item)}>Guardar</button>
+              </div></article>;
+            })}</div>
+            <footer><button onClick={() => setManagingResources(false)}>Cerrar</button></footer>
           </section>
         </div>
       )}

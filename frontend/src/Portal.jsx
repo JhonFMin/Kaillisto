@@ -9,6 +9,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useParams,
 } from "react-router-dom";
 import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { MoonIcon as Moon } from "@phosphor-icons/react/dist/csr/Moon";
@@ -290,6 +291,10 @@ const permissionModelByKind = {
   "estados-alerta": "estadoalerta",
   prioridades: "prioridadalerta",
   "tipos-alerta": "tipoalerta",
+};
+const modelPage = (model) => {
+  const entry = Object.entries(permissionModelByKind).find(([, value]) => value === model);
+  return entry ? { kind: entry[0] } : model ? { kind: model } : null;
 };
 const idOf = (row) =>
   row.id ?? Object.entries(row).find(([k]) => k.startsWith("id_"))?.[1];
@@ -795,7 +800,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     </div>
   );
 }
-function Records({ kind, user, title, readonly = false }) {
+function Records({ kind, user, title, readonly = false, endpointOverride, modelName }) {
   const [rows, setRows] = useState([]),
     [schema, setSchema] = useState({}),
     [error, setError] = useState(""),
@@ -805,7 +810,8 @@ function Records({ kind, user, title, readonly = false }) {
     [locationRow, setLocationRow] = useState(null),
     [search, setSearch] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
-  const permissionModel = permissionModelByKind[kind];
+  const resourceEndpoint = endpointOverride || endpoint(kind);
+  const permissionModel = modelName || permissionModelByKind[kind];
   const canEditKind =
     user.is_superuser || user.permisos.includes(`change_${permissionModel}`);
   const canCreateKind =
@@ -814,7 +820,7 @@ function Records({ kind, user, title, readonly = false }) {
     setSchemaLoading(true);
     setError("");
     try {
-      const response = await api.options(endpoint(kind));
+      const response = await api.options(resourceEndpoint);
       setSchema(response.data.actions?.POST || {});
       setEditing(row);
     } catch (e) {
@@ -827,7 +833,7 @@ function Records({ kind, user, title, readonly = false }) {
     setLoading(true);
     setError("");
     try {
-      const r = await api.get(endpoint(kind));
+      const r = await api.get(resourceEndpoint);
       setRows(r.data);
     } catch (e) {
       setError(errorText(e));
@@ -839,7 +845,7 @@ function Records({ kind, user, title, readonly = false }) {
     setRows([]);
     setEditing(null);
     load();
-  }, [kind]);
+  }, [kind, resourceEndpoint]);
   const columns = rows.length
     ? Object.keys(rows[0]).filter(
         (k) =>
@@ -968,7 +974,7 @@ function Records({ kind, user, title, readonly = false }) {
                                     return;
                                   try {
                                     await api.post(
-                                      `${endpoint(kind)}${idOf(row)}/toggle_superadmin/`,
+                                      `${resourceEndpoint}${idOf(row)}/toggle_superadmin/`,
                                     );
                                     await load();
                                     if (isSelf)
@@ -1033,8 +1039,8 @@ function Records({ kind, user, title, readonly = false }) {
           onSave={async (data) => {
             const isSelf = kind === "usuarios" && idOf(editing) === user.id;
             if (idOf(editing))
-              await api.patch(`${endpoint(kind)}${idOf(editing)}/`, data);
-            else await api.post(endpoint(kind), data);
+              await api.patch(`${resourceEndpoint}${idOf(editing)}/`, data);
+            else await api.post(resourceEndpoint, data);
             setEditing(null);
             if (isSelf && data.is_active === false) {
               window.location.assign("/login");
@@ -1299,10 +1305,19 @@ function HomeownerOverview({ user }) {
 }
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
+  const [resourceNav, setResourceNav] = useState([]);
   const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
   const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("kaillisto-motion") !== "off");
   const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
+  useEffect(() => {
+    let active = true;
+    const refresh = () => api.get("/security/navigation/").then(({ data }) => { if (active) setResourceNav(data); }).catch(() => {});
+    refresh();
+    const onPermissions = () => refresh();
+    window.addEventListener("kaillisto:permissions", onPermissions);
+    return () => { active = false; window.removeEventListener("kaillisto:permissions", onPermissions); };
+  }, [user.id]);
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => { localStorage.setItem("kaillisto-theme", theme); }, [theme]);
   useEffect(() => { localStorage.setItem("kaillisto-motion", motionEnabled ? "on" : "off"); }, [motionEnabled]);
@@ -1349,18 +1364,6 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
         ["/dashboard", "Resumen", LayoutDashboard],
         ["/usuarios", "Usuarios", Users],
         ["/roles", "Roles y permisos", Shield],
-        ...[
-          "comunidades",
-          "instalaciones",
-          "dispositivos",
-          "umbrales",
-          "alertas",
-          "ordenes",
-          "repuestos",
-        ].map((k) => [
-          `/${k === "ordenes" ? "mantenimiento" : k}`,
-          ...definitions[k],
-        ]),
         ["/catalogos", "Catálogos", Layers],
       ]
     : tech
@@ -1390,12 +1393,6 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     ? {
         "/usuarios": ["usuarios"],
         "/roles": ["roles"],
-        ...Object.fromEntries(
-          Object.keys(definitions).map((k) => [
-            `/${k === "ordenes" ? "mantenimiento" : k}`,
-            [k],
-          ]),
-        ),
       }
     : tech
       ? {
@@ -1418,40 +1415,31 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
               "/notificaciones": ["notificaciones", "Notificaciones", true],
             }
         : {};
-  const resourceRoutes = [
-    ["/usuarios", "usuarios", "view_usuario"],
-    ["/roles", "roles", "view_role"],
-    ["/comunidades", "comunidades", "view_comunidad"],
-    ["/instalaciones", "instalaciones", "view_instalacion"],
-    ["/dispositivos", "dispositivos", "view_dispositivo"],
-    ["/umbrales", "umbrales", "view_umbral"],
-    ["/alertas", "alertas", "view_alerta"],
-    ["/mantenimiento", "ordenes", "view_ordentrabajo"],
-    ["/repuestos", "repuestos", "view_repuesto"],
-    ["/consumos", "consumos", "view_repuestoordentrabajo"],
-    ["/notificaciones", "notificaciones", "view_notificacion"],
-    ["/estados-instalacion", "estados-instalacion", "view_estadoinstalacion"],
-    ["/estados-orden", "estados-orden", "view_estadoordentrabajo"],
-    ["/tipos-medicion", "tipos-medicion", "view_tipomedicion"],
-    ["/estados-alerta", "estados-alerta", "view_estadoalerta"],
-    ["/prioridades", "prioridades", "view_prioridadalerta"],
-    ["/tipos-alerta", "tipos-alerta", "view_tipoalerta"],
-  ];
-  const linkedPaths = new Set(baseLinks.map(([path]) => path));
-  const extras = resourceRoutes.filter(
-    ([path, , permission]) =>
-      !linkedPaths.has(path) &&
-      (user.is_superuser || user.permisos.includes(permission)),
-  );
-  const links = [
+  const staticLinks = [
     ...baseLinks,
-    ...extras.map(([path, kind]) => [path, ...definitions[kind]]),
     ["/perfil", "Mi perfil", UserCircle],
     ...(user.admin ? [["/auditoria", "Auditoría de seguridad", ClipboardText]] : []),
   ];
+  const iconForResource = (name) => ({
+    "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
+    radio: Radio, broadcast: Radio, dispositivo: Radio,
+    bell: Bell, alert: Bell, notificacion: Bell,
+    wrench: Wrench, tool: Wrench, orden: Wrench,
+    package: Package, box: Package,
+    shield: Shield, users: Users, sliders: SlidersHorizontal,
+    layers: Layers, stack: Layers,
+  }[String(name || "").toLowerCase()] || Layers);
+  const dynamicLinks = resourceNav.map((resource) => [
+    resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
+  ]);
+  const seenPaths = new Set();
+  const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
+    if (seenPaths.has(path)) return false;
+    seenPaths.add(path);
+    return true;
+  });
   const routes = {
     ...baseRoutes,
-    ...Object.fromEntries(extras.map(([path, kind]) => [path, [kind]])),
   };
   const groups = [
     { id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", "/mis-casos", "/mi-comunidad", "/mi-vivienda", "/mi-alertas", "/ficha-tecnica", "/tecnicos"] },
@@ -1460,6 +1448,14 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     { id: "operations", label: "Operación y mantenimiento", Icon: Wrench, paths: ["/alertas", "/mantenimiento", "/repuestos", "/consumos", "/notificaciones"] },
     { id: "configuration", label: "Administración", Icon: Layers, paths: ["/catalogos", "/estados-instalacion", "/estados-orden", "/tipos-medicion", "/estados-alerta", "/prioridades", "/tipos-alerta"] },
   ].map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) })).filter((group) => group.items.length);
+  const dynamicGroups = [...new Set(dynamicLinks.map(([, , , resource]) => resource.menu_group || "Recursos"))]
+    .map((label) => ({
+      id: `resource-${label}`,
+      label,
+      Icon: iconForResource(label),
+      items: dynamicLinks.filter(([, , , resource]) => (resource.menu_group || "Recursos") === label),
+    }));
+  groups.push(...dynamicGroups);
   return (
     <div className="workspace" data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
       <aside className={open ? "sidebar open" : "sidebar"}>
@@ -1586,6 +1582,10 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                   }
                 />
               ))}
+            {resourceNav.map((resource) => {
+              const page = modelPage(resource.model);
+              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={<Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
+            })}
             {canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}

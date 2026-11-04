@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from core import models as m
 from core.serializers import DispositivoSerializer
 from .models import Role, UserRole, has_effective_role, get_effective_permissions
+from .models import Resource
 from .audit import audit_security_change
 
 def admin(user):
@@ -455,6 +456,37 @@ def resource_view(model):
             except ProtectedError:
                 raise ValidationError('Este registro tiene datos relacionados y no puede eliminarse.')
     return Resource
+
+
+def _managed_resource_model(resource_code):
+    resource = Resource.objects.select_related('content_type').filter(
+        code=resource_code, is_active=True,
+    ).first()
+    if resource is None:
+        raise PermissionDenied('El recurso no está activo o no existe.')
+    model = resource.content_type.model_class()
+    if (
+        model is None
+        or resource.content_type.app_label != 'core'
+        or model in (m.Usuario, m.Rol, m.Evento)
+    ):
+        raise PermissionDenied('Este modelo no está habilitado para gestión genérica.')
+    return model
+
+
+def dynamic_resource_collection(request, resource_code):
+    model = _managed_resource_model(resource_code)
+    view = resource_view(model)
+    return view.as_view({'get': 'list', 'post': 'create'})(request)
+
+
+def dynamic_resource_detail(request, resource_code, pk):
+    model = _managed_resource_model(resource_code)
+    view = resource_view(model)
+    return view.as_view({
+        'get': 'retrieve', 'put': 'update', 'patch': 'partial_update',
+        'delete': 'destroy',
+    })(request, pk=pk)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

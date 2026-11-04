@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import RoleViewSet, UserRoleViewSet, me_permissions, lista_permisos, lista_usuarios, security_audit, security_audit_export
 
-from .portal import Users, RESOURCES, resource_view, session, login_view, dashboard_summary, profile
+from .portal import Users, RESOURCES, resource_view, session, login_view, dashboard_summary, profile, dynamic_resource_collection, dynamic_resource_detail
+from .matrix import navigation_resources
 
 router = DefaultRouter()
 from .matrix import Resources, matrix
@@ -15,6 +16,9 @@ router.register(r'user-roles', UserRoleViewSet, basename='user-roles')
 
 urlpatterns = [
     path('matrix/', matrix),
+    path('navigation/', navigation_resources),
+    path('portal/recursos/<slug:resource_code>/', dynamic_resource_collection),
+    path('portal/recursos/<slug:resource_code>/<int:pk>/', dynamic_resource_detail),
     path('session/', session),
     path('profile/', profile, name='profile'),
     path('portal/resumen/', dashboard_summary, name='portal-dashboard-summary'),

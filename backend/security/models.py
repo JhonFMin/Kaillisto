@@ -10,9 +10,13 @@ class Resource(models.Model):
     description = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     content_type = models.OneToOneField(ContentType, on_delete=models.PROTECT, related_name='rbac_resource')
+    menu_group = models.CharField(max_length=60, default='Red energética')
+    menu_icon = models.CharField(max_length=24, default='layers')
+    menu_order = models.PositiveSmallIntegerField(default=100)
+    menu_visible = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ['menu_order', 'name']
         verbose_name = 'Recurso'
         verbose_name_plural = 'Recursos'
 
