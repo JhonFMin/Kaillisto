@@ -2005,3 +2005,210 @@ body,
     justify-content: flex-start;
   }
 }
+
+/* Light theme contrast pass: these tokens intentionally come last so the
+   dark-theme component colors cannot leave pale text on light surfaces. */
+.workspace[data-theme="light"] {
+  --light-ink: #292532;
+  --light-muted: #5e5968;
+  --light-surface: #fff;
+  --light-surface-soft: #f5f2f8;
+  --light-border: #ddd7e6;
+  --accent: #65479f;
+  --muted: #5e5968;
+  --border: #ddd7e6;
+  color: var(--light-ink);
+}
+.workspace[data-theme="light"] .workspace-main,
+.workspace[data-theme="light"] .page-heading,
+.workspace[data-theme="light"] .page-heading h1,
+.workspace[data-theme="light"] .page-heading p,
+.workspace[data-theme="light"] .section-intro,
+.workspace[data-theme="light"] .section-intro h2,
+.workspace[data-theme="light"] .section-intro a,
+.workspace[data-theme="light"] .territory,
+.workspace[data-theme="light"] .owner-card,
+.workspace[data-theme="light"] .owner-card h3,
+.workspace[data-theme="light"] .owner-alert,
+.workspace[data-theme="light"] .owner-alert strong,
+.workspace[data-theme="light"] .feature,
+.workspace[data-theme="light"] .data-panel,
+.workspace[data-theme="light"] .profile-panel,
+.workspace[data-theme="light"] .modal,
+.workspace[data-theme="light"] .device-comparison,
+.workspace[data-theme="light"] .matrix-context,
+.workspace[data-theme="light"] .matrix-context strong,
+.workspace[data-theme="light"] .stat-grid article,
+.workspace[data-theme="light"] .stat-grid article span,
+.workspace[data-theme="light"] td,
+.workspace[data-theme="light"] th,
+.workspace[data-theme="light"] label,
+.workspace[data-theme="light"] .profile-panel label,
+.workspace[data-theme="light"] .table-toolbar,
+.workspace[data-theme="light"] .matrix-toolbar,
+.workspace[data-theme="light"] .matrix-note,
+.workspace[data-theme="light"] .matrix-unsaved,
+.workspace[data-theme="light"] .audit-detail-body,
+.workspace[data-theme="light"] .defaults-modal > p,
+.workspace[data-theme="light"] .device-summary,
+.workspace[data-theme="light"] .device-summary strong {
+  color: var(--light-ink);
+}
+.workspace[data-theme="light"] .muted,
+.workspace[data-theme="light"] p,
+.workspace[data-theme="light"] small,
+.workspace[data-theme="light"] .empty,
+.workspace[data-theme="light"] .caption,
+.workspace[data-theme="light"] .eyebrow,
+.workspace[data-theme="light"] .owner-meta span,
+.workspace[data-theme="light"] .owner-card > small,
+.workspace[data-theme="light"] .owner-alert small,
+.workspace[data-theme="light"] .device-summary span,
+.workspace[data-theme="light"] .device-summary small,
+.workspace[data-theme="light"] .comparison-table td small,
+.workspace[data-theme="light"] .profile-password p,
+.workspace[data-theme="light"] .defaults-list li span,
+.workspace[data-theme="light"] .matrix-unsaved,
+.workspace[data-theme="light"] .text-link {
+  color: var(--light-muted);
+}
+.workspace[data-theme="light"] .data-panel,
+.workspace[data-theme="light"] .feature,
+.workspace[data-theme="light"] .owner-alert,
+.workspace[data-theme="light"] .stat-grid article,
+.workspace[data-theme="light"] .territory,
+.workspace[data-theme="light"] .modal,
+.workspace[data-theme="light"] .matrix-context,
+.workspace[data-theme="light"] .location-picker,
+.workspace[data-theme="light"] .device-summary {
+  background-color: var(--light-surface);
+  border-color: var(--light-border);
+}
+.workspace[data-theme="light"] .table-toolbar,
+.workspace[data-theme="light"] th,
+.workspace[data-theme="light"] .matrix-toolbar,
+.workspace[data-theme="light"] .matrix-note,
+.workspace[data-theme="light"] .matrix-unsaved {
+  background-color: var(--light-surface-soft);
+  border-color: var(--light-border);
+}
+.workspace[data-theme="light"] .matrix-bulk-actions button,
+.workspace[data-theme="light"] .owner-action,
+.workspace[data-theme="light"] .theme-toggle,
+.workspace[data-theme="light"] .device-comparison footer button,
+.workspace[data-theme="light"] .icon-button {
+  color: var(--light-ink);
+  background: var(--light-surface);
+  border-color: #c9c1d4;
+}
+.workspace[data-theme="light"] .matrix-bulk-actions button:hover:not(:disabled),
+.workspace[data-theme="light"] .owner-action:hover,
+.workspace[data-theme="light"] .theme-toggle:hover,
+.workspace[data-theme="light"] .device-comparison footer button:hover,
+.workspace[data-theme="light"] .icon-button:hover {
+  color: #493276;
+  background: #eee8f6;
+  border-color: #9a83c2;
+}
+.workspace[data-theme="light"] input:not([type="checkbox"]),
+.workspace[data-theme="light"] select,
+.workspace[data-theme="light"] textarea {
+  color: var(--light-ink);
+  background-color: var(--light-surface);
+  border-color: #bfb6cb;
+}
+.workspace[data-theme="light"] input::placeholder,
+.workspace[data-theme="light"] textarea::placeholder {
+  color: #686273;
+  opacity: 1;
+}
+.workspace[data-theme="light"] .search input,
+.workspace[data-theme="light"] .search input:focus {
+  border: 0;
+  box-shadow: none;
+}
+.workspace[data-theme="light"] .notice {
+  color: #45316f;
+  background: #f0eafb;
+  border-color: #d6c9eb;
+}
+.workspace[data-theme="light"] .tag,
+.workspace[data-theme="light"] .audit-json {
+  color: #493276;
+  background: #eee8f6;
+  border-color: #d6c9eb;
+}
+.workspace[data-theme="light"] .stat-grid svg,
+.workspace[data-theme="light"] .owner-card > svg,
+.workspace[data-theme="light"] .owner-alert > svg,
+.workspace[data-theme="light"] .matrix-context > svg,
+.workspace[data-theme="light"] .theme-toggle svg {
+  color: #65479f;
+}
+.workspace[data-theme="light"] .owner-meta,
+.workspace[data-theme="light"] .owner-meta strong {
+  color: var(--light-ink);
+  border-color: var(--light-border);
+}
+.workspace[data-theme="light"] .reading-state {
+  color: #51445f;
+  background: #f2eef7;
+  border-color: #d7cde3;
+}
+.workspace[data-theme="light"] .reading-state.normal {
+  color: #17633a;
+  background: #eaf6ee;
+  border-color: #a7d4b5;
+}
+.workspace[data-theme="light"] .reading-state.bajo,
+.workspace[data-theme="light"] .reading-state.alto,
+.workspace[data-theme="light"] .reading-state.fuera-de-rango {
+  color: #8d241f;
+  background: #fff0ee;
+  border-color: #e7b2ac;
+}
+.workspace[data-theme="light"] .reading-state.sin-umbral,
+.workspace[data-theme="light"] .reading-state.sin-lectura {
+  color: #5e5968;
+  background: #f1eff3;
+  border-color: #d5d1da;
+}
+.workspace[data-theme="light"] .defaults-list,
+.workspace[data-theme="light"] .defaults-list li,
+.workspace[data-theme="light"] .permission-matrix td,
+.workspace[data-theme="light"] .permission-matrix th,
+.workspace[data-theme="light"] .profile,
+.workspace[data-theme="light"] .sidebar-bottom,
+.workspace[data-theme="light"] .device-summary,
+.workspace[data-theme="light"] .reading-history {
+  border-color: var(--light-border);
+}
+.workspace[data-theme="light"] .threshold-chart {
+  background: linear-gradient(125deg, #f5f0fb, #fff);
+  border-color: var(--light-border);
+}
+.workspace[data-theme="light"] .threshold-legend,
+.workspace[data-theme="light"] .threshold-ticks {
+  color: var(--light-muted);
+}
+.workspace[data-theme="light"] .audit-detail-body li > span {
+  color: var(--light-muted);
+}
+.workspace[data-theme="light"] .sidebar nav a,
+.workspace[data-theme="light"] .sidebar-bottom > a,
+.workspace[data-theme="light"] .sidebar-bottom > button,
+.workspace[data-theme="light"] .nav-group-toggle,
+.workspace[data-theme="light"] .nav-group-items a,
+.workspace[data-theme="light"] .workspace-label {
+  color: #fff;
+}
+.workspace[data-theme="light"] .dashboard-territory,
+.workspace[data-theme="light"] .dashboard-territory h2,
+.workspace[data-theme="light"] .dashboard-territory p,
+.workspace[data-theme="light"] .dashboard-territory .eyebrow {
+  color: #fff;
+}
+.workspace[data-theme="light"] :focus-visible {
+  outline: 3px solid #7659ad;
+  outline-offset: 2px;
+}
