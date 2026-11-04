@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-from .models import Role, UserRole, SecurityAuditEvent, get_effective_permissions, has_effective_role
+from .models import Role, UserRole, SecurityAuditEvent, get_effective_permissions
 from .audit import audit_security_change
 from .serializers import (
     RoleSerializer, UserRoleSerializer,
@@ -143,8 +143,8 @@ class UserRoleViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def security_audit(request):
     """Latest security changes, restricted to administrators and superadmins."""
-    if not (request.user.is_superuser or has_effective_role(request.user, 'Administrador')):
-        raise PermissionDenied('Solo los administradores pueden consultar esta bitácora.')
+    if not (request.user.is_superuser or 'view_securityauditevent' in get_effective_permissions(request.user)):
+        raise PermissionDenied('Tu rol no tiene permiso para consultar la auditoría de seguridad.')
     events = SecurityAuditEvent.objects.select_related('actor').all()[:200]
     return Response([
         {
@@ -165,8 +165,8 @@ def security_audit(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def security_audit_export(request):
-    if not (request.user.is_superuser or has_effective_role(request.user, 'Administrador')):
-        raise PermissionDenied('Solo los administradores pueden exportar esta bitácora.')
+    if not (request.user.is_superuser or 'view_securityauditevent' in get_effective_permissions(request.user)):
+        raise PermissionDenied('Tu rol no tiene permiso para exportar la auditoría de seguridad.')
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = 'Auditoría'

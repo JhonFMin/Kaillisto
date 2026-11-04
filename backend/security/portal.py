@@ -55,6 +55,8 @@ def scoped(user, model):
         return qs.filter(instalacion__in=ids)
     if model == m.Notificacion:
         return qs.filter(destinatario=user, alerta__instalacion__in=ids)
+    if model == m.Medicion:
+        return qs.filter(dispositivo__instalacion__in=ids)
     if model == m.RepuestoOrdenTrabajo:
         return qs.filter(orden_trabajo__tecnico=user) if technician else qs.none()
     if model in (m.EstadoInstalacion, m.EstadoOrdenTrabajo, m.TipoMedicion, m.EstadoAlerta, m.PrioridadAlerta, m.TipoAlerta, m.Repuesto) and (technician or leader or homeowner):
@@ -222,10 +224,18 @@ RESOURCES = {
     'prioridades': m.PrioridadAlerta, 'tipos-alerta': m.TipoAlerta,
 }
 
-ALL_VIEW_PERMISSIONS = {
-    f"view_{model._meta.model_name}"
-    for model in (*RESOURCES.values(), get_user_model(), Role, UserRole)
-}
+def all_view_permissions():
+    """The global read scope follows active RBAC resources, including new ones."""
+    resource_permissions = {
+        f"view_{model_name}"
+        for model_name in Resource.objects.filter(is_active=True)
+        .values_list('content_type__model', flat=True)
+    }
+    resource_permissions.update({
+        f"view_{model._meta.model_name}"
+        for model in (*RESOURCES.values(), get_user_model(), Role, UserRole)
+    })
+    return resource_permissions
 
 
 def has_full_resource_access(user):
@@ -233,7 +243,7 @@ def has_full_resource_access(user):
     if not user.is_authenticated or not user.is_active:
         return False
     permissions = set(effective_permissions(user))
-    return "ALL" in permissions or ALL_VIEW_PERMISSIONS.issubset(permissions)
+    return "ALL" in permissions or all_view_permissions().issubset(permissions)
 
 class PortalMetadata(SimpleMetadata):
     def determine_actions(self, request, view):

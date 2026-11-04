@@ -204,7 +204,7 @@ function LocationMap({ latitude, longitude, label }) {
 
 const definitions = {
   usuarios: ["Usuarios", Users],
-  roles: ["Roles y permisos", Shield],
+  roles: ["Roles y recursos", Shield],
   comunidades: ["Comunidades", MapPin],
   instalaciones: ["Instalaciones solares", Layers],
   dispositivos: ["Dispositivos IoT", Radio],
@@ -220,6 +220,7 @@ const definitions = {
   "tipos-alerta": ["Tipos de alerta", Bell],
   notificaciones: ["Notificaciones", Bell],
   consumos: ["Repuestos utilizados", Package],
+  mediciones: ["Mediciones IoT", ChartLine],
 };
 const catalogs = [
   "estados-instalacion",
@@ -284,6 +285,7 @@ const permissionModelByKind = {
   ordenes: "ordentrabajo",
   repuestos: "repuesto",
   consumos: "repuestoordentrabajo",
+  mediciones: "medicion",
   notificaciones: "notificacion",
   "estados-instalacion": "estadoinstalacion",
   "estados-orden": "estadoordentrabajo",
@@ -293,6 +295,7 @@ const permissionModelByKind = {
   "tipos-alerta": "tipoalerta",
 };
 const modelPage = (model) => {
+  if (model === "securityauditevent") return { kind: "audit" };
   const entry = Object.entries(permissionModelByKind).find(([, value]) => value === model);
   return entry ? { kind: entry[0] } : model ? { kind: model } : null;
 };
@@ -1359,67 +1362,9 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
         : path === "/mi-alertas" && user.roles.includes("Líder Comunitario")
         ? user.permisos.includes("view_alerta")
         : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
-  const baseLinks = user.admin
-    ? [
-        ["/dashboard", "Resumen", LayoutDashboard],
-        ["/usuarios", "Usuarios", Users],
-        ["/roles", "Roles y permisos", Shield],
-        ["/catalogos", "Catálogos", Layers],
-      ]
-    : tech
-      ? [
-          ["/dashboard", "Mi espacio", LayoutDashboard],
-          ["/mis-casos", "Mis casos asignados", Wrench],
-          ["/ficha-tecnica", "Fichas técnicas", Layers],
-          ["/consumos", "Repuestos utilizados", Package],
-        ]
-      : user.roles.includes("Líder Comunitario")
-        ? [
-            ["/dashboard", "Mi espacio", LayoutDashboard],
-            ["/mi-comunidad", "Mi comunidad", MapPin],
-            ["/mi-alertas", "Alertas de mi zona", Bell],
-            ["/tecnicos", "Técnicos asignados", Wrench],
-          ]
-        : user.roles.includes("Propietario Solar")
-          ? [
-              ["/dashboard", "Mi espacio", LayoutDashboard],
-              ["/mi-vivienda", "Mi vivienda", MapPin],
-              ["/dispositivos", "Dispositivos IoT", Radio],
-              ["/alertas", "Alertas", Bell],
-              ["/notificaciones", "Notificaciones", Bell],
-            ]
-        : [];
-  const baseRoutes = user.admin
-    ? {
-        "/usuarios": ["usuarios"],
-        "/roles": ["roles"],
-      }
-    : tech
-      ? {
-          "/mis-casos": ["ordenes", "Mis casos asignados"],
-          "/ficha-tecnica": ["instalaciones", "Fichas técnicas", true],
-          "/consumos": ["consumos"],
-        }
-      : user.roles.includes("Líder Comunitario")
-        ? {
-            "/mi-comunidad": ["instalaciones", "Mi comunidad", true],
-            "/mi-alertas": ["alertas", "Alertas de mi comunidad", true],
-            "/tecnicos": ["ordenes", "Técnicos asignados", true],
-          }
-        : user.roles.includes("Propietario Solar")
-          ? {
-              "/mi-vivienda": ["homeowner", "Mi vivienda"],
-              "/dispositivos": ["dispositivos", "Dispositivos IoT", true],
-              "/instalaciones": ["instalaciones", "Instalaciones solares", true],
-              "/alertas": ["alertas", "Alertas", true],
-              "/notificaciones": ["notificaciones", "Notificaciones", true],
-            }
-        : {};
-  const staticLinks = [
-    ...baseLinks,
-    ["/perfil", "Mi perfil", UserCircle],
-    ...(user.admin ? [["/auditoria", "Auditoría de seguridad", ClipboardText]] : []),
-  ];
+  const baseLinks = [["/dashboard", user.admin ? "Resumen" : "Mi espacio", LayoutDashboard]];
+  const baseRoutes = {};
+  const staticLinks = [...baseLinks, ["/perfil", "Mi perfil", UserCircle]];
   const iconForResource = (name) => ({
     "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
     radio: Radio, broadcast: Radio, dispositivo: Radio,
@@ -1427,6 +1372,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     wrench: Wrench, tool: Wrench, orden: Wrench,
     package: Package, box: Package,
     shield: Shield, users: Users, sliders: SlidersHorizontal,
+    "chart-line": ChartLine,
+    clipboard: ClipboardText,
     layers: Layers, stack: Layers,
   }[String(name || "").toLowerCase()] || Layers);
   const dynamicLinks = resourceNav.map((resource) => [
@@ -1441,13 +1388,9 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   const routes = {
     ...baseRoutes,
   };
-  const groups = [
-    { id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", "/mis-casos", "/mi-comunidad", "/mi-vivienda", "/mi-alertas", "/ficha-tecnica", "/tecnicos"] },
-    { id: "security", label: "Seguridad", Icon: Shield, paths: ["/usuarios", "/roles", "/auditoria"] },
-    { id: "energy", label: "Red energética", Icon: MapPin, paths: ["/comunidades", "/instalaciones", "/dispositivos", "/umbrales"] },
-    { id: "operations", label: "Operación y mantenimiento", Icon: Wrench, paths: ["/alertas", "/mantenimiento", "/repuestos", "/consumos", "/notificaciones"] },
-    { id: "configuration", label: "Administración", Icon: Layers, paths: ["/catalogos", "/estados-instalacion", "/estados-orden", "/tipos-medicion", "/estados-alerta", "/prioridades", "/tipos-alerta"] },
-  ].map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) })).filter((group) => group.items.length);
+  const groups = [{ id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard"] }]
+    .map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) }))
+    .filter((group) => group.items.length);
   const dynamicGroups = [...new Set(dynamicLinks.map(([, , , resource]) => resource.menu_group || "Recursos"))]
     .map((label) => ({
       id: `resource-${label}`,
@@ -1584,12 +1527,11 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
               ))}
             {resourceNav.map((resource) => {
               const page = modelPage(resource.model);
-              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={<Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
+              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
             })}
             {canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
-            {user.admin && <Route path="/auditoria" element={<SecurityAudit />} />}
             <Route path="/perfil" element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

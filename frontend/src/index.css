@@ -1692,6 +1692,13 @@ body,
 .resource-config-fields .resource-visible input {
   width: auto;
 }
+.resource-config-fields button.danger {
+  border-color: rgb(210 92 92 / 55%);
+  color: #e5a3a3;
+}
+.resource-config-fields button.danger:hover:not(:disabled) {
+  background: rgb(130 35 35 / 18%);
+}
 @media (max-width: 620px) {
   .resource-manager { padding: 18px; }
   .resource-add-row > button { width: 100%; }

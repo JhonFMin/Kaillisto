@@ -8,6 +8,7 @@ ROLE_PERMISSION_PRESETS = {
         "instalacion": ("view",),
         "comunidad": ("view",),
         "dispositivo": ("view",),
+        "medicion": ("view",),
         "umbral": ("view",),
         "alerta": ("view",),
         "ordentrabajo": ("view", "change"),
@@ -25,6 +26,7 @@ ROLE_PERMISSION_PRESETS = {
         "comunidad": ("view",),
         "instalacion": ("view",),
         "dispositivo": ("view",),
+        "medicion": ("view",),
         "alerta": ("view",),
         "ordentrabajo": ("view",),
         "notificacion": ("view",),
@@ -32,6 +34,7 @@ ROLE_PERMISSION_PRESETS = {
     "Propietario Solar": {
         "instalacion": ("view",),
         "dispositivo": ("view",),
+        "medicion": ("view",),
         "alerta": ("view",),
         "notificacion": ("view",),
     },

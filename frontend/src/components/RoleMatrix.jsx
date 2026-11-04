@@ -33,6 +33,7 @@ export default function RoleMatrix({ user }) {
     user.is_superuser || user.permisos.includes("change_role");
   const canCreateRoles =
     user.is_superuser || user.permisos.includes("add_role");
+  const canDeleteResources = user.is_superuser || user.permisos.includes("delete_role");
   async function load() {
     const [r, m] = await Promise.all([
       api.get("/security/roles/"),
@@ -85,6 +86,19 @@ export default function RoleMatrix({ user }) {
       setAvailableModels(data); setNewResourceModel(String(data[0]?.id || ""));
       window.dispatchEvent(new Event("kaillisto:permissions"));
       setSaved(`Recurso “${model.name}” agregado. Asigna sus permisos en la matriz.`);
+    } catch (e) { setError(message(e)); }
+    finally { setBusy(false); }
+  }
+  async function setResourceActive(resource, active) {
+    if (busy) return;
+    if (!active && !window.confirm(`Se retirará “${resource.name}” del menú y se suspenderá su acceso hasta reactivarlo. Sus registros y permisos se conservarán. ¿Continuar?`)) return;
+    setBusy(true); setError(""); setSaved("");
+    try {
+      if (!active) await api.delete(`/security/resources/${resource.id}/`);
+      else await api.patch(`/security/resources/${resource.id}/`, { is_active: true, menu_visible: true });
+      await load();
+      window.dispatchEvent(new Event("kaillisto:permissions"));
+      setSaved(active ? `Recurso “${resource.name}” reactivado.` : `Recurso “${resource.name}” retirado; puedes reactivarlo cuando quieras.`);
     } catch (e) { setError(message(e)); }
     finally { setBusy(false); }
   }
@@ -258,8 +272,8 @@ export default function RoleMatrix({ user }) {
       <div className="page-heading">
         <div>
           <span className="eyebrow">SEGURIDAD / CONTROL DE ACCESO</span>
-          <h1>Roles y permisos</h1>
-          <p>Recursos → permisos → roles → usuarios.</p>
+          <h1>Roles y recursos</h1>
+          <p>Administra recursos disponibles y asigna acciones de acceso a cada rol.</p>
         </div>
         <div className="actions">
           {mode === "role" && (
@@ -309,19 +323,20 @@ export default function RoleMatrix({ user }) {
         <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setManagingResources(false)}>
           <section className="modal defaults-modal resource-manager" role="dialog" aria-modal="true" aria-labelledby="resources-title">
             <header><div><span className="eyebrow">CONFIGURACIÓN DEL SISTEMA</span><h2 id="resources-title">Recursos del menú</h2></div><button className="icon-button" aria-label="Cerrar" onClick={() => setManagingResources(false)}><X size={18} /></button></header>
-            <p>Los recursos activos con permiso de consulta aparecen en el menú de cada usuario. Al agregar un modelo, sus permisos quedan sin asignar hasta que los marques en la matriz.</p>
-            {availableModels.length > 0 && <div className="resource-add-row"><label>Modelo disponible<select value={newResourceModel} onChange={(event) => setNewResourceModel(event.target.value)}>{availableModels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className="primary" disabled={busy || !canManageRoles} onClick={addResource}><Plus size={16}/> Agregar recurso</button></div>}
+            <p>Los recursos activos con permiso de consulta aparecen en el menú con el mismo nombre configurado aquí. “Idioma” es un catálogo interno y se excluye; “Mediciones IoT” ya está disponible como módulo con datos limitados a tu ámbito.</p>
+            {availableModels.length > 0 ? <div className="resource-add-row"><label>Modelo disponible<select value={newResourceModel} onChange={(event) => setNewResourceModel(event.target.value)}>{availableModels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className="primary" disabled={busy || !canCreateRoles} title={!canCreateRoles ? "Necesitas el permiso Crear sobre Roles" : ""} onClick={addResource}><Plus size={16}/> Agregar recurso</button></div> : <p className="empty">No hay otros modelos de negocio disponibles para registrar ahora. “Idioma” es un catálogo interno excluido; agregar una entidad nueva requiere crear primero su modelo de datos.</p>}
             <div className="resource-config-list">{(matrix?.resources || []).map((item) => {
               const values = resourceDraft[item.id] || {};
               const changed = JSON.stringify(values) !== JSON.stringify({name:item.name,description:item.description,menu_group:item.menu_group,menu_icon:item.menu_icon,menu_order:item.menu_order,menu_visible:item.menu_visible,is_active:item.is_active});
-              return <article key={item.id} className="resource-config-row"><strong>{item.code}</strong><div className="resource-config-fields">
+              const protectedResource = ["security-role", "security-securityauditevent"].includes(item.code);
+              return <article key={item.id} className="resource-config-row"><strong>{item.code}{!item.is_active && " · INACTIVO"}</strong><div className="resource-config-fields">
                 <label>Nombre<input value={values.name || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],name:event.target.value}}))}/></label>
                 <label>Grupo del menú<input value={values.menu_group || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_group:event.target.value}}))}/></label>
-                <label>Icono<input value={values.menu_icon || ""} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_icon:event.target.value}}))}/></label>
+                <label>Icono<select value={values.menu_icon || "layers"} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_icon:event.target.value}}))}>{[["map-pin","Ubicación"],["layers","Capas"],["radio","Dispositivo IoT"],["chart-line","Mediciones"],["sliders","Umbrales"],["bell","Alertas"],["wrench","Mantenimiento"],["package","Repuestos"],["users","Usuarios"],["shield","Seguridad"],["clipboard","Auditoría"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
                 <label>Orden<input type="number" min="0" max="32767" value={values.menu_order ?? 100} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_order:Number(event.target.value)}}))}/></label>
-                <label className="resource-visible"><input type="checkbox" checked={Boolean(values.menu_visible)} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_visible:event.target.checked}}))}/> Mostrar en menú</label>
-                <label className="resource-visible"><input type="checkbox" checked={Boolean(values.is_active)} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],is_active:event.target.checked}}))}/> Recurso activo</label>
+                <label className="resource-visible"><input type="checkbox" disabled={protectedResource} checked={Boolean(values.menu_visible)} onChange={(event) => setResourceDraft((current) => ({...current,[item.id]:{...current[item.id],menu_visible:event.target.checked}}))}/> Mostrar en menú</label>
                 <button disabled={busy || !changed || !canManageRoles} onClick={() => saveResource(item)}>Guardar</button>
+                {item.is_active ? <button className="danger" disabled={busy || !canDeleteResources || ["security-role", "security-securityauditevent"].includes(item.code)} title={!canDeleteResources ? "Necesitas el permiso Eliminar sobre Roles" : "Retirar del menú y suspender el acceso, conservando datos y permisos"} onClick={() => setResourceActive(item, false)}>Retirar</button> : <button disabled={busy || !canManageRoles} onClick={() => setResourceActive(item, true)}>Reactivar</button>}
               </div></article>;
             })}</div>
             <footer><button onClick={() => setManagingResources(false)}>Cerrar</button></footer>
