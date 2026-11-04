@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import RoleMatrix from "./components/RoleMatrix";
 import {
   BrowserRouter,
@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
+import { MoonIcon as Moon } from "@phosphor-icons/react/dist/csr/Moon";
 import { SquaresFourIcon as LayoutDashboard } from "@phosphor-icons/react/dist/csr/SquaresFour";
 import { UsersThreeIcon as Users } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { MapPinIcon as MapPin } from "@phosphor-icons/react/dist/csr/MapPin";
@@ -33,6 +34,78 @@ import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/Caret
 import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/UserCircle";
 import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
 import api from "./api/axios";
+
+const googleMapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+function LocationPicker({ latitude, longitude, onChange, address }) {
+  const mapElement = useRef(null);
+  const mapInstance = useRef(null);
+  const markerInstance = useRef(null);
+  const [mapState, setMapState] = useState(googleMapsKey ? "loading" : "manual");
+  useEffect(() => {
+    if (!googleMapsKey) return;
+    let cancelled = false;
+    const initMap = () => {
+      if (cancelled || !mapElement.current || !window.google?.maps) return;
+      setMapState("ready");
+      const center = latitude && longitude
+        ? { lat: Number(latitude), lng: Number(longitude) }
+        : { lat: 11.5449, lng: -72.9072 };
+      const map = new window.google.maps.Map(mapElement.current, { center, zoom: 12, mapTypeControl: false, streetViewControl: false, fullscreenControl: false });
+      const marker = new window.google.maps.Marker({ position: latitude && longitude ? center : null, map, draggable: true });
+      mapInstance.current = map;
+      markerInstance.current = marker;
+      const savePoint = (point) => onChange({ latitud: point.lat().toFixed(6), longitud: point.lng().toFixed(6) });
+      map.addListener("click", (event) => { marker.setPosition(event.latLng); savePoint(event.latLng); });
+      marker.addListener("dragend", (event) => savePoint(event.latLng));
+    };
+    if (window.google?.maps) initMap();
+    else {
+      const existing = document.querySelector('script[data-kaillisto-maps="true"]');
+      const script = existing || document.createElement("script");
+      if (!existing) {
+        script.dataset.kaillistoMaps = "true";
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsKey)}&loading=async&v=weekly`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+      script.addEventListener("load", initMap, { once: true });
+      script.addEventListener("error", () => !cancelled && setMapState("error"), { once: true });
+    }
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    const lat = Number(latitude), lng = Number(longitude);
+    if (!mapInstance.current || !markerInstance.current || latitude === "" || longitude === "" || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const point = { lat, lng };
+    markerInstance.current.setPosition(point);
+    mapInstance.current.panTo(point);
+  }, [latitude, longitude, mapState]);
+  const mapsUrl = latitude && longitude
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || "La Guajira, Colombia")}`;
+  const locate = () => {
+    if (!navigator.geolocation) { setMapState("location-error"); return; }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => onChange({ latitud: coords.latitude.toFixed(6), longitud: coords.longitude.toFixed(6) }),
+      () => setMapState("location-error"),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+    );
+  };
+  return (
+    <section className="location-picker" aria-label="Ubicación exacta">
+      <div><strong>Ubicación exacta</strong><p>Guarda el punto GPS del sistema; solo se comparte con Google si abres el enlace del mapa.</p></div>
+      {googleMapsKey && <><div ref={(node) => { mapElement.current = node; }} className="google-map-canvas" role="application" aria-label="Mapa para marcar la ubicación" />{mapState === "loading" && <small>Cargando mapa…</small>}{mapState === "error" && <small>No se pudo cargar Google Maps; puedes indicar las coordenadas abajo.</small>}</>}
+      <div className="location-coordinates">
+        <label>Latitud<input type="number" step="any" min="-90" max="90" value={latitude ?? ""} onChange={(event) => onChange({ latitud: event.target.value, longitud: longitude ?? "" })} /></label>
+        <label>Longitud<input type="number" step="any" min="-180" max="180" value={longitude ?? ""} onChange={(event) => onChange({ latitud: latitude ?? "", longitud: event.target.value })} /></label>
+      </div>
+      <div className="location-actions"><button type="button" onClick={locate}>Usar ubicación actual</button><a href={mapsUrl} target="_blank" rel="noreferrer">Abrir en Google Maps ↗</a></div>
+      {mapState === "location-error" && <small>El navegador no pudo obtener la ubicación; permite el acceso al GPS y vuelve a intentar.</small>}
+    </section>
+  );
+}
 
 const definitions = {
   usuarios: ["Usuarios", Users],
@@ -435,7 +508,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
   );
   const installationType = data.tipo || row?.tipo || "comunitaria";
   const fields = allFields.filter(([key]) =>
-    kind !== "instalaciones" || key !== "responsable" || installationType === "residencial",
+    kind !== "instalaciones" || (!["latitud", "longitud"].includes(key) && (key !== "responsable" || installationType === "residencial")),
   );
   useEffect(() => {
     let active = true;
@@ -500,7 +573,9 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
                 if (k === "password" && !v && row) continue;
                 if (v !== undefined)
                   payload[k] =
-                    v === "" && schema[k].type === "field" ? null : v;
+                    ["latitud", "longitud"].includes(k) && v === ""
+                      ? null
+                      : v === "" && schema[k].type === "field" ? null : v;
               }
               await onSave(payload);
             } catch (e) {
@@ -511,6 +586,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
           }}
         >
           {kind === "instalaciones" && <p className="installation-form-intro">Elige si se trata de un sistema de una comunidad o de una vivienda. Para una vivienda pediremos dirección, barrio y responsable; también puedes vincularla a una comunidad si aplica.</p>}
+          {kind === "instalaciones" && <LocationPicker latitude={data.latitud} longitude={data.longitud} address={data.direccion || data.ubicacion} onChange={(point) => setData((current) => ({ ...current, ...point }))} />}
           {fields.map(([k, f]) => (
             <label key={k}>
               {kind === "instalaciones" ? ({
@@ -1010,9 +1086,11 @@ function Dashboard({ user }) {
 }
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
   const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => { localStorage.setItem("kaillisto-theme", theme); }, [theme]);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event) => event.key === "Escape" && setOpen(false);
@@ -1151,7 +1229,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     { id: "configuration", label: "Administración", Icon: Layers, paths: ["/catalogos", "/estados-instalacion", "/estados-orden", "/tipos-medicion", "/estados-alerta", "/prioridades", "/tipos-alerta"] },
   ].map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) })).filter((group) => group.items.length);
   return (
-    <div className="workspace">
+    <div className="workspace" data-theme={theme}>
       <aside className={open ? "sidebar open" : "sidebar"}>
         <div className="sidebar-brand-row"><Brand /><button className="sidebar-close icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={18} /></button></div>
         <div className="workspace-label">
@@ -1236,7 +1314,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
           <span>
             Ka’illisto <span className="muted">/ Espacio de trabajo</span>
           </span>
-          <span className="tag">GESTIÓN SOLAR</span>
+          <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
         </header>
         <main className="workspace-main">
           <Routes>
@@ -1310,6 +1388,14 @@ function SecurityAudit() {
     "account.profile_updated": "Perfil personal actualizado",
     "account.superadmin_changed": "Acceso superadministrador cambiado",
     "work_order.closed": "Orden de trabajo cerrada",
+    "auth.login": "Inicio de sesión",
+    "auth.logout": "Cierre de sesión",
+    "api.post": "Registro creado o acción ejecutada",
+    "api.put": "Registro actualizado",
+    "api.patch": "Registro actualizado",
+    "api.delete": "Registro eliminado",
+    "security.audit_view": "Consulta de bitácora",
+    "security.audit_export": "Exportación de bitácora",
   };
   return (
     <>
@@ -1317,8 +1403,9 @@ function SecurityAudit() {
         <div>
           <span className="eyebrow">SEGURIDAD / TRAZABILIDAD</span>
           <h1>Auditoría de seguridad</h1>
-          <p>Últimos 200 cambios de roles, permisos y cuentas.</p>
+          <p>Últimos 200 eventos. La exportación incluye el historial completo.</p>
         </div>
+        <div className="actions"><a className="button" href="/api/security/audit/export/">Exportar Excel</a></div>
       </div>
       {error && <p role="alert" className="notice">{error}</p>}
       <section className="data-panel">

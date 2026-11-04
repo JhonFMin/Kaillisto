@@ -6,6 +6,10 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.db import transaction
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 from .models import Role, UserRole, SecurityAuditEvent, get_effective_permissions, has_effective_role
 from .audit import audit_security_change
@@ -156,6 +160,47 @@ def security_audit(request):
         }
         for event in events
     ])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def security_audit_export(request):
+    if not (request.user.is_superuser or has_effective_role(request.user, 'Administrador')):
+        raise PermissionDenied('Solo los administradores pueden exportar esta bitácora.')
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'Auditoría'
+    sheet.append(['Fecha (UTC)', 'Actor', 'Acción', 'Tipo de objetivo', 'ID objetivo', 'Objetivo', 'Detalle', 'Motivo'])
+    header_fill = PatternFill('solid', fgColor='241638')
+    for cell in sheet[1]:
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical='center')
+    events = SecurityAuditEvent.objects.select_related('actor').order_by('-created_at').iterator(chunk_size=500)
+    def safe_cell(value):
+        value = str(value or "")
+        return "'" + value if value.startswith(("=", "+", "-", "@")) else value
+    for event in events:
+        detail = safe_cell(str(event.changes or {})[:32000])
+        sheet.append([
+            safe_cell(event.created_at.isoformat() if event.created_at else ''),
+            safe_cell(event.actor.username if event.actor_id else 'Cuenta eliminada'),
+            safe_cell(event.action), safe_cell(event.target_type), safe_cell(event.target_id), safe_cell(event.target_label),
+            detail, safe_cell(event.reason),
+        ])
+    widths = [25, 22, 34, 22, 14, 32, 70, 38]
+    for index, width in enumerate(widths, 1):
+        sheet.column_dimensions[get_column_letter(index)].width = width
+    sheet.freeze_panes = 'A2'
+    sheet.auto_filter.ref = sheet.dimensions
+    sheet.sheet_view.showGridLines = False
+    for row in sheet.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(vertical='top', wrap_text=True)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="kaillisto-auditoria.xlsx"'
+    workbook.save(response)
+    return response
 
 
 @api_view(['GET'])

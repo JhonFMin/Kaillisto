@@ -29,7 +29,7 @@ Contraseña de las cuatro cuentas: `Kaillisto2026!`
 | tecnico.local | Órdenes propias, fichas técnicas y repuestos utilizados |
 | lider.local | Instalaciones, alertas y técnicos de su comunidad |
 
-Las cuentas y datos anteriores se conservaron. Los datos nuevos llevan el prefijo Demo local. Estas claves son solo para la demostración local.
+Las cuentas y datos anteriores se conservaron. Los datos locales se identifican como demostración. Estas claves son solo para la demostración local.
 
 ## Instalación desde cero
 
@@ -44,6 +44,12 @@ npm --prefix frontend ci
 ```
 
 El seed es repetible y no cambia las contraseñas de cuentas existentes.
+
+## Ubicaciones y simulación productiva
+
+Las instalaciones y comunidades admiten coordenadas GPS. El navegador puede llenar el punto actual y el enlace abre la ubicación en Google Maps sin una clave de API. Para mostrar un mapa interactivo dentro del formulario, configura `VITE_GOOGLE_MAPS_API_KEY` como argumento de compilación de Docker y habilita Maps JavaScript API en Google Cloud. La ubicación se guarda en Ka’illisto; solo se envía a Google cuando se abre el enlace o se carga el mapa integrado.
+
+Al desplegar las migraciones se eliminan registros claramente identificados con `DEMO` y se carga una simulación ficticia de La Guajira para probar el flujo. Se conservan las cuentas, permisos, roles y bitácora de auditoría.
 
 ## Verificar
 

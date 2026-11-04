@@ -10,9 +10,23 @@ class ComunidadSerializer(serializers.ModelSerializer):
             "id_comunidad",
             "nombre",
             "ubicacion",
+            "latitud",
+            "longitud",
             "descripcion",
         ]
         read_only_fields = ["id_comunidad"]
+
+    def validate(self, attrs):
+        instance = self.instance
+        latitude = attrs.get("latitud", getattr(instance, "latitud", None))
+        longitude = attrs.get("longitud", getattr(instance, "longitud", None))
+        if (latitude is None) != (longitude is None):
+            raise serializers.ValidationError({"latitud": "Indica latitud y longitud juntas para guardar el punto exacto."})
+        if latitude is not None and not -90 <= latitude <= 90:
+            raise serializers.ValidationError({"latitud": "La latitud debe estar entre -90 y 90."})
+        if longitude is not None and not -180 <= longitude <= 180:
+            raise serializers.ValidationError({"longitud": "La longitud debe estar entre -180 y 180."})
+        return attrs
 
 class EstadoInstalacionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,6 +51,8 @@ class InstalacionSerializer(serializers.ModelSerializer):
             "direccion",
             "barrio",
             "ubicacion",
+            "latitud",
+            "longitud",
             "capacidad",
             "fecha_instalacion",
             "estado_instalacion",
@@ -60,6 +76,14 @@ class InstalacionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"barrio": "Escribe el barrio o sector residencial."})
         if owner is not None and not owner.is_active:
             raise serializers.ValidationError({"responsable": "El responsable debe tener una cuenta activa."})
+        latitude = attrs.get("latitud", getattr(instance, "latitud", None))
+        longitude = attrs.get("longitud", getattr(instance, "longitud", None))
+        if (latitude is None) != (longitude is None):
+            raise serializers.ValidationError({"latitud": "Indica latitud y longitud juntas para guardar el punto exacto."})
+        if latitude is not None and not -90 <= latitude <= 90:
+            raise serializers.ValidationError({"latitud": "La latitud debe estar entre -90 y 90."})
+        if longitude is not None and not -180 <= longitude <= 180:
+            raise serializers.ValidationError({"longitud": "La longitud debe estar entre -180 y 180."})
         return attrs
 
     def validate_capacidad(self, value):

@@ -19,6 +19,8 @@ class Comunidad(models.Model):
     id_comunidad = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=150)
     ubicacion = models.CharField(max_length=255)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     descripcion = models.TextField(blank=True)
 
     class Meta:
@@ -136,6 +138,8 @@ class Instalacion(models.Model):
     direccion = models.CharField(max_length=255, blank=True)
     barrio = models.CharField(max_length=120, blank=True)
     ubicacion = models.CharField(max_length=255)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     capacidad = models.DecimalField(
         max_digits=10,
         decimal_places=2,
