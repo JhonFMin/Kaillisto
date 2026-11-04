@@ -47,7 +47,13 @@ El seed es repetible y no cambia las contraseñas de cuentas existentes.
 
 ## Ubicaciones y simulación productiva
 
-Las instalaciones y comunidades admiten coordenadas GPS. El navegador puede llenar el punto actual y el enlace abre la ubicación en Google Maps sin una clave de API. Para mostrar un mapa interactivo dentro del formulario, configura `VITE_GOOGLE_MAPS_API_KEY` como argumento de compilación de Docker y habilita Maps JavaScript API en Google Cloud. La ubicación se guarda en Ka’illisto; solo se envía a Google cuando se abre el enlace o se carga el mapa integrado.
+Los formularios de instalaciones y comunidades incluyen un mapa interactivo de OpenStreetMap: se marca el punto con clic o moviendo el pin, y se puede solicitar al navegador la ubicación actual. No requiere clave ni servicio de pago. El usuario puede aceptar por separado el envío del punto a Photon/Komoot para completar dirección, barrio/vereda y municipio; ese servicio se consulta solo al pulsar el botón de autocompletado. El enlace a Google Maps se ofrece como referencia opcional.
+
+Las instalaciones residenciales guardan dirección, barrio y municipio. Las comunidades guardan municipio, sector y una referencia cercana, además de la coordenada GPS.
+
+La bitácora de auditoría conserva los cambios de los registros operativos con campos anterior/nuevo, actor, tipo de acción, objetivo y ruta; también registra inicios de sesión correctos/rechazados, cierres y exportaciones/consultas de auditoría. Por volumen, las lecturas periódicas de los ESP32 se conservan en su tabla de mediciones y no generan eventos duplicados de auditoría por cada paquete.
+
+La migración `0018_community_location_and_sensor_history` amplía los datos de simulación de los ESP32 existentes con un mes de lecturas cada tres horas para tres medidas. Son datos ficticios para validar tendencias y umbrales; no son telemetría real.
 
 Al desplegar las migraciones se eliminan registros claramente identificados con `DEMO` y se carga una simulación ficticia de La Guajira para probar el flujo. Se conservan las cuentas, permisos, roles y bitácora de auditoría.
 

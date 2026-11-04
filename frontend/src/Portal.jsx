@@ -33,75 +33,115 @@ import { ClipboardTextIcon as ClipboardText } from "@phosphor-icons/react/dist/c
 import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/UserCircle";
 import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
+import "leaflet/dist/leaflet.css";
 import api from "./api/axios";
 
-const googleMapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
-function LocationPicker({ latitude, longitude, onChange, address }) {
+function LocationPicker({ latitude, longitude, onChange, address, kind }) {
   const mapElement = useRef(null);
   const mapInstance = useRef(null);
   const markerInstance = useRef(null);
-  const [mapState, setMapState] = useState(googleMapsKey ? "loading" : "manual");
+  const markerIcon = useRef(null);
+  const selection = useRef({ latitude, longitude, onChange });
+  const [mapState, setMapState] = useState("ready");
+  const [allowAddressLookup, setAllowAddressLookup] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
+  useEffect(() => { selection.current = { latitude, longitude, onChange }; }, [latitude, longitude, onChange]);
   useEffect(() => {
-    if (!googleMapsKey) return;
+    if (!mapElement.current) return undefined;
     let cancelled = false;
-    const initMap = () => {
-      if (cancelled || !mapElement.current || !window.google?.maps) return;
-      setMapState("ready");
-      const center = latitude && longitude
-        ? { lat: Number(latitude), lng: Number(longitude) }
-        : { lat: 11.5449, lng: -72.9072 };
-      const map = new window.google.maps.Map(mapElement.current, { center, zoom: 12, mapTypeControl: false, streetViewControl: false, fullscreenControl: false });
-      const marker = new window.google.maps.Marker({ position: latitude && longitude ? center : null, map, draggable: true });
+    let map = null;
+    let timer = null;
+    import("leaflet").then(({ default: L }) => {
+      if (cancelled || !mapElement.current) return;
+      const selected = selection.current;
+      const hasPoint = selected.latitude !== "" && selected.longitude !== "" && selected.latitude != null && selected.longitude != null;
+      const center = hasPoint ? [Number(selected.latitude), Number(selected.longitude)] : [11.5449, -72.9072];
+      const icon = L.divIcon({ className: "kaillisto-map-pin", html: '<span aria-hidden="true"></span>', iconSize: [24, 24], iconAnchor: [12, 12] });
+      markerIcon.current = icon;
+      map = L.map(mapElement.current, { scrollWheelZoom: false }).setView(center, hasPoint ? 14 : 8);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
       mapInstance.current = map;
+      const save = (point) => selection.current?.onChange({ latitud: point.lat.toFixed(6), longitud: point.lng.toFixed(6) });
+      const marker = hasPoint ? L.marker(center, { icon, draggable: true }).addTo(map) : null;
       markerInstance.current = marker;
-      const savePoint = (point) => onChange({ latitud: point.lat().toFixed(6), longitud: point.lng().toFixed(6) });
-      map.addListener("click", (event) => { marker.setPosition(event.latLng); savePoint(event.latLng); });
-      marker.addListener("dragend", (event) => savePoint(event.latLng));
-    };
-    if (window.google?.maps) initMap();
-    else {
-      const existing = document.querySelector('script[data-kaillisto-maps="true"]');
-      const script = existing || document.createElement("script");
-      if (!existing) {
-        script.dataset.kaillistoMaps = "true";
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsKey)}&loading=async&v=weekly`;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-      }
-      script.addEventListener("load", initMap, { once: true });
-      script.addEventListener("error", () => !cancelled && setMapState("error"), { once: true });
-    }
-    return () => { cancelled = true; };
+      const setPoint = (point) => {
+        if (!markerInstance.current) markerInstance.current = L.marker(point, { icon, draggable: true }).addTo(map);
+        else markerInstance.current.setLatLng(point);
+        markerInstance.current.off("dragend").on("dragend", (event) => save(event.target.getLatLng()));
+        save({ lat: point[0] ?? point.lat, lng: point[1] ?? point.lng });
+      };
+      map.on("click", (event) => setPoint(event.latlng));
+      if (marker) marker.on("dragend", (event) => save(event.target.getLatLng()));
+      timer = window.setTimeout(() => map.invalidateSize(), 80);
+    });
+    return () => { cancelled = true; window.clearTimeout(timer); map?.remove(); mapInstance.current = null; markerInstance.current = null; markerIcon.current = null; };
   }, []);
   useEffect(() => {
     const lat = Number(latitude), lng = Number(longitude);
-    if (!mapInstance.current || !markerInstance.current || latitude === "" || longitude === "" || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    const point = { lat, lng };
-    markerInstance.current.setPosition(point);
+    if (!mapInstance.current || latitude === "" || longitude === "" || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const point = [lat, lng];
+    if (!markerInstance.current && mapInstance.current && markerIcon.current) {
+      import("leaflet").then(({ default: L }) => {
+        if (!mapInstance.current || markerInstance.current || !markerIcon.current) return;
+        markerInstance.current = L.marker(point, { icon: markerIcon.current, draggable: true }).addTo(mapInstance.current).on("dragend", (event) => {
+      const { lat: nextLat, lng: nextLng } = event.target.getLatLng();
+      selection.current?.onChange({ latitud: nextLat.toFixed(6), longitud: nextLng.toFixed(6) });
+        });
+      });
+    } else if (markerInstance.current) markerInstance.current.setLatLng(point);
     mapInstance.current.panTo(point);
-  }, [latitude, longitude, mapState]);
+  }, [latitude, longitude]);
   const mapsUrl = latitude && longitude
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || "La Guajira, Colombia")}`;
   const locate = () => {
     if (!navigator.geolocation) { setMapState("location-error"); return; }
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => onChange({ latitud: coords.latitude.toFixed(6), longitud: coords.longitude.toFixed(6) }),
+      ({ coords }) => { setMapState("ready"); onChange({ latitud: coords.latitude.toFixed(6), longitud: coords.longitude.toFixed(6) }); mapInstance.current?.setView([coords.latitude, coords.longitude], 16); },
       () => setMapState("location-error"),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   };
+  const lookupAddress = async () => {
+    if (!allowAddressLookup || !latitude || !longitude) return;
+    setLookingUp(true);
+    setLocationMessage("");
+    try {
+      const url = new URL("https://photon.komoot.io/reverse");
+      url.searchParams.set("lat", latitude);
+      url.searchParams.set("lon", longitude);
+      const response = await fetch(url, { headers: { Accept: "application/geo+json" } });
+      if (!response.ok) throw new Error("No se encontró la dirección; puedes completarla manualmente.");
+      const feature = (await response.json()).features?.[0];
+      if (!feature) throw new Error("No se encontró una dirección cercana; puedes completarla manualmente.");
+      const p = feature.properties || {};
+      const district = p.district || p.suburb || p.neighbourhood || p.locality || "";
+      const municipality = p.city || p.town || p.village || p.county || p.state || "";
+      const street = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
+      const location = [municipality, p.state && p.state !== municipality ? p.state : "", p.country].filter(Boolean).join(", ");
+      if (kind === "comunidades") onChange({ ubicacion: location, municipio: municipality, sector: district || p.name || "", referencia: street });
+      else onChange({ direccion: street, barrio: district, ubicacion: location });
+      setLocationMessage("Datos de ubicación completados. Revísalos antes de guardar.");
+    } catch (error) { setLocationMessage(error.message || "No se pudo consultar la dirección."); }
+    finally { setLookingUp(false); }
+  };
   return (
     <section className="location-picker" aria-label="Ubicación exacta">
-      <div><strong>Ubicación exacta</strong><p>Guarda el punto GPS del sistema; solo se comparte con Google si abres el enlace del mapa.</p></div>
-      {googleMapsKey && <><div ref={(node) => { mapElement.current = node; }} className="google-map-canvas" role="application" aria-label="Mapa para marcar la ubicación" />{mapState === "loading" && <small>Cargando mapa…</small>}{mapState === "error" && <small>No se pudo cargar Google Maps; puedes indicar las coordenadas abajo.</small>}</>}
+      <div><strong>Marca el punto exacto en el mapa</strong><p>Haz clic en el mapa o arrastra el pin. El punto se guarda en el sistema.</p></div>
+      <div ref={mapElement} className="google-map-canvas" role="application" aria-label="Mapa interactivo para marcar la ubicación" />
+      <small>El mapa carga mosaicos de OpenStreetMap. El punto solo se envía a Photon/Komoot si aceptas y pulsas “Completar dirección”.</small>
       <div className="location-coordinates">
         <label>Latitud<input type="number" step="any" min="-90" max="90" value={latitude ?? ""} onChange={(event) => onChange({ latitud: event.target.value, longitud: longitude ?? "" })} /></label>
         <label>Longitud<input type="number" step="any" min="-180" max="180" value={longitude ?? ""} onChange={(event) => onChange({ latitud: latitude ?? "", longitud: event.target.value })} /></label>
       </div>
       <div className="location-actions"><button type="button" onClick={locate}>Usar ubicación actual</button><a href={mapsUrl} target="_blank" rel="noreferrer">Abrir en Google Maps ↗</a></div>
+      <label className="geocode-consent"><input type="checkbox" checked={allowAddressLookup} onChange={(e) => setAllowAddressLookup(e.target.checked)} />Acepto enviar este punto a Photon/Komoot para buscar dirección y sector.</label>
+      <button type="button" disabled={!allowAddressLookup || !latitude || !longitude || lookingUp} onClick={lookupAddress}>{lookingUp ? "Buscando dirección…" : "Completar dirección desde el punto"}</button>
+      {locationMessage && <small role="status">{locationMessage}</small>}
       {mapState === "location-error" && <small>El navegador no pudo obtener la ubicación; permite el acceso al GPS y vuelve a intentar.</small>}
     </section>
   );
@@ -159,6 +199,9 @@ const nice = (key) =>
     direccion: "Dirección",
     barrio: "Barrio / sector",
     ubicacion: "Municipio / localidad",
+    municipio: "Municipio o localidad",
+    sector: "Barrio, vereda o sector",
+    referencia: "Dirección o referencia cercana",
   })[key] || key.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 const errorText = (e) =>
   typeof e.response?.data === "object"
@@ -508,7 +551,8 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
   );
   const installationType = data.tipo || row?.tipo || "comunitaria";
   const fields = allFields.filter(([key]) =>
-    kind !== "instalaciones" || (!["latitud", "longitud"].includes(key) && (key !== "responsable" || installationType === "residencial")),
+    (kind !== "instalaciones" && kind !== "comunidades" || !["latitud", "longitud"].includes(key)) &&
+    (kind !== "instalaciones" || key !== "responsable" || installationType === "residencial"),
   );
   useEffect(() => {
     let active = true;
@@ -564,6 +608,10 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
         <form
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!row && (kind === "instalaciones" || kind === "comunidades") && (!data.latitud || !data.longitud)) {
+              setError("Marca el punto exacto en el mapa antes de crear el registro.");
+              return;
+            }
             setBusy(true);
             setError("");
             try {
@@ -586,7 +634,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
           }}
         >
           {kind === "instalaciones" && <p className="installation-form-intro">Elige si se trata de un sistema de una comunidad o de una vivienda. Para una vivienda pediremos dirección, barrio y responsable; también puedes vincularla a una comunidad si aplica.</p>}
-          {kind === "instalaciones" && <LocationPicker latitude={data.latitud} longitude={data.longitud} address={data.direccion || data.ubicacion} onChange={(point) => setData((current) => ({ ...current, ...point }))} />}
+          {(kind === "instalaciones" || kind === "comunidades") && <LocationPicker kind={kind} latitude={data.latitud} longitude={data.longitud} address={data.direccion || data.ubicacion} onChange={(point) => setData((current) => ({ ...current, ...point }))} />}
           {fields.map(([k, f]) => (
             <label key={k}>
               {kind === "instalaciones" ? ({
@@ -600,7 +648,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
                 capacidad: "Capacidad solar (kW)",
                 fecha_instalacion: "Fecha de instalación",
                 estado_instalacion: "Estado del sistema",
-              }[k] || nice(k)) : nice(k)}
+              }[k] || nice(k)) : kind === "comunidades" ? ({ municipio: "Municipio", sector: "Barrio, vereda o sector", referencia: "Dirección o referencia cercana", ubicacion: "Municipio / localidad" }[k] || nice(k)) : nice(k)}
               {kind === "instalaciones" && (k === "comunidad" ? installationType === "comunitaria" : ["responsable", "direccion", "barrio"].includes(k) ? installationType === "residencial" : false) || (kind !== "instalaciones" && f.required) ? <span aria-hidden="true">*</span> : null}
               {kind === "instalaciones" && k === "comunidad" && installationType === "residencial" && <small className="field-help">Si la vivienda forma parte de una comunidad registrada, selecciónala aquí.</small>}
               {kind === "instalaciones" && k === "barrio" && installationType === "comunitaria" && <small className="field-help">Opcional para identificar un barrio o sector dentro de la comunidad.</small>}
@@ -967,6 +1015,13 @@ function DeviceComparison({ device, onClose }) {
             <div className="threshold-chart-title"><div><span className="eyebrow">LECTURA ACTUAL / RANGO PERMITIDO</span><h3>Comparativa de medidas</h3></div><span className="threshold-legend"><i /> Rango esperado</span></div>
             {report.mediciones.map((row) => {
               const range = getRange(row);
+              const history = row.historial || [];
+              const historyPoints = history.map((point, index) => {
+                const span = range.high - range.low || 1;
+                const x = history.length < 2 ? 0 : (index / (history.length - 1)) * 320;
+                const y = 58 - Math.max(0, Math.min(1, (Number(point.valor) - range.low) / span)) * 48;
+                return `${x},${y}`;
+              }).join(" ");
               return <article className="threshold-chart-row" key={row.tipo_medicion}>
                 <div className="threshold-chart-heading"><strong>{row.tipo_medicion}<small>{row.unidad}</small></strong><b>{formatted(row.valor)} {row.valor == null ? "" : row.unidad}</b><span className={`reading-state ${row.estado.toLowerCase().replaceAll(" ", "-")}`}>{row.estado}</span></div>
                 <div className="threshold-track" role="img" aria-label={`${row.tipo_medicion}: ${formatted(row.valor)} ${row.unidad}, rango de ${formatted(row.minimo)} a ${formatted(row.maximo)}`}>
@@ -974,6 +1029,7 @@ function DeviceComparison({ device, onClose }) {
                   {range.marker != null && <i className={`threshold-marker ${row.estado === "Normal" ? "in-range" : "out-range"}`} style={{ left: `${range.marker}%` }} />}
                 </div>
                 <div className="threshold-ticks"><span>{formatted(range.low)}</span><span>Mín. {formatted(row.minimo)}</span><span>Máx. {formatted(row.maximo)}</span><span>{formatted(range.high)}</span></div>
+                {history.length > 1 && <div className="reading-history"><div><strong>Tendencia reciente · {history.length} muestras / {row.unidad}</strong><small>De {new Intl.DateTimeFormat("es-CO", { dateStyle: "short" }).format(new Date(history[0].fecha_hora))} a {new Intl.DateTimeFormat("es-CO", { dateStyle: "short" }).format(new Date(history.at(-1).fecha_hora))}</small></div><svg viewBox="0 0 320 64" preserveAspectRatio="none" role="img" aria-label={`Tendencia histórica de ${row.tipo_medicion} durante los últimos días`}><polyline points={historyPoints} /></svg></div>}
               </article>;
             })}
           </section>
@@ -1070,7 +1126,7 @@ function Dashboard({ user }) {
           );
         })}
       </div>
-      <section className="territory">
+      <section className="territory dashboard-territory">
         <Sun size={36} weight="duotone" />
         <div>
           <span className="eyebrow">UNA PLATAFORMA, UN PROPÓSITO</span>
@@ -1087,10 +1143,12 @@ function Dashboard({ user }) {
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
+  const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("kaillisto-motion") !== "off");
   const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => { localStorage.setItem("kaillisto-theme", theme); }, [theme]);
+  useEffect(() => { localStorage.setItem("kaillisto-motion", motionEnabled ? "on" : "off"); }, [motionEnabled]);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event) => event.key === "Escape" && setOpen(false);
@@ -1229,7 +1287,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     { id: "configuration", label: "Administración", Icon: Layers, paths: ["/catalogos", "/estados-instalacion", "/estados-orden", "/tipos-medicion", "/estados-alerta", "/prioridades", "/tipos-alerta"] },
   ].map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) })).filter((group) => group.items.length);
   return (
-    <div className="workspace" data-theme={theme}>
+    <div className="workspace" data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
       <aside className={open ? "sidebar open" : "sidebar"}>
         <div className="sidebar-brand-row"><Brand /><button className="sidebar-close icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={18} /></button></div>
         <div className="workspace-label">
@@ -1314,7 +1372,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
           <span>
             Ka’illisto <span className="muted">/ Espacio de trabajo</span>
           </span>
-          <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
+          <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><button className="theme-toggle motion-toggle" type="button" onClick={() => setMotionEnabled((value) => !value)} aria-pressed={motionEnabled} title={motionEnabled ? "Desactivar animaciones" : "Activar animaciones"}><span>{motionEnabled ? "Animaciones: sí" : "Animaciones: no"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
         </header>
         <main className="workspace-main">
           <Routes>
@@ -1389,14 +1447,26 @@ function SecurityAudit() {
     "account.superadmin_changed": "Acceso superadministrador cambiado",
     "work_order.closed": "Orden de trabajo cerrada",
     "auth.login": "Inicio de sesión",
+    "auth.login_failed": "Intento de inicio de sesión rechazado",
     "auth.logout": "Cierre de sesión",
-    "api.post": "Registro creado o acción ejecutada",
-    "api.put": "Registro actualizado",
-    "api.patch": "Registro actualizado",
-    "api.delete": "Registro eliminado",
+    "record.created": "Registro creado",
+    "record.updated": "Registro actualizado",
+    "record.deleted": "Registro eliminado",
     "security.audit_view": "Consulta de bitácora",
     "security.audit_export": "Exportación de bitácora",
   };
+  const fieldNames = {
+    nombre: "Nombre", username: "Usuario", email: "Correo", first_name: "Nombre", last_name: "Apellido",
+    ubicacion: "Ubicación", municipio: "Municipio", sector: "Sector", referencia: "Referencia",
+    direccion: "Dirección", barrio: "Barrio", descripcion: "Descripción", capacidad: "Capacidad solar",
+    fecha_instalacion: "Fecha de instalación", latitud: "Latitud", longitud: "Longitud", tipo: "Tipo",
+    comunidad_id: "Comunidad", responsable_id: "Responsable", estado_instalacion_id: "Estado de instalación",
+    codigo: "Código", modelo: "Modelo", activo: "Activo", instalacion_id: "Instalación", valor: "Valor",
+    es_anomala: "Lectura anómala", tipo_medicion_id: "Tipo de medición", estado_id: "Estado", prioridad_id: "Prioridad",
+    mensaje: "Mensaje", fecha_inicio: "Fecha de inicio", fecha_fin: "Fecha de cierre", tecnico_id: "Técnico",
+    diagnostico: "Diagnóstico", solucion_aplicada: "Solución aplicada", cantidad: "Cantidad",
+  };
+  const displayValue = (value) => value == null ? "Sin valor" : typeof value === "boolean" ? (value ? "Sí" : "No") : typeof value === "object" ? JSON.stringify(value) : String(value);
   return (
     <>
       <div className="page-heading">
@@ -1418,8 +1488,24 @@ function SecurityAudit() {
                   <td>{new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at))}</td>
                   <td>{event.actor}</td>
                   <td>{actionNames[event.action] || event.action}</td>
-                  <td>{event.target_label || `${event.target_type} #${event.target_id}`}</td>
-                  <td><details><summary>Ver detalle</summary><pre className="audit-json">{JSON.stringify(event.changes, null, 2)}</pre>{event.reason && <small>Motivo: {event.reason}</small>}</details></td>
+                  <td><strong>{event.target_label || event.target_type}</strong><small>{event.target_type} · #{event.target_id}</small></td>
+                  <td><details className="audit-details"><summary>Ver cambios detallados</summary><div className="audit-detail-body">
+                    {(() => {
+                      const changes = event.changes || {};
+                      const fields = changes.campos || (() => {
+                        const before = changes.before || {};
+                        const after = changes.after || {};
+                        const names = new Set([...Object.keys(before), ...Object.keys(after)]);
+                        const diff = Object.fromEntries([...names].filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key])).map((key) => [key, { antes: before[key] ?? null, despues: after[key] ?? null }]));
+                        if (Object.keys(diff).length) return diff;
+                        return Object.fromEntries(Object.entries(changes).filter(([key]) => !["solicitud", "metodo", "estado_http"].includes(key)).map(([key, value]) => [key, { antes: null, despues: value }]));
+                      })();
+                      return Object.keys(fields).length > 0 && <ul>{Object.entries(fields).map(([field, values]) => <li key={field}><strong>{fieldNames[field] || nice(field.replace(/_id$/, ""))}</strong><span>{displayValue(values.antes)} <b aria-hidden="true">→</b> {displayValue(values.despues)}</span></li>)}</ul>;
+                    })()}
+                    {event.changes?.solicitud && <small>Solicitud: {event.changes.solicitud.metodo} {event.changes.solicitud.ruta}</small>}
+                    {event.changes?.metodo && <small>{event.changes.metodo} · HTTP {event.changes.estado_http}</small>}
+                    {event.reason && <small>Resultado: {event.reason}</small>}
+                  </div></details></td>
                 </tr>
               ))}</tbody>
             </table>

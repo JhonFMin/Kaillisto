@@ -63,6 +63,56 @@ class SecurityAuditApiTests(APITestCase):
         response = self.client.get(reverse('security-audit'))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_domain_record_audit_shows_field_level_before_and_after(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post('/api/security/portal/comunidades/', {
+            'nombre': 'Comunidad con auditoría',
+            'ubicacion': 'Riohacha, La Guajira',
+            'municipio': 'Riohacha',
+            'sector': 'El Progreso',
+            'referencia': 'Vía principal',
+            'latitud': '11.544900',
+            'longitud': '-72.907200',
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        community_id = response.data['id_comunidad']
+        response = self.client.patch(
+            f'/api/security/portal/comunidades/{community_id}/',
+            {'sector': 'Los Olivos'}, format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        event = SecurityAuditEvent.objects.filter(
+            actor=self.admin, action='record.updated', target_id=str(community_id),
+        ).latest('pk')
+        self.assertEqual(event.changes['campos']['sector'], {
+            'antes': 'El Progreso', 'despues': 'Los Olivos',
+        })
+
+    def test_login_failure_and_logout_are_attributed_without_saving_password(self):
+        failed = self.client.post('/api/security/login/', {
+            'username': self.target.username,
+            'password': 'must-never-appear-in-audit',
+            'challenge_left': 4,
+            'challenge_right': 4,
+            'challenge_answer': 7,
+        }, format='json')
+        self.assertEqual(failed.status_code, status.HTTP_400_BAD_REQUEST)
+        failed_event = SecurityAuditEvent.objects.get(action='auth.login_failed')
+        self.assertNotIn('must-never-appear-in-audit', str(failed_event.changes))
+
+        login = self.client.post('/api/security/login/', {
+            'username': self.target.username,
+            'password': 'TestPass_12345!',
+            'challenge_left': 4,
+            'challenge_right': 4,
+            'challenge_answer': 8,
+        }, format='json')
+        self.assertEqual(login.status_code, status.HTTP_200_OK, login.data if hasattr(login, 'data') else login.content)
+        self.assertTrue(SecurityAuditEvent.objects.filter(action='auth.login', actor=self.target).exists())
+
+        self.client.post('/api/cerrar_sesion/')
+        self.assertTrue(SecurityAuditEvent.objects.filter(action='auth.logout', actor=self.target).exists())
+
     def test_audit_response_does_not_expose_passwords(self):
         from .audit import audit_security_change
 

@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'maintenance',
     "drf_spectacular",
     'catalogs', 
-    'security',
+    'security.apps.SecurityConfig',
     'corsheaders',
 ]
 REST_FRAMEWORK = {

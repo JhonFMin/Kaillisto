@@ -43,18 +43,17 @@ def _asignar_rol_seguridad(usuario, nombre_rol):
     asigna al usuario mediante `security.UserRole` y le otorga los
     permisos base que ese rol necesita.
     """
-    rol, creado = Role.objects.get_or_create(name=nombre_rol)
+    rol, _ = Role.objects.get_or_create(name=nombre_rol)
     UserRole.objects.get_or_create(usuario=usuario, rol=rol)
 
-    if creado or not rol.permissions.exists():
-        codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
-        if codenames is None:
-            permisos = Permission.objects.filter(
-                content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
-            )
-        else:
-            permisos = Permission.objects.filter(codename__in=codenames)
-        rol.permissions.set(permisos)
+    codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
+    if codenames is None:
+        permisos = Permission.objects.filter(
+            content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
+        )
+    else:
+        permisos = Permission.objects.filter(codename__in=codenames)
+    rol.permissions.set(permisos)
 
     return rol
 
@@ -225,7 +224,7 @@ class FlujosApiAdicionalesTests(APITestCase):
         self.client.force_authenticate(user=self.tecnico)
         repuesto = Repuesto.objects.create(nombre="Fusible de prueba")
         respuesta = self.client.post(
-            reverse("repuesto-orden-trabajo-list"),
+            reverse("portal-consumos-list"),
             {
                 "orden_trabajo": self.orden_a.id_orden_trabajo,
                 "repuesto": repuesto.id_repuesto,
@@ -246,7 +245,7 @@ class FlujosApiAdicionalesTests(APITestCase):
         self.client.force_authenticate(user=self.otro_tecnico)
         repuesto = Repuesto.objects.create(nombre="Fusible ajeno test")
         respuesta = self.client.post(
-            reverse("repuesto-orden-trabajo-list"),
+            reverse("portal-consumos-list"),
             {
                 "orden_trabajo": self.orden_a.id_orden_trabajo,
                 "repuesto": repuesto.id_repuesto,

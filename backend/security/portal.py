@@ -363,6 +363,12 @@ def resource_view(model):
                     'maximo': str(threshold.valor_maximo) if threshold else None,
                     'estado': state,
                     'fecha_hora': kind.fecha_lectura,
+                    'historial': [
+                        {'valor': str(point['valor']), 'fecha_hora': point['fecha_hora']}
+                        for point in list(m.Medicion.objects.filter(
+                            dispositivo=device, tipo_medicion=kind,
+                        ).order_by('-fecha_hora', '-pk').values('valor', 'fecha_hora')[:72])[::-1]
+                    ],
                 })
             return Response({
                 'dispositivo': device.codigo,
@@ -402,6 +408,7 @@ def resource_view(model):
         @transaction.atomic
         def perform_update(self, serializer):
             changes = {}
+            previous_state = state = None
             if model == m.OrdenTrabajo:
                 from django.utils import timezone
                 previous_state = serializer.instance.estado.nombre
@@ -419,6 +426,22 @@ def resource_view(model):
                         raise ValidationError('Registra diagnóstico y solución antes de cerrar.')
                     changes['fecha_cierre'] = serializer.instance.fecha_cierre or timezone.now()
             serializer.save(**changes)
+            if model == m.OrdenTrabajo and state != previous_state:
+                if state == 'En proceso':
+                    event_type = 'Atención iniciada'
+                    description = f'{self.request.user.username} inició la atención de la orden #{serializer.instance.pk}.'
+                elif state == 'Cerrada':
+                    event_type = 'Orden cerrada'
+                    description = f'{self.request.user.username} cerró la orden #{serializer.instance.pk}.'
+                else:
+                    event_type = description = None
+                if event_type:
+                    m.Evento.objects.create(
+                        usuario=self.request.user,
+                        instalacion=serializer.instance.instalacion,
+                        tipo=event_type,
+                        descripcion=description,
+                    )
             if model == m.OrdenTrabajo and previous_state != 'Cerrada' and state == 'Cerrada':
                 audit_security_change(
                     self.request, 'work_order.closed', 'work_order',

@@ -28,6 +28,7 @@ from security.models import Role, UserRole
 
 from django.contrib.auth.models import Permission
 
+
 # Permisos base por rol, reflejando lo mismo que seed_roles.py le da a
 # cada rol en producción. Antes del fix de TienePermisoAsignado esto no
 # hacía falta (los permission_classes miraban el nombre del rol); ahora
@@ -55,18 +56,17 @@ def _asignar_rol_seguridad(usuario, nombre_rol):
     permisos base que ese rol necesita (TienePermisoAsignado ya no
     concede nada solo por el nombre del rol).
     """
-    rol, creado = Role.objects.get_or_create(name=nombre_rol)
+    rol, _ = Role.objects.get_or_create(name=nombre_rol)
     UserRole.objects.get_or_create(usuario=usuario, rol=rol)
 
-    if creado or not rol.permissions.exists():
-        codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
-        if codenames is None:
-            permisos = Permission.objects.filter(
-                content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
-            )
-        else:
-            permisos = Permission.objects.filter(codename__in=codenames)
-        rol.permissions.set(permisos)
+    codenames = PERMISOS_BASE_POR_ROL.get(nombre_rol)
+    if codenames is None:
+        permisos = Permission.objects.filter(
+            content_type__app_label__in=["core", "devices", "catalogs", "maintenance"]
+        )
+    else:
+        permisos = Permission.objects.filter(codename__in=codenames)
+    rol.permissions.set(permisos)
 
     return rol
 
@@ -226,7 +226,7 @@ class FlujoOrdenTrabajoTests(APITestCase):
             descripcion="Orden de prueba",
         )
         self.url = reverse(
-            "orden-trabajo-detail", args=[self.orden.id_orden_trabajo]
+            "portal-ordenes-detail", args=[self.orden.id_orden_trabajo]
         )
         self.client.force_authenticate(user=self.tecnico)
 
@@ -248,7 +248,7 @@ class FlujoOrdenTrabajoTests(APITestCase):
             self.url, {"estado": self.en_proceso.pk}, format="json"
         )
         respuesta = self.client.patch(
-            self.url, {"estado": self.cerrada.pk}, format="json"
+            self.url, {"estado": self.cerrada.pk, "diagnostico": "Conector flojo", "solucion_aplicada": "Conexión ajustada"}, format="json"
         )
 
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK, respuesta.data)
@@ -330,10 +330,10 @@ class NotificacionAlertaTests(TestCase):
 
         self.alerta = Alerta.objects.create(
             instalacion=instalacion,
-            tipo_medicion=TipoMedicion.objects.create(nombre="Voltaje", unidad="V"),
-            tipo_alerta=TipoAlerta.objects.create(nombre="Medición fuera de umbral"),
-            prioridad=PrioridadAlerta.objects.create(nombre="Alta"),
-            estado=EstadoAlerta.objects.create(nombre="Vigente"),
+            tipo_medicion=TipoMedicion.objects.get_or_create(nombre="Voltaje", defaults={"unidad": "V"})[0],
+            tipo_alerta=TipoAlerta.objects.get_or_create(nombre="Medición fuera de umbral")[0],
+            prioridad=PrioridadAlerta.objects.get_or_create(nombre="Alta")[0],
+            estado=EstadoAlerta.objects.get_or_create(nombre="Vigente")[0],
             mensaje="Tres mediciones fuera del umbral.",
         )
 
