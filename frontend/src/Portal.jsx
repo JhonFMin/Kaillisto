@@ -1354,6 +1354,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     "/mi-comunidad": "view_instalacion",
     "/mi-vivienda": "view_instalacion",
     "/tecnicos": "view_ordentrabajo",
+    "/mi-alertas": "view_alerta",
   };
   const canOpen = (path) =>
     user.is_superuser ||
@@ -1363,8 +1364,6 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
         ? user.permisos.includes("view_alerta")
         : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
   const baseLinks = [["/dashboard", user.admin ? "Resumen" : "Mi espacio", LayoutDashboard]];
-  const baseRoutes = {};
-  const staticLinks = [...baseLinks, ["/perfil", "Mi perfil", UserCircle]];
   const iconForResource = (name) => ({
     "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
     radio: Radio, broadcast: Radio, dispositivo: Radio,
@@ -1379,6 +1378,27 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   const dynamicLinks = resourceNav.map((resource) => [
     resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
   ]);
+  const hasResource = (model) => resourceNav.some((resource) => String(resource.model || "").toLowerCase() === model);
+  const workflowLinks = [];
+  const baseRoutes = {};
+  const addWorkflow = (path, label, Icon, kind, title, readonly = true) => {
+    workflowLinks.push([path, label, Icon]);
+    baseRoutes[path] = [kind, title, readonly];
+  };
+  if (tech) {
+    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "ordenes", "Mis casos asignados", true);
+    if (hasResource("instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
+    if (hasResource("repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
+  }
+  if (user.roles.includes("Líder Comunitario")) {
+    if (hasResource("instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "instalaciones", "Mi comunidad", true);
+    if (hasResource("alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
+    if (hasResource("ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
+  }
+  if (user.roles.includes("Propietario Solar") && hasResource("instalacion")) {
+    addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
+  }
+  const staticLinks = [...baseLinks, ...workflowLinks, ["/perfil", "Mi perfil", UserCircle]];
   const seenPaths = new Set();
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
     if (seenPaths.has(path)) return false;
@@ -1388,7 +1408,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   const routes = {
     ...baseRoutes,
   };
-  const groups = [{ id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard"] }]
+  const groups = [{ id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", ...workflowLinks.map(([path]) => path)] }]
     .map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) }))
     .filter((group) => group.items.length);
   const dynamicGroups = [...new Set(dynamicLinks.map(([, , , resource]) => resource.menu_group || "Recursos"))]
