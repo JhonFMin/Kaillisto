@@ -42,7 +42,8 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
   const markerInstance = useRef(null);
   const markerIcon = useRef(null);
   const selection = useRef({ latitude, longitude, onChange });
-  const [mapState, setMapState] = useState("ready");
+  const [mapState, setMapState] = useState("loading");
+  const [locationError, setLocationError] = useState(false);
   const [allowAddressLookup, setAllowAddressLookup] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
@@ -60,10 +61,13 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
       const icon = L.divIcon({ className: "kaillisto-map-pin", html: '<span aria-hidden="true"></span>', iconSize: [24, 24], iconAnchor: [12, 12] });
       markerIcon.current = icon;
       map = L.map(mapElement.current, { scrollWheelZoom: false }).setView(center, hasPoint ? 14 : 8);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tiles = L.tileLayer(import.meta.env.VITE_MAP_TILES_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(map);
+      });
+      tiles.on("tileload", () => { if (!cancelled) setMapState("ready"); });
+      tiles.on("tileerror", () => { if (!cancelled) setMapState("map-error"); });
+      tiles.addTo(map);
       mapInstance.current = map;
       const save = (point) => selection.current?.onChange({ latitud: point.lat.toFixed(6), longitud: point.lng.toFixed(6) });
       const marker = hasPoint ? L.marker(center, { icon, draggable: true }).addTo(map) : null;
@@ -77,7 +81,7 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
       map.on("click", (event) => setPoint(event.latlng));
       if (marker) marker.on("dragend", (event) => save(event.target.getLatLng()));
       timer = window.setTimeout(() => map.invalidateSize(), 80);
-    });
+    }).catch(() => { if (!cancelled) setMapState("map-error"); });
     return () => { cancelled = true; window.clearTimeout(timer); map?.remove(); mapInstance.current = null; markerInstance.current = null; markerIcon.current = null; };
   }, []);
   useEffect(() => {
@@ -99,10 +103,10 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || "La Guajira, Colombia")}`;
   const locate = () => {
-    if (!navigator.geolocation) { setMapState("location-error"); return; }
+    if (!navigator.geolocation) { setLocationError(true); return; }
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => { setMapState("ready"); onChange({ latitud: coords.latitude.toFixed(6), longitud: coords.longitude.toFixed(6) }); mapInstance.current?.setView([coords.latitude, coords.longitude], 16); },
-      () => setMapState("location-error"),
+      ({ coords }) => { setLocationError(false); onChange({ latitud: coords.latitude.toFixed(6), longitud: coords.longitude.toFixed(6) }); mapInstance.current?.setView([coords.latitude, coords.longitude], 16); },
+      () => setLocationError(true),
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   };
@@ -132,8 +136,10 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
   return (
     <section className="location-picker" aria-label="Ubicación exacta">
       <div><strong>Marca el punto exacto en el mapa</strong><p>Haz clic en el mapa o arrastra el pin. El punto se guarda en el sistema.</p></div>
-      <div ref={mapElement} className="google-map-canvas" role="application" aria-label="Mapa interactivo para marcar la ubicación" />
-      <small>El mapa carga mosaicos de OpenStreetMap. El punto solo se envía a Photon/Komoot si aceptas y pulsas “Completar dirección”.</small>
+      <div ref={mapElement} className="location-map-canvas" role="application" aria-label="Mapa interactivo para marcar la ubicación" />
+      {mapState === "loading" && <small role="status">Cargando el mapa de La Guajira…</small>}
+      {mapState === "map-error" && <small role="alert">No se pudo conectar con el proveedor del mapa. Aún puedes escribir las coordenadas o usar tu ubicación actual; el punto se guardará normalmente.</small>}
+      <small>Mapa de OpenStreetMap. Solo se carga al abrir este selector. La dirección se busca por separado si das tu consentimiento.</small>
       <div className="location-coordinates">
         <label>Latitud<input type="number" step="any" min="-90" max="90" value={latitude ?? ""} onChange={(event) => onChange({ latitud: event.target.value, longitud: longitude ?? "" })} /></label>
         <label>Longitud<input type="number" step="any" min="-180" max="180" value={longitude ?? ""} onChange={(event) => onChange({ latitud: latitude ?? "", longitud: event.target.value })} /></label>
@@ -142,7 +148,7 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
       <label className="geocode-consent"><input type="checkbox" checked={allowAddressLookup} onChange={(e) => setAllowAddressLookup(e.target.checked)} />Acepto enviar este punto a Photon/Komoot para buscar dirección y sector.</label>
       <button type="button" disabled={!allowAddressLookup || !latitude || !longitude || lookingUp} onClick={lookupAddress}>{lookingUp ? "Buscando dirección…" : "Completar dirección desde el punto"}</button>
       {locationMessage && <small role="status">{locationMessage}</small>}
-      {mapState === "location-error" && <small>El navegador no pudo obtener la ubicación; permite el acceso al GPS y vuelve a intentar.</small>}
+      {locationError && <small>El navegador no pudo obtener la ubicación; permite el acceso al GPS y vuelve a intentar.</small>}
     </section>
   );
 }

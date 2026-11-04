@@ -177,6 +177,9 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_HTTPONLY = False
+# OpenStreetMap's public tile service requires a Referer header from web apps.
+# Send only Kaillisto's origin on cross-site requests, never the full page path.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG

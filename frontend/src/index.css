@@ -1437,7 +1437,8 @@ tr:hover td {
 .location-coordinates input { min-height: 40px; }
 .location-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .location-actions a { color: var(--accent); font-size: 12px; }
-.google-map-canvas { width: 100%; height: clamp(260px, 38vh, 420px); border-radius: 13px; background: #e9e7ee; overflow: hidden; z-index: 0; }
+.location-map-canvas { width: 100%; height: clamp(260px, 38vh, 420px); border-radius: 13px; background: #e9e7ee; overflow: hidden; z-index: 0; }
+.location-map-canvas .leaflet-control-attribution { max-width: calc(100% - 14px); font-size: 10px; }
 .kaillisto-map-pin { border: 0; background: transparent; }
 .kaillisto-map-pin span { display: block; width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50% 50% 50% 0; background: #8d6fde; box-shadow: 0 2px 10px rgb(16 15 18 / 42%); transform: rotate(-45deg); }
 .geocode-consent { display: flex; align-items: flex-start; gap: 9px; font-size: 12px; }
@@ -1540,7 +1541,7 @@ tr:hover td {
 .workspace[data-motion="off"] *::before,
 .workspace[data-motion="off"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 @media (prefers-reduced-motion: reduce) { .workspace *, .workspace *::before, .workspace *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-@media (max-width: 760px) { .header-actions .tag { display: none; } .header-actions { gap: 6px; } .motion-toggle { padding-inline: 8px; font-size: 10px; } .location-coordinates { grid-template-columns: 1fr; } .location-picker { padding: 14px; } .google-map-canvas { height: 300px; } }
+@media (max-width: 760px) { .header-actions .tag { display: none; } .header-actions { gap: 6px; } .motion-toggle { padding-inline: 8px; font-size: 10px; } .location-coordinates { grid-template-columns: 1fr; } .location-picker { padding: 14px; } .location-map-canvas { height: 300px; } }
 
 .owner-section { margin: 38px 0; }
 .owner-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; }
