@@ -100,6 +100,19 @@ class DispositivoSerializer(serializers.ModelSerializer):
     instalacion_display = serializers.CharField(
         source="instalacion.nombre", read_only=True
     )
+    # Coordenadas de la instalación asociada para que el mapa de consulta
+    # pueda ubicar el equipo sin fingir que el ESP32 tiene GPS propio.
+    map_latitud = serializers.DecimalField(
+        source="instalacion.latitud", max_digits=9, decimal_places=6,
+        read_only=True, allow_null=True,
+    )
+    map_longitud = serializers.DecimalField(
+        source="instalacion.longitud", max_digits=9, decimal_places=6,
+        read_only=True, allow_null=True,
+    )
+    map_ubicacion_nombre = serializers.CharField(
+        source="instalacion.nombre", read_only=True,
+    )
     api_key = serializers.CharField(
         write_only=True,
         min_length=32,
@@ -114,6 +127,9 @@ class DispositivoSerializer(serializers.ModelSerializer):
             "id_dispositivo",
             "instalacion",
             "instalacion_display",
+            "map_latitud",
+            "map_longitud",
+            "map_ubicacion_nombre",
             "codigo",
             "modelo",
             "fecha_registro",

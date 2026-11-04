@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import RoleMatrix from "./components/RoleMatrix";
 import {
   BrowserRouter,
@@ -170,6 +170,35 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
       {locationError && <small>El navegador no pudo obtener la ubicación; permite el acceso al GPS y vuelve a intentar.</small>}
     </section>
   );
+}
+
+function LocationMap({ latitude, longitude, label }) {
+  const element = useRef(null);
+  const [mapState, setMapState] = useState("loading");
+  useEffect(() => {
+    const lat = Number(latitude), lng = Number(longitude);
+    if (!element.current || !Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+    let cancelled = false;
+    let map;
+    import("leaflet").then(({ default: L }) => {
+      if (cancelled || !element.current) return;
+      const pin = L.divIcon({ className: "kaillisto-map-pin", html: '<span aria-hidden="true"></span>', iconSize: [24, 24], iconAnchor: [12, 12] });
+      map = L.map(element.current, { scrollWheelZoom: false, dragging: true }).setView([lat, lng], 16);
+      L.tileLayer(import.meta.env.VITE_MAP_TILES_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).on("tileload", () => { if (!cancelled) setMapState("ready"); })
+        .on("tileerror", () => { if (!cancelled) setMapState("map-error"); }).addTo(map);
+      L.marker([lat, lng], { icon: pin }).addTo(map).bindPopup(label || "Punto registrado").openPopup();
+      window.setTimeout(() => { if (!cancelled) map.invalidateSize(); }, 100);
+    }).catch(() => { if (!cancelled) setMapState("map-error"); });
+    return () => { cancelled = true; map?.remove(); };
+  }, [latitude, longitude, label]);
+  const mapsUrl = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=17/${encodeURIComponent(latitude)}/${encodeURIComponent(longitude)}`;
+  return <div className="record-location">
+    <div className="record-location-heading"><div><strong>{label || "Ubicación del registro"}</strong><small>{Number(latitude).toFixed(6)}, {Number(longitude).toFixed(6)}{mapState === "map-error" ? " · No se pudieron cargar los mosaicos del mapa" : ""}</small></div><a href={mapsUrl} target="_blank" rel="noreferrer">Abrir mapa ↗</a></div>
+    <div ref={element} className="record-location-map" role="img" aria-label={`Mapa con el punto de ${label || "ubicación registrada"}`} />
+  </div>;
 }
 
 const definitions = {
@@ -773,6 +802,7 @@ function Records({ kind, user, title, readonly = false }) {
     [loading, setLoading] = useState(true),
     [editing, setEditing] = useState(null),
     [compareDevice, setCompareDevice] = useState(null),
+    [locationRow, setLocationRow] = useState(null),
     [search, setSearch] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
   const permissionModel = permissionModelByKind[kind];
@@ -836,6 +866,7 @@ function Records({ kind, user, title, readonly = false }) {
     return String(v);
   }
   const canEdit = !readonly && canEditKind;
+  const canShowLocation = ["comunidades", "instalaciones", "dispositivos"].includes(kind);
   const canCreate =
     !readonly && canCreateKind;
   return (
@@ -893,7 +924,7 @@ function Records({ kind, user, title, readonly = false }) {
                   {columns.map((k) => (
                     <th key={k}>{nice(k)}</th>
                   ))}
-                  {(canEdit || kind === "dispositivos") && <th>Acciones</th>}
+                  {(canEdit || kind === "dispositivos" || canShowLocation) && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -906,12 +937,14 @@ function Records({ kind, user, title, readonly = false }) {
                     ),
                   )
                   .map((row) => (
-                    <tr key={idOf(row)}>
+                    <Fragment key={idOf(row)}>
+                    <tr>
                       {columns.map((k) => (
                         <td key={k}>{display(k, row[k], row)}</td>
                       ))}
-                      {(canEdit || kind === "dispositivos") && (
+                      {(canEdit || kind === "dispositivos" || canShowLocation) && (
                         <td className="row-actions">
+                          {canShowLocation && <button aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} /> {locationRow === idOf(row) ? "Ocultar mapa" : "Ver ubicación"}</button>}
                           {kind === "dispositivos" && (
                             <button onClick={() => setCompareDevice(row)}>
                               <ChartLine size={15} /> Comparar lecturas
@@ -954,6 +987,17 @@ function Records({ kind, user, title, readonly = false }) {
                         </td>
                       )}
                     </tr>
+                    {canShowLocation && locationRow === idOf(row) && (() => {
+                      const latitude = kind === "dispositivos" ? row.map_latitud : row.latitud;
+                      const longitude = kind === "dispositivos" ? row.map_longitud : row.longitud;
+                      const locationLabel = kind === "dispositivos"
+                        ? `${row.codigo || "Dispositivo"} · ${row.instalacion_display || row.map_ubicacion_nombre || "instalación vinculada"}`
+                        : row.nombre || row.ubicacion || title || "Ubicación registrada";
+                      return <tr key={`${idOf(row)}-location`} className="location-detail-row"><td colSpan={columns.length + 1}>{latitude != null && longitude != null
+                        ? <LocationMap latitude={latitude} longitude={longitude} label={locationLabel} />
+                        : <p className="empty">Este registro todavía no tiene un punto GPS guardado.</p>}</td></tr>;
+                    })()}
+                    </Fragment>
                   ))}
               </tbody>
             </table>
