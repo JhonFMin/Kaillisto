@@ -844,6 +844,7 @@ function Records({ kind, user, title, readonly = false }) {
     ? Object.keys(rows[0]).filter(
         (k) =>
           !k.endsWith("_display") &&
+          !k.startsWith("map_") &&
           ![
             "password",
             "permissions_detail",
