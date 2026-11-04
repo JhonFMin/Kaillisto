@@ -2209,6 +2209,17 @@ body,
 .workspace[data-theme="light"] .dashboard-territory .eyebrow {
   color: #fff;
 }
+.workspace[data-theme="light"] .quick-links .feature,
+.workspace[data-theme="light"] .quick-links .feature h3,
+.workspace[data-theme="light"] .quick-links .feature p,
+.workspace[data-theme="light"] .quick-links .feature > svg {
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 76%);
+}
+.workspace[data-theme="light"] .quick-links .feature {
+  border-color: rgb(255 255 255 / 25%);
+  background-color: #17151a;
+}
 .workspace[data-theme="light"] :focus-visible {
   outline: 3px solid #7659ad;
   outline-offset: 2px;

@@ -123,13 +123,32 @@ function LocationPicker({ latitude, longitude, onChange, address, kind }) {
       const feature = (await response.json()).features?.[0];
       if (!feature) throw new Error("No se encontró una dirección cercana; puedes completarla manualmente.");
       const p = feature.properties || {};
-      const district = p.district || p.suburb || p.neighbourhood || p.locality || "";
-      const municipality = p.city || p.town || p.village || p.county || p.state || "";
-      const street = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
-      const location = [municipality, p.state && p.state !== municipality ? p.state : "", p.country].filter(Boolean).join(", ");
-      if (kind === "comunidades") onChange({ ubicacion: location, municipio: municipality, sector: district || p.name || "", referencia: street });
-      else onChange({ direccion: street, barrio: district, ubicacion: location });
-      setLocationMessage("Datos de ubicación completados. Revísalos antes de guardar.");
+      const [resultLon, resultLat] = feature.geometry?.coordinates || [];
+      const radians = (value) => (value * Math.PI) / 180;
+      if (Number.isFinite(resultLat) && Number.isFinite(resultLon)) {
+        const lat1 = radians(Number(latitude)), lat2 = radians(resultLat);
+        const dLat = lat2 - lat1, dLon = radians(resultLon - Number(longitude));
+        const distance = 6371000 * 2 * Math.atan2(
+          Math.sqrt(Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2),
+          Math.sqrt(1 - (Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2)),
+        );
+        if (distance > 1000) throw new Error("El resultado más cercano está a más de 1 km del pin. Conservamos tus coordenadas; completa la dirección y el barrio manualmente.");
+      }
+      const neighborhood = p.suburb || p.neighbourhood || p.city_district || p.locality || "";
+      const municipality = p.city || p.town || p.village || p.municipality || p.county || "";
+      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+      const location = [municipality, p.state, p.country].filter((value, index, values) => value && values.indexOf(value) === index).join(", ");
+      if (kind === "comunidades") {
+        onChange({ ubicacion: location, municipio: municipality, sector: neighborhood || p.district || "", referencia: street });
+      } else {
+        onChange({ direccion: street, barrio: neighborhood, ubicacion: location });
+      }
+      const missing = kind === "comunidades"
+        ? (!municipality || !neighborhood || !street)
+        : (!street || !neighborhood || !municipality);
+      setLocationMessage(missing
+        ? "Se completaron solo los datos confirmados cerca del pin. Revisa y escribe los campos faltantes; el mapa conserva el punto exacto."
+        : "Datos cercanos al punto completados. Revísalos antes de guardar.");
     } catch (error) { setLocationMessage(error.message || "No se pudo consultar la dirección."); }
     finally { setLookingUp(false); }
   };
@@ -1692,29 +1711,16 @@ function Shell() {
     const onStorage = (event) => {
       if (event.key === "kaillisto:permissions-updated") update();
     };
-    const onFocus = () => {
-      if (document.visibilityState === "visible") update();
-    };
-    let refreshTimer;
-    const scheduleUpdate = () => {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = window.setTimeout(update, 150);
-    };
     let channel;
     if ("BroadcastChannel" in window) {
       channel = new BroadcastChannel("kaillisto:permissions");
       channel.addEventListener("message", update);
     }
     window.addEventListener("kaillisto:permissions", update);
-    window.addEventListener("focus", scheduleUpdate);
     window.addEventListener("storage", onStorage);
-    document.addEventListener("visibilitychange", onFocus);
     return () => {
       window.removeEventListener("kaillisto:permissions", update);
-      window.removeEventListener("focus", scheduleUpdate);
       window.removeEventListener("storage", onStorage);
-      document.removeEventListener("visibilitychange", onFocus);
-      window.clearTimeout(refreshTimer);
       channel?.close();
     };
   }, [user?.id, loc.pathname, refresh]);
