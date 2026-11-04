@@ -1542,6 +1542,33 @@ tr:hover td {
 @media (prefers-reduced-motion: reduce) { .workspace *, .workspace *::before, .workspace *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media (max-width: 760px) { .header-actions .tag { display: none; } .header-actions { gap: 6px; } .motion-toggle { padding-inline: 8px; font-size: 10px; } .location-coordinates { grid-template-columns: 1fr; } .location-picker { padding: 14px; } .google-map-canvas { height: 300px; } }
 
+.owner-section { margin: 38px 0; }
+.owner-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; }
+.owner-card { display: flex; flex-direction: column; align-items: flex-start; padding: 22px; gap: 10px; }
+.owner-card h3 { margin: 4px 0 0; color: #f7f5fb; }
+.owner-card > svg { color: #cbb0f7; }
+.owner-card p { margin: 0; }
+.owner-card > small { color: var(--muted); }
+.owner-meta { width: 100%; display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid rgb(255 255 255 / 10%); padding-top: 9px; font-size: 12px; }
+.owner-meta strong { color: #f7f5fb; font-weight: 500; text-align: right; }
+.owner-map-link { color: var(--accent); font-size: 12px; margin-top: 4px; }
+.owner-action { margin-top: auto; padding: 10px 14px; border: 1px solid #645b72; border-radius: 999px; color: inherit; background: transparent; cursor: pointer; }
+.owner-action:hover { border-color: var(--accent); color: var(--accent); }
+.owner-alert-list { display: grid; gap: 10px; }
+.owner-alert { display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 14px; background: rgb(255 255 255 / 3%); }
+.owner-alert > svg { flex: 0 0 auto; margin-top: 2px; color: #cbb0f7; }
+.owner-alert > div { flex: 1; min-width: 0; }
+.owner-alert p { margin: 4px 0 7px; }
+.owner-alert small { color: var(--muted); }
+.workspace[data-theme="light"] .owner-meta { border-color: #ebe5ff; }
+.workspace[data-theme="light"] .owner-meta strong { color: #25212a; }
+.workspace[data-theme="light"] .owner-alert { background: #fff; border-color: #ebe5ff; }
+@media (max-width: 760px) {
+  .homeowner-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .owner-alert { flex-wrap: wrap; }
+  .owner-alert .reading-state { margin-left: 32px; }
+}
+
 /* Layout guardrails: scroll remains available without drawing narrow scrollbar rails. */
 html,
 body,

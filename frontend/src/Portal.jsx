@@ -1144,6 +1144,89 @@ function Dashboard({ user }) {
     </>
   );
 }
+function HomeownerOverview({ user }) {
+  const [installations, setInstallations] = useState([]);
+  const [devices, setDevices] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api.get("/security/portal/instalaciones/"),
+      api.get("/security/portal/dispositivos/"),
+      api.get("/security/portal/alertas/"),
+    ])
+      .then(([installationResponse, deviceResponse, alertResponse]) => {
+        if (!active) return;
+        setInstallations(installationResponse.data);
+        setDevices(deviceResponse.data);
+        setAlerts(alertResponse.data);
+      })
+      .catch((e) => { if (active) setError(errorText(e)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  const openAlerts = alerts.filter((alert) =>
+    !["cerrada", "cerrado"].includes((alert.estado_display || "").toLowerCase()),
+  );
+  return <>
+    <div className="page-heading">
+      <div>
+        <span className="eyebrow">TU SISTEMA SOLAR</span>
+        <h1>Mi vivienda</h1>
+        <p>Consulta el estado de tu instalación, los equipos conectados, las mediciones y los avisos recientes.</p>
+      </div>
+      <span className="tag">PROPIETARIO / {user.username}</span>
+    </div>
+    {error && <p role="alert" className="notice">{error}</p>}
+    <div className="stat-grid homeowner-stats">
+      {[
+        ["Instalaciones", installations.length],
+        ["Dispositivos", devices.length],
+        ["Avisos activos", openAlerts.length],
+        ["Avisos registrados", alerts.length],
+      ].map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
+    </div>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Tu instalación</h2><span className="muted">Ubicación y estado</span></div>
+      {loading ? <p className="empty">Cargando los datos de tu sistema…</p> : installations.length ? <div className="owner-card-grid">
+        {installations.map((item) => <article className="feature owner-card" key={idOf(item)}>
+          <Layers size={19} />
+          <h3>{item.nombre}</h3>
+          <p>{[item.direccion, item.barrio, item.ubicacion].filter(Boolean).join(" · ") || "Ubicación sin completar"}</p>
+          <div className="owner-meta"><span>Capacidad</span><strong>{item.capacidad ?? "—"} kW</strong></div>
+          <div className="owner-meta"><span>Estado</span><strong>{item.estado_instalacion_display || "Sin estado"}</strong></div>
+          {item.latitud && item.longitud && <a className="owner-map-link" href={`https://www.openstreetmap.org/?mlat=${encodeURIComponent(item.latitud)}&mlon=${encodeURIComponent(item.longitud)}#map=16/${encodeURIComponent(item.latitud)}/${encodeURIComponent(item.longitud)}`} target="_blank" rel="noreferrer">Ver ubicación ↗</a>}
+        </article>)}
+      </div> : <p className="empty">Aún no hay una instalación vinculada a tu cuenta. Pide al administrador que te asigne como responsable de la vivienda.</p>}
+    </section>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Mediciones del sistema</h2><span className="muted">Valores recientes y comparación con los rangos esperados</span></div>
+      {!loading && devices.length ? <div className="owner-card-grid">
+        {devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
+          <Radio size={19} />
+          <h3>{device.codigo}</h3>
+          <p>{device.modelo || "Dispositivo IoT"} · {device.instalacion_display || "Instalación vinculada"}</p>
+          <small>Último contacto: {device.ultima_comunicacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.ultima_comunicacion)) : "Sin comunicación registrada"}</small>
+          <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>
+        </article>)}
+      </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
+    </section>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Avisos y novedades</h2><Link to="/alertas">Ver todas las alertas ↗</Link></div>
+      {loading ? <p className="empty">Cargando avisos…</p> : alerts.length ? <div className="owner-alert-list">
+        {alerts.slice(0, 8).map((alert) => <article className="owner-alert" key={idOf(alert)}>
+          <Bell size={18} />
+          <div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Tu instalación"} · {alert.fecha_creacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.fecha_creacion)) : "Fecha no disponible"}</small></div>
+          <span className={`reading-state ${(alert.estado_display || "").toLowerCase().includes("cerr") ? "normal" : "fuera-de-rango"}`}>{alert.estado_display || "Revisar"}</span>
+        </article>)}
+      </div> : <p className="empty">No hay avisos registrados para tu sistema. Aquí aparecerán si una lectura requiere atención.</p>}
+    </section>
+    {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
+  </>;
+}
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
@@ -1258,7 +1341,11 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
           }
         : user.roles.includes("Propietario Solar")
           ? {
-              "/mi-vivienda": ["instalaciones", "Mi vivienda", true],
+              "/mi-vivienda": ["homeowner", "Mi vivienda"],
+              "/dispositivos": ["dispositivos", "Dispositivos IoT", true],
+              "/instalaciones": ["instalaciones", "Instalaciones solares", true],
+              "/alertas": ["alertas", "Alertas", true],
+              "/notificaciones": ["notificaciones", "Notificaciones", true],
             }
         : {};
   const resourceRoutes = [
@@ -1415,6 +1502,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                   element={
                     kind === "roles" ? (
                       <RoleMatrix user={user} />
+                    ) : kind === "homeowner" ? (
+                      <HomeownerOverview user={user} />
                     ) : (
                       <Records
                         key={kind}
