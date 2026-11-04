@@ -1085,6 +1085,8 @@ function Dashboard({ user }) {
           ? ["instalaciones", "dispositivos", "ordenes"]
           : user.roles.includes("Técnico de Campo")
             ? ["ordenes", "instalaciones", "consumos"]
+            : user.roles.includes("Propietario Solar")
+              ? ["instalaciones", "dispositivos", "alertas"]
             : ["instalaciones", "alertas", "notificaciones"]
         ).filter((k) => {
           const permission = {
@@ -1107,10 +1109,12 @@ function Dashboard({ user }) {
                   ? `/${k === "ordenes" ? "mantenimiento" : k}`
                   : k === "ordenes"
                     ? "/mis-casos"
-                    : k === "instalaciones"
-                      ? user.roles.includes("Técnico de Campo")
-                        ? "/ficha-tecnica"
-                        : "/mi-comunidad"
+                      : k === "instalaciones"
+                        ? user.roles.includes("Técnico de Campo")
+                          ? "/ficha-tecnica"
+                          : user.roles.includes("Propietario Solar")
+                            ? "/mi-vivienda"
+                            : "/mi-comunidad"
                       : k === "alertas"
                         ? user.roles.includes("Líder Comunitario")
                           ? "/mi-alertas"
@@ -1177,6 +1181,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     "/ficha-tecnica": "view_instalacion",
     "/consumos": "view_repuestoordentrabajo",
     "/mi-comunidad": "view_instalacion",
+    "/mi-vivienda": "view_instalacion",
     "/tecnicos": "view_ordentrabajo",
   };
   const canOpen = (path) =>
@@ -1219,6 +1224,14 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
             ["/mi-alertas", "Alertas de mi zona", Bell],
             ["/tecnicos", "Técnicos asignados", Wrench],
           ]
+        : user.roles.includes("Propietario Solar")
+          ? [
+              ["/dashboard", "Mi espacio", LayoutDashboard],
+              ["/mi-vivienda", "Mi vivienda", MapPin],
+              ["/dispositivos", "Dispositivos IoT", Radio],
+              ["/alertas", "Alertas", Bell],
+              ["/notificaciones", "Notificaciones", Bell],
+            ]
         : [];
   const baseRoutes = user.admin
     ? {
@@ -1243,6 +1256,10 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
             "/mi-alertas": ["alertas", "Alertas de mi comunidad", true],
             "/tecnicos": ["ordenes", "Técnicos asignados", true],
           }
+        : user.roles.includes("Propietario Solar")
+          ? {
+              "/mi-vivienda": ["instalaciones", "Mi vivienda", true],
+            }
         : {};
   const resourceRoutes = [
     ["/usuarios", "usuarios", "view_usuario"],
@@ -1280,7 +1297,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     ...Object.fromEntries(extras.map(([path, kind]) => [path, [kind]])),
   };
   const groups = [
-    { id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", "/mis-casos", "/mi-comunidad", "/mi-alertas", "/ficha-tecnica", "/tecnicos"] },
+    { id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", "/mis-casos", "/mi-comunidad", "/mi-vivienda", "/mi-alertas", "/ficha-tecnica", "/tecnicos"] },
     { id: "security", label: "Seguridad", Icon: Shield, paths: ["/usuarios", "/roles", "/auditoria"] },
     { id: "energy", label: "Red energética", Icon: MapPin, paths: ["/comunidades", "/instalaciones", "/dispositivos", "/umbrales"] },
     { id: "operations", label: "Operación y mantenimiento", Icon: Wrench, paths: ["/alertas", "/mantenimiento", "/repuestos", "/consumos", "/notificaciones"] },

@@ -5,6 +5,7 @@ from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from core import models as m
 from security.models import Role, UserRole
+from security.defaults import default_permissions
 
 class Command(BaseCommand):
     help = 'Crea una pequeña demostración local sin borrar ni reemplazar datos existentes.'
@@ -13,7 +14,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         roles = {}
-        for name in ['Administrador', 'Técnico de Campo', 'Líder Comunitario']:
+        for name in ['Administrador', 'Técnico de Campo', 'Líder Comunitario', 'Propietario Solar']:
             roles[name], _ = Role.objects.get_or_create(name=name)
         domain = Permission.objects.filter(content_type__app_label='core')
         roles['Administrador'].permissions.add(*domain)
@@ -21,6 +22,7 @@ class Command(BaseCommand):
         for name in ['Técnico de Campo', 'Líder Comunitario']:
             roles[name].permissions.add(*read)
         roles['Técnico de Campo'].permissions.add(*domain.filter(codename__in=['change_ordentrabajo', 'add_repuestoordentrabajo']))
+        roles['Propietario Solar'].permissions.set(default_permissions('Propietario Solar'))
         community, _ = m.Comunidad.objects.get_or_create(nombre='Demo local · Walirü', defaults={'ubicacion': 'La Guajira', 'descripcion': 'Comunidad ficticia para demostración local.'})
         users = {}
         for username, role_name, superuser in [('superadmin.local','Administrador',True), ('admin.local','Administrador',False), ('tecnico.local','Técnico de Campo',False), ('lider.local','Líder Comunitario',False)]:
