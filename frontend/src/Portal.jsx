@@ -595,6 +595,11 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     user.is_superuser || user.permisos.includes(`change_${permissionModel}`);
   const canCreateKind =
     user.is_superuser || user.permisos.includes(`add_${permissionModel}`);
+  const technicianLimited =
+    user.roles.includes("Técnico de Campo") &&
+    !user.admin &&
+    !user.full_resource_access &&
+    !user.is_superuser;
   const allFields = Object.entries(schema).filter(
     ([k, f]) =>
       !f.read_only &&
@@ -743,7 +748,17 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
                   {k !== "roles" && k !== "permissions" && (
                     <option value="">Selecciona…</option>
                   )}
-                  {choices[k].map((r) => (
+                  {choices[k].filter((choice) => {
+                    if (kind !== "ordenes" || k !== "estado" || !technicianLimited) return true;
+                    const stateName = labelOf(choice).toLocaleLowerCase("es-CO");
+                    const currentState = Number(idOf(choice)) === Number(data[k]);
+                    if (currentState) return true;
+                    const currentName = labelOf(choices[k].find((item) => Number(idOf(item)) === Number(data[k])) || {}).toLocaleLowerCase("es-CO");
+                    if (["cerrada", "cancelada"].includes(currentName)) return false;
+                    if (stateName === "pendiente") return currentName === "pendiente";
+                    if (stateName === "en proceso") return ["pendiente", "en proceso"].includes(currentName);
+                    return stateName === "cerrada" && ["pendiente", "en proceso"].includes(currentName) && user.permisos.includes("close_ordentrabajo");
+                  }).map((r) => (
                     <option key={idOf(r)} value={idOf(r)}>
                       {k === "permissions"
                         ? `${r.app_label} / ${r.name}`
@@ -810,6 +825,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     [loading, setLoading] = useState(true),
     [editing, setEditing] = useState(null),
     [compareDevice, setCompareDevice] = useState(null),
+    [partOrder, setPartOrder] = useState(null),
     [locationRow, setLocationRow] = useState(null),
     [search, setSearch] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -876,6 +892,15 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     return String(v);
   }
   const canEdit = !readonly && canEditKind;
+  const canRegisterParts =
+    kind === "ordenes" &&
+    user.roles.includes("Técnico de Campo") &&
+    !user.admin &&
+    !user.full_resource_access &&
+    !user.is_superuser &&
+    user.permisos.includes("add_repuestoordentrabajo") &&
+    user.permisos.includes("view_repuesto") &&
+    user.permisos.includes("view_repuestoordentrabajo");
   const canShowLocation = ["comunidades", "instalaciones", "dispositivos"].includes(kind);
   const canCreate =
     !readonly && canCreateKind;
@@ -934,7 +959,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                   {columns.map((k) => (
                     <th key={k}>{nice(k)}</th>
                   ))}
-                  {(canEdit || kind === "dispositivos" || canShowLocation) && <th>Acciones</th>}
+                  {(canEdit || canRegisterParts || kind === "dispositivos" || canShowLocation) && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -952,7 +977,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                       {columns.map((k) => (
                         <td key={k}>{display(k, row[k], row)}</td>
                       ))}
-                      {(canEdit || kind === "dispositivos" || canShowLocation) && (
+                      {(canEdit || canRegisterParts || kind === "dispositivos" || canShowLocation) && (
                         <td className="row-actions">
                           {canShowLocation && <button aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} /> {locationRow === idOf(row) ? "Ocultar mapa" : "Ver ubicación"}</button>}
                           {kind === "dispositivos" && (
@@ -960,6 +985,9 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                               <ChartLine size={15} /> Comparar lecturas
                             </button>
                           )}
+                          {canRegisterParts && !isFinishedRecord(row) && <button onClick={() => setPartOrder(row)}>
+                            <Package size={15} /> Registrar repuesto
+                          </button>}
                           {canEdit && <button disabled={schemaLoading} onClick={() => openEditor(row)}>Editar</button>}
                           {kind === "usuarios" &&
                             user.is_superuser &&
@@ -1031,6 +1059,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         )}
       </section>
       {compareDevice && <DeviceComparison device={compareDevice} onClose={() => setCompareDevice(null)} />}
+      {partOrder && <PartUsageEditor order={partOrder} onClose={() => setPartOrder(null)} onSaved={load} />}
           {editing && (
         <Editor
           key={`${kind}-${idOf(editing) || "new"}`}
@@ -1056,6 +1085,88 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         />
       )}
     </>
+  );
+}
+function PartUsageEditor({ order, onClose, onSaved }) {
+  const [parts, setParts] = useState([]);
+  const [usages, setUsages] = useState([]);
+  const [partId, setPartId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const orderId = idOf(order);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api.get(endpoint("repuestos")),
+      api.get(endpoint("consumos")),
+    ]).then(([partsResponse, usagesResponse]) => {
+      if (!active) return;
+      setParts(responseRows(partsResponse.data).filter((part) => part.activo !== false));
+      setUsages(responseRows(usagesResponse.data).filter((usage) => Number(usage.orden_trabajo) === Number(orderId)));
+    }).catch((e) => {
+      if (active) setError(errorText(e));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [orderId]);
+  const usedIds = new Set(usages.map((usage) => Number(usage.repuesto)));
+  const availableParts = parts.filter((part) => !usedIds.has(Number(idOf(part))));
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal part-usage-modal" role="dialog" aria-modal="true" aria-labelledby="part-usage-title" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span className="eyebrow">ORDEN DE TRABAJO #{orderId}</span>
+            <h2 id="part-usage-title">Repuestos utilizados</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Cerrar"><X /></button>
+        </header>
+        <p className="part-usage-context">Registra los materiales que usaste en esta atención. La cantidad debe expresarse en la unidad indicada.</p>
+        {usages.length > 0 && <section className="part-usage-list" aria-label="Repuestos ya registrados">
+          <strong>Ya registrados en esta orden</strong>
+          {usages.map((usage) => <div key={idOf(usage)}><span>{usage.repuesto_nombre || `Repuesto #${usage.repuesto}`}</span><span>{usage.cantidad} {usage.unidad_medida || "unidades"}</span></div>)}
+        </section>}
+        {error && <p role="alert" className="notice">{error}</p>}
+        {loading ? <p className="empty">Cargando catálogo…</p> : (
+          <form onSubmit={async (event) => {
+            event.preventDefault();
+            setBusy(true);
+            setError("");
+            try {
+              await api.post(endpoint("consumos"), {
+                orden_trabajo: Number(orderId),
+                repuesto: Number(partId),
+                cantidad: Number(quantity),
+              });
+              await onSaved();
+              onClose();
+            } catch (e) {
+              setError(errorText(e));
+            } finally {
+              setBusy(false);
+            }
+          }}>
+            <label>Repuesto
+              <select value={partId} onChange={(event) => setPartId(event.target.value)} required disabled={!availableParts.length}>
+                <option value="">{availableParts.length ? "Selecciona un repuesto…" : "No hay repuestos disponibles"}</option>
+                {availableParts.map((part) => <option key={idOf(part)} value={idOf(part)}>{labelOf(part)}{part.unidad_medida ? ` · ${part.unidad_medida}` : ""}</option>)}
+              </select>
+            </label>
+            <label>Cantidad
+              <input type="number" min="0.01" step="0.01" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
+            </label>
+            <div className="actions">
+              <button type="button" onClick={onClose}>Cancelar</button>
+              <button className="primary" disabled={busy || !availableParts.length || !partId || Number(quantity) <= 0}>{busy ? "Guardando…" : "Registrar repuesto"}</button>
+            </div>
+          </form>
+        )}
+        {!loading && !parts.length && <p className="empty">No hay repuestos activos en el catálogo. Solicita al administrador que habilite los materiales necesarios.</p>}
+      </section>
+    </div>
   );
 }
 function DeviceComparison({ device, onClose }) {
@@ -1119,90 +1230,333 @@ function DeviceComparison({ device, onClose }) {
     </section>
   </div>;
 }
+const responseRows = (data) =>
+  Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+
+const recordState = (record) =>
+  String(record?.estado_display || record?.estado || "").toLocaleLowerCase("es-CO");
+
+const isFinishedRecord = (record) =>
+  /cerrad|cancel|resuelt/.test(recordState(record));
+
+const newestFirst = (records, field) =>
+  [...records].sort((a, b) => {
+    const dateA = new Date(a?.[field] || 0).getTime();
+    const dateB = new Date(b?.[field] || 0).getTime();
+    return dateB - dateA;
+  });
+
+const formatDashboardDate = (value) => {
+  if (!value) return "Sin registro";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+};
+
 function Dashboard({ user }) {
-  const [stats, setStats] = useState(null),
-    [error, setError] = useState("");
+  const roles = user.roles || [];
+  const permissions = user.permisos || [];
+  const globalAccess = Boolean(user.is_superuser || user.admin || user.full_resource_access);
+  const isTechnician = roles.includes("Técnico de Campo") && !globalAccess;
+  const isLeader = roles.includes("Líder Comunitario") && !globalAccess && !isTechnician;
+  const canRead = (model) => globalAccess || permissions.includes(`view_${model}`);
+  const canReadAlerts = canRead("alerta");
+  const canReadOrders = canRead("ordentrabajo");
+  const canReadDevices = canRead("dispositivo");
+  const canReadInstallations = canRead("instalacion");
+  const [stats, setStats] = useState(null);
+  const [records, setRecords] = useState({ alerts: [], orders: [], devices: [] });
+  const [loadedRecords, setLoadedRecords] = useState({ alerts: false, orders: false, devices: false });
+  const [error, setError] = useState("");
+  const [detailError, setDetailError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const loadedOnce = useRef(false);
+
+  const loadDashboard = useCallback(async () => {
+    if (loadedOnce.current) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+    setDetailError("");
+
+    const requests = [
+      { key: "stats", url: "/security/portal/resumen/" },
+      ...(canReadAlerts ? [{ key: "alerts", url: "/security/portal/alertas/" }] : []),
+      ...(canReadOrders ? [{ key: "orders", url: "/security/portal/ordenes/" }] : []),
+      ...(canReadDevices ? [{ key: "devices", url: "/security/portal/dispositivos/" }] : []),
+    ];
+
+    try {
+      const results = await Promise.allSettled(requests.map(({ url }) => api.get(url)));
+      const nextRecords = { alerts: [], orders: [], devices: [] };
+      const nextLoaded = { alerts: false, orders: false, devices: false };
+      const failedDetails = [];
+      let nextStats = null;
+      let statsError = null;
+
+      results.forEach((result, index) => {
+        const key = requests[index].key;
+        if (result.status === "fulfilled") {
+          if (key === "stats") nextStats = result.value.data;
+          else {
+            nextRecords[key] = responseRows(result.value.data);
+            nextLoaded[key] = true;
+          }
+        } else if (key === "stats") {
+          statsError = result.reason;
+        } else {
+          failedDetails.push(key === "alerts" ? "alertas" : key === "orders" ? "órdenes" : "dispositivos");
+        }
+      });
+
+      setStats(nextStats);
+      setRecords(nextRecords);
+      setLoadedRecords(nextLoaded);
+      setError(statsError ? errorText(statsError) : "");
+      setDetailError(failedDetails.length ? `No se pudieron cargar ${failedDetails.join(", ")}.` : "");
+      setLastUpdated(new Date());
+    } catch (requestError) {
+      setError(errorText(requestError));
+    } finally {
+      loadedOnce.current = true;
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [canReadAlerts, canReadDevices, canReadOrders, user.id]);
+
   useEffect(() => {
-    api.get("/security/portal/resumen/")
-      .then((r) => setStats(r.data))
-      .catch((e) => setError(errorText(e)));
-  }, []);
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const alerts = newestFirst(records.alerts, "fecha_creacion");
+  const activeAlerts = alerts.filter((alert) => !isFinishedRecord(alert));
+  const orders = newestFirst(records.orders, "fecha_creacion");
+  const activeOrders = orders.filter((order) => !isFinishedRecord(order));
+  const closedOrders = orders.filter(isFinishedRecord);
+  const devicesWithoutContact = records.devices.filter((device) => !device.ultima_comunicacion);
+  const mode = globalAccess ? "admin" : isTechnician ? "technician" : isLeader ? "leader" : "general";
+  const heading = {
+    admin: "Resumen de operación",
+    technician: "Mis órdenes y equipos",
+    leader: "Estado de mi comunidad",
+    general: "Tu espacio de trabajo",
+  }[mode];
+  const intro = {
+    admin: "Revisa lo que necesita atención en la red solar.",
+    technician: "Consulta tus trabajos asignados y el estado de los equipos.",
+    leader: "Alertas, instalaciones y mantenimiento dentro de tu comunidad.",
+    general: "Este es el estado de los recursos disponibles para tu rol.",
+  }[mode];
+
+  const metric = (label, value, icon, ready, visible = true) =>
+    visible ? { label, value, icon, ready } : null;
+  const metrics = (
+    mode === "admin"
+      ? [
+          metric("Comunidades", stats?.comunidades, MapPin, Boolean(stats)),
+          metric("Instalaciones", stats?.instalaciones, Layers, Boolean(stats)),
+          metric("Dispositivos", stats?.dispositivos, Radio, Boolean(stats)),
+          metric("Alertas activas", activeAlerts.length, Bell, loadedRecords.alerts),
+          metric("Órdenes activas", activeOrders.length, Wrench, loadedRecords.orders),
+        ]
+      : mode === "leader"
+        ? [
+            metric("Instalaciones", stats?.instalaciones, Layers, Boolean(stats), canReadInstallations),
+            metric("Alertas activas", activeAlerts.length, Bell, loadedRecords.alerts, canReadAlerts),
+            metric("Órdenes activas", activeOrders.length, Wrench, loadedRecords.orders, canReadOrders),
+            metric("Sin comunicación registrada", devicesWithoutContact.length, Radio, loadedRecords.devices, canReadDevices),
+          ]
+        : mode === "technician"
+          ? [
+              metric("Órdenes asignadas", stats?.ordenes, Wrench, Boolean(stats), canReadOrders),
+              metric("Órdenes activas", activeOrders.length, ClipboardText, loadedRecords.orders, canReadOrders),
+              metric("Órdenes cerradas", closedOrders.length, Sun, loadedRecords.orders, canReadOrders),
+              metric("Instalaciones asignadas", stats?.instalaciones, Layers, Boolean(stats), canReadInstallations),
+            ]
+          : [
+              metric("Comunidades", stats?.comunidades, MapPin, Boolean(stats), canRead("comunidad")),
+              metric("Instalaciones", stats?.instalaciones, Layers, Boolean(stats), canReadInstallations),
+              metric("Dispositivos", stats?.dispositivos, Radio, Boolean(stats), canReadDevices),
+              metric("Órdenes", stats?.ordenes, Wrench, Boolean(stats), canReadOrders),
+            ]
+  ).filter(Boolean);
+
+  const alertPath = isLeader ? "/mi-alertas" : "/alertas";
+  const orderPath = mode === "admin" ? "/mantenimiento" : isTechnician ? "/mis-casos" : isLeader ? "/tecnicos" : "/mantenimiento";
+  const quickKinds =
+    mode === "admin"
+      ? ["instalaciones", "dispositivos", "ordenes"]
+      : mode === "technician"
+        ? ["ordenes", "instalaciones", "consumos"]
+        : mode === "leader"
+          ? ["instalaciones", "alertas", "notificaciones"]
+          : ["instalaciones", "dispositivos", "ordenes", "alertas", "notificaciones", "consumos"];
+
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading dashboard-heading">
         <div>
           <span className="eyebrow">TU RED DE ENERGÍA</span>
-          <h1>La energía, bajo control.</h1>
-          <p>
-            Hola, {user.username}. Este es el estado de tu espacio de trabajo.
-          </p>
+          <h1>{heading}</h1>
+          <p>Hola, {user.username}. {intro}</p>
         </div>
-        <span className="tag">HOGARES Y COMUNIDADES / COLOMBIA</span>
+        <div className="dashboard-toolbar">
+          {lastUpdated && <small aria-live="polite">Actualizado {formatDashboardDate(lastUpdated)}</small>}
+          <button className="dashboard-refresh" type="button" onClick={loadDashboard} disabled={loading || refreshing}>
+            {refreshing ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
       </div>
-      {error && <p className="notice">{error}</p>}
-      <div className="stat-grid">
-        {["comunidades", "instalaciones", "dispositivos", "ordenes"].map(
-          (k) => {
-            const Icon = definitions[k][1];
-            return (
-              <article key={k}>
-                <Icon size={18} />
-                <span>{definitions[k][0]}</span>
-                <strong>{stats ? stats[k] : "—"}</strong>
-                <small>Registros en tu ámbito</small>
-              </article>
-            );
-          },
+      {error && <p role="alert" className="notice">{error}</p>}
+      {detailError && <p role="status" className="notice">{detailError} Los demás datos siguen disponibles.</p>}
+
+      <div className="stat-grid dashboard-stats">
+        {metrics.map(({ label, value, icon: Icon, ready }) => (
+          <article key={label}>
+            <Icon size={18} />
+            <span>{label}</span>
+            <strong>{ready ? value ?? 0 : "—"}</strong>
+            <small>{loading ? "Cargando datos" : "En tu ámbito"}</small>
+          </article>
+        ))}
+      </div>
+
+      <div className="section-intro dashboard-section-intro">
+        <h2>{mode === "technician" ? "Trabajos por atender" : "Prioridades de la red"}</h2>
+        <span className="muted">Accesos directos a la operación</span>
+      </div>
+      <div className="dashboard-board">
+        {canReadAlerts && (
+          <section className="dashboard-panel" aria-labelledby="dashboard-alerts-title">
+            <div className="dashboard-panel-heading">
+              <div>
+                <span className="eyebrow">SEGUIMIENTO</span>
+                <h2 id="dashboard-alerts-title">{isLeader ? "Alertas de mi comunidad" : "Alertas abiertas"}</h2>
+              </div>
+              <Link to={alertPath}>Ver todas <ArrowUpRight size={14} /></Link>
+            </div>
+            {!loadedRecords.alerts ? (
+              <p className="dashboard-empty">{loading ? "Cargando alertas…" : "No se pudieron cargar las alertas."}</p>
+            ) : activeAlerts.length ? (
+              <div className="dashboard-record-list">
+                {activeAlerts.slice(0, 4).map((alert) => (
+                  <Link className="dashboard-record" to={alertPath} key={idOf(alert)}>
+                    <span className="dashboard-record-mark alert-mark"><Bell size={16} /></span>
+                    <span className="dashboard-record-copy">
+                      <span className="dashboard-record-title">
+                        <strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Alerta del sistema"}</strong>
+                        <span className="dashboard-pill">{alert.prioridad_display || "Revisar"}</span>
+                      </span>
+                      <span>{alert.mensaje || "Se requiere revisar esta instalación."}</span>
+                      <small>{alert.instalacion_display || "Instalación"} · {formatDashboardDate(alert.fecha_creacion)}</small>
+                    </span>
+                    <ArrowRight size={15} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="dashboard-empty">No hay alertas abiertas dentro de tu alcance.</p>
+            )}
+          </section>
+        )}
+
+        {canReadOrders && (
+          <section className="dashboard-panel" aria-labelledby="dashboard-orders-title">
+            <div className="dashboard-panel-heading">
+              <div>
+                <span className="eyebrow">MANTENIMIENTO</span>
+                <h2 id="dashboard-orders-title">{isTechnician ? "Mis órdenes asignadas" : "Órdenes activas"}</h2>
+              </div>
+              <Link to={orderPath}>Ver órdenes <ArrowUpRight size={14} /></Link>
+            </div>
+            {!loadedRecords.orders ? (
+              <p className="dashboard-empty">{loading ? "Cargando órdenes…" : "No se pudieron cargar las órdenes."}</p>
+            ) : activeOrders.length ? (
+              <div className="dashboard-record-list">
+                {activeOrders.slice(0, 4).map((order) => (
+                  <Link className="dashboard-record" to={orderPath} key={idOf(order)}>
+                    <span className="dashboard-record-mark order-mark"><Wrench size={16} /></span>
+                    <span className="dashboard-record-copy">
+                      <span className="dashboard-record-title">
+                        <strong>Orden #{idOf(order)}</strong>
+                        <span className="dashboard-pill">{order.estado_display || "Activa"}</span>
+                      </span>
+                      <span>{order.descripcion || "Orden de mantenimiento"}</span>
+                      <small>{order.instalacion_display || "Instalación"} · {formatDashboardDate(order.fecha_creacion)}</small>
+                    </span>
+                    <ArrowRight size={15} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="dashboard-empty">No hay órdenes activas dentro de tu alcance.</p>
+            )}
+          </section>
         )}
       </div>
-      <div className="section-intro">
-        <h2>El trabajo, en un solo lugar.</h2>
+
+      {canReadDevices && (
+        <section className="dashboard-panel dashboard-device-panel" aria-labelledby="dashboard-devices-title">
+          <div className="dashboard-panel-heading">
+            <div>
+              <span className="eyebrow">CONECTIVIDAD</span>
+              <h2 id="dashboard-devices-title">Dispositivos sin comunicación registrada</h2>
+            </div>
+            <Link to="/dispositivos">Ver dispositivos <ArrowUpRight size={14} /></Link>
+          </div>
+          {!loadedRecords.devices ? (
+            <p className="dashboard-empty">{loading ? "Cargando dispositivos…" : "No se pudieron cargar los dispositivos."}</p>
+          ) : devicesWithoutContact.length ? (
+            <div className="dashboard-device-list">
+              {devicesWithoutContact.slice(0, 4).map((device) => (
+                <div className="dashboard-device" key={idOf(device)}>
+                  <span className="dashboard-record-mark device-mark"><Radio size={16} /></span>
+                  <span><strong>{device.codigo || `Dispositivo #${idOf(device)}`}</strong><small>{device.instalacion_display || "Instalación"} · {device.modelo || "Modelo sin indicar"}</small></span>
+                  <span className="dashboard-pill">Sin registro</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="dashboard-empty">Todos los dispositivos visibles tienen una comunicación registrada.</p>
+          )}
+        </section>
+      )}
+
+      <div className="section-intro dashboard-section-intro">
+        <h2>Continúa con tu trabajo</h2>
         <span className="muted">Accesos rápidos</span>
       </div>
       <div className="three-grid quick-links">
-        {(user.admin || user.full_resource_access
-          ? ["instalaciones", "dispositivos", "ordenes"]
-          : user.roles.includes("Técnico de Campo")
-            ? ["ordenes", "instalaciones", "consumos"]
-            : user.roles.includes("Propietario Solar")
-              ? ["instalaciones", "dispositivos", "alertas"]
-            : ["instalaciones", "alertas", "notificaciones"]
-        ).filter((k) => {
+        {quickKinds.filter((kind) => {
           const permission = {
             instalaciones: "view_instalacion",
             dispositivos: "view_dispositivo",
             ordenes: "view_ordentrabajo",
             alertas: "view_alerta",
-            notificaciones: "view_alerta",
+            notificaciones: "view_notificacion",
             consumos: "view_repuestoordentrabajo",
-          }[k];
-          return user.is_superuser || !permission || user.permisos.includes(permission);
-        }).map((k) => {
-          const Icon = definitions[k][1];
+          }[kind];
+          return globalAccess || !permission || permissions.includes(permission);
+        }).map((kind) => {
+          const Icon = definitions[kind][1];
+          const to =
+            globalAccess
+              ? `/${kind === "ordenes" ? "mantenimiento" : kind}`
+              : kind === "ordenes"
+                ? orderPath
+                : kind === "instalaciones"
+                  ? isTechnician ? "/ficha-tecnica" : isLeader ? "/mi-comunidad" : "/instalaciones"
+                  : kind === "alertas"
+                    ? isLeader ? "/mi-alertas" : "/alertas"
+                    : `/${kind}`;
           return (
-            <Link
-              key={k}
-              className="feature"
-              to={
-                user.admin || user.full_resource_access
-                  ? `/${k === "ordenes" ? "mantenimiento" : k}`
-                  : k === "ordenes"
-                    ? "/mis-casos"
-                      : k === "instalaciones"
-                        ? user.roles.includes("Técnico de Campo")
-                          ? "/ficha-tecnica"
-                          : user.roles.includes("Propietario Solar")
-                            ? "/mi-vivienda"
-                            : "/mi-comunidad"
-                      : k === "alertas"
-                        ? user.roles.includes("Líder Comunitario")
-                          ? "/mi-alertas"
-                          : "/alertas"
-                        : `/${k}`
-              }
-            >
+            <Link key={kind} className="feature" to={to}>
               <Icon weight="duotone" />
-              <h3>{definitions[k][0]}</h3>
+              <h3>{definitions[kind][0]}</h3>
               <p>Consulta la información y continúa con tu trabajo.</p>
               <ArrowUpRight size={18} />
             </Link>
@@ -1214,10 +1568,7 @@ function Dashboard({ user }) {
         <div>
           <span className="eyebrow">UNA PLATAFORMA, UN PROPÓSITO</span>
           <h2>Energía para seguir adelante.</h2>
-          <p>
-            Infraestructura solar y mantenimiento para las comunidades rurales
-            de La Guajira.
-          </p>
+          <p>Infraestructura solar y mantenimiento para las comunidades rurales de La Guajira.</p>
         </div>
       </section>
     </>
@@ -1229,35 +1580,53 @@ function HomeownerOverview({ user }) {
   const [alerts, setAlerts] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState("");
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      api.get("/security/portal/instalaciones/"),
-      api.get("/security/portal/dispositivos/"),
-      api.get("/security/portal/alertas/"),
-    ])
-      .then(([installationResponse, deviceResponse, alertResponse]) => {
-        if (!active) return;
-        setInstallations(installationResponse.data);
-        setDevices(deviceResponse.data);
-        setAlerts(alertResponse.data);
-      })
-      .catch((e) => { if (active) setError(errorText(e)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+  const loadedOnce = useRef(false);
+  const loadOverview = useCallback(async () => {
+    if (loadedOnce.current) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+    try {
+      const [installationResponse, deviceResponse, alertResponse] = await Promise.all([
+        api.get("/security/portal/instalaciones/"),
+        api.get("/security/portal/dispositivos/"),
+        api.get("/security/portal/alertas/"),
+      ]);
+      setInstallations(responseRows(installationResponse.data));
+      setDevices(responseRows(deviceResponse.data));
+      setAlerts(responseRows(alertResponse.data));
+      setLastUpdated(new Date());
+    } catch (requestError) {
+      setError(errorText(requestError));
+    } finally {
+      loadedOnce.current = true;
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
   const openAlerts = alerts.filter((alert) =>
-    !["cerrada", "cerrado"].includes((alert.estado_display || "").toLowerCase()),
+    !isFinishedRecord(alert),
   );
+  const recentAlerts = newestFirst(alerts, "fecha_creacion");
   return <>
-    <div className="page-heading">
+    <div className="page-heading dashboard-heading">
       <div>
         <span className="eyebrow">TU SISTEMA SOLAR</span>
         <h1>Mi vivienda</h1>
         <p>Consulta el estado de tu instalación, los equipos conectados, las mediciones y los avisos recientes.</p>
       </div>
-      <span className="tag">PROPIETARIO / {user.username}</span>
+      <div className="dashboard-toolbar">
+        <span className="tag">PROPIETARIO / {user.username}</span>
+        {lastUpdated && <small aria-live="polite">Actualizado {formatDashboardDate(lastUpdated)}</small>}
+        <button className="dashboard-refresh" type="button" onClick={loadOverview} disabled={loading || refreshing}>
+          {refreshing ? "Actualizando…" : "Actualizar"}
+        </button>
+      </div>
     </div>
     {error && <p role="alert" className="notice">{error}</p>}
     <div className="stat-grid homeowner-stats">
@@ -1295,8 +1664,8 @@ function HomeownerOverview({ user }) {
     </section>
     <section className="owner-section">
       <div className="section-intro"><h2>Avisos y novedades</h2><Link to="/alertas">Ver todas las alertas ↗</Link></div>
-      {loading ? <p className="empty">Cargando avisos…</p> : alerts.length ? <div className="owner-alert-list">
-        {alerts.slice(0, 8).map((alert) => <article className="owner-alert" key={idOf(alert)}>
+      {loading ? <p className="empty">Cargando avisos…</p> : recentAlerts.length ? <div className="owner-alert-list">
+        {recentAlerts.slice(0, 8).map((alert) => <article className="owner-alert" key={idOf(alert)}>
           <Bell size={18} />
           <div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Tu instalación"} · {alert.fecha_creacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.fecha_creacion)) : "Fecha no disponible"}</small></div>
           <span className={`reading-state ${(alert.estado_display || "").toLowerCase().includes("cerr") ? "normal" : "fuera-de-rango"}`}>{alert.estado_display || "Revisar"}</span>
@@ -1306,6 +1675,28 @@ function HomeownerOverview({ user }) {
     {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
   </>;
 }
+
+function HomePage({ user }) {
+  const roles = user.roles || [];
+  const hasGlobalAccess = Boolean(user.is_superuser || user.admin || user.full_resource_access);
+  if (!hasGlobalAccess && roles.length === 0) {
+    return (
+      <section className="dashboard-panel dashboard-no-role" role="status">
+        <Shield size={24} />
+        <h1>Tu cuenta está lista</h1>
+        <p>Un administrador debe asignarte un rol para mostrarte los datos y herramientas de tu trabajo.</p>
+      </section>
+    );
+  }
+
+  const homeownerOnly =
+    !hasGlobalAccess &&
+    roles.includes("Propietario Solar") &&
+    !roles.includes("Técnico de Campo") &&
+    !roles.includes("Líder Comunitario");
+  return homeownerOnly ? <HomeownerOverview user={user} /> : <Dashboard user={user} />;
+}
+
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
@@ -1331,6 +1722,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
   const tech = user.roles.includes("Técnico de Campo");
+  const fieldTechnician = tech && !user.admin && !user.full_resource_access && !user.is_superuser;
   const routePermissions = {
     "/comunidades": "view_comunidad",
     "/instalaciones": "view_instalacion",
@@ -1385,8 +1777,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     workflowLinks.push([path, label, Icon]);
     baseRoutes[path] = [kind, title, readonly];
   };
-  if (tech) {
-    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "ordenes", "Mis casos asignados", true);
+  if (fieldTechnician) {
+    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "ordenes", "Mis casos asignados", false);
     if (hasResource("instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
     if (hasResource("repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
@@ -1511,16 +1903,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
           <Routes>
             <Route
               path="/dashboard"
-              element={
-                links.length ? (
-                  <Dashboard user={user} />
-                ) : (
-                  <p className="notice">
-                    Tu cuenta aún no tiene un rol activo. Contacta al
-                    administrador.
-                  </p>
-                )
-              }
+              element={<HomePage user={user} />}
             />
             {Object.entries(routes)
               .filter(([path]) => canOpen(path))
