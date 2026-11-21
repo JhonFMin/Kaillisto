@@ -1580,6 +1580,7 @@ function Dashboard({ user, audience = "portal" }) {
   );
 }
 function HomeownerOverview({ user }) {
+  const location = useLocation();
   const [installations, setInstallations] = useState([]);
   const [devices, setDevices] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -1615,6 +1616,11 @@ function HomeownerOverview({ user }) {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
+  useEffect(() => {
+    if (!location.hash) return;
+    const section = document.getElementById(location.hash.slice(1));
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.hash]);
   const openAlerts = mostImportantAlertsFirst(alerts.filter((alert) => !isFinishedRecord(alert)));
   const recentAlerts = newestFirst(alerts, "fecha_creacion");
   const visibleAlerts = (showAlertHistory ? recentAlerts : openAlerts).slice(0, 8);
@@ -1642,7 +1648,7 @@ function HomeownerOverview({ user }) {
         ["Avisos registrados", alerts.length],
       ].map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
     </div>
-    <section className="owner-section">
+    <section className="owner-section" id="mi-sistema">
       <div className="section-intro"><h2>Tu instalación</h2><span className="muted">Ubicación y estado</span></div>
       {loading ? <p className="empty">Cargando los datos de tu sistema…</p> : installations.length ? <div className="owner-card-grid">
         {installations.map((item) => <article className="feature owner-card" key={idOf(item)}>
@@ -1655,7 +1661,7 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : <p className="empty">Aún no hay una instalación vinculada a tu cuenta. Pide al administrador que te asigne como responsable de la vivienda.</p>}
     </section>
-    <section className="owner-section">
+    <section className="owner-section" id="equipos">
       <div className="section-intro"><h2>Mediciones del sistema</h2><span className="muted">Valores recientes y comparación con los rangos esperados</span></div>
       {!loading && devices.length ? <div className="owner-card-grid">
         {devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
@@ -1667,7 +1673,7 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
     </section>
-    <section className="owner-section">
+    <section className="owner-section" id="avisos">
       <div className="section-intro owner-alert-heading">
         <div>
           <h2>{showAlertHistory ? "Historial de avisos" : "Avisos que requieren atención"}</h2>
@@ -1837,9 +1843,6 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
     if (hasResource("alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
     if (hasResource("ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
-  if (!isAdminArea && !isFieldArea && roles.has("Propietario Solar") && hasResource("instalacion")) {
-    addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
-  }
   const staticLinks = [...baseLinks, ...workflowLinks, [areaRoute("perfil"), "Mi perfil", UserCircle]];
   const seenPaths = new Set();
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
@@ -1867,6 +1870,101 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
       ? workspaceBase("field")
       : null;
   const switchLabel = switchTo === workspaceBase("field") ? "Área de técnicos" : "Portal de usuario";
+  const pageContent = (
+    <Routes>
+      <Route path={areaBase} element={<HomePage user={user} audience={area} />} />
+      {Object.entries(routes)
+        .filter(([path]) => canOpen(path))
+        .map(([path, [kind, title, readonly]]) => (
+          <Route
+            key={path}
+            path={path}
+            element={kind === "homeowner" ? <HomeownerOverview user={user} /> : (
+              <Records key={kind} kind={kind} user={user} title={title} readonly={readonly} />
+            )}
+          />
+        ))}
+      {visibleResources.map((resource) => {
+        const page = modelPage(resource.model);
+        const path = areaRoute(resource.menu_path);
+        return page && canOpen(path) ? (
+          <Route
+            key={`resource-${resource.id}`}
+            path={path}
+            element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : (
+              <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />
+            )}
+          />
+        ) : null;
+      })}
+      {canOpen(areaRoute("catalogos")) && <Route path={areaRoute("catalogos")} element={<Catalogs user={user} />} />}
+      <Route path={areaRoute("perfil")} element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
+      {navigationReady && <Route path="*" element={<Navigate to={areaBase} replace />} />}
+    </Routes>
+  );
+  const secondaryPortalLinks = isFieldArea
+    ? [...workflowLinks, ...dynamicLinks.filter(([, , , resource]) => ["dispositivo", "alerta", "notificacion"].includes(String(resource.model || "").toLowerCase()))]
+    : roles.has("Propietario Solar")
+      ? dynamicLinks.filter(([, , , resource]) => ["instalacion", "dispositivo", "alerta", "notificacion"].includes(String(resource.model || "").toLowerCase()))
+      : roles.has("Líder Comunitario")
+        ? [...workflowLinks, ...dynamicLinks.filter(([, , , resource]) => ["dispositivo", "notificacion"].includes(String(resource.model || "").toLowerCase()))]
+        : dynamicLinks.slice(0, 4);
+  const portalLinkNames = {
+    instalacion: roles.has("Propietario Solar") ? "Mi sistema" : "Instalaciones",
+    dispositivo: "Equipos",
+    medicion: "Mediciones",
+    alerta: roles.has("Líder Comunitario") ? "Alertas de mi zona" : "Alertas",
+    notificacion: "Notificaciones",
+  };
+  const ownerPortalOnly =
+    !isAdminArea && !isFieldArea && roles.has("Propietario Solar")
+    && !roles.has("Técnico de Campo") && !roles.has("Líder Comunitario");
+  const primaryPortalLinks = ownerPortalOnly
+    ? [
+        [areaBase, "Inicio", LayoutDashboard],
+        [`${areaBase}#mi-sistema`, "Mi sistema", MapPin],
+        [`${areaBase}#equipos`, "Equipos", Radio],
+        [`${areaBase}#avisos`, "Avisos", Bell],
+        [areaRoute("perfil"), "Mi perfil", UserCircle],
+      ]
+    : [
+        [areaBase, isFieldArea ? "Resumen" : "Inicio", LayoutDashboard],
+        ...secondaryPortalLinks.map(([path, label, Icon, resource]) => [
+          path,
+          resource ? portalLinkNames[String(resource.model || "").toLowerCase()] || label : label,
+          Icon,
+        ]),
+        [areaRoute("perfil"), "Mi perfil", UserCircle],
+      ].filter(([path], index, all) => all.findIndex(([candidate]) => candidate === path) === index);
+  if (!isAdminArea) {
+    return (
+      <div className={`customer-portal${isFieldArea ? " field-portal" : ""}`} data-motion={motionEnabled ? "on" : "off"}>
+        <header className="customer-header">
+          <div className="customer-header-inner">
+            <Brand />
+            <nav className="customer-nav" aria-label="Navegación del portal">
+              {primaryPortalLinks.filter(([path]) => canOpen(path.split("#")[0])).map(([path, label]) =>
+                path.includes("#")
+                  ? <a className={loc.hash === path.slice(path.indexOf("#")) ? "active" : ""} key={path} href={path}>{label}</a>
+                  : <NavLink key={path} to={path} end={path === areaBase}>{label}</NavLink>
+              )}
+            </nav>
+            <div className="customer-account">
+              {switchTo && <Link className="customer-role-switch" to={switchTo}>{switchLabel}</Link>}
+              <span className="customer-account-name">{user.first_name || user.username}</span>
+              <button type="button" onClick={onLogout}>Salir</button>
+            </div>
+          </div>
+        </header>
+        <main className="customer-main">{pageContent}</main>
+        <footer className="customer-footer">
+          <Brand />
+          <span>{isFieldArea ? "Tu trabajo de campo, organizado en un solo lugar." : "El estado de tu energía solar, claro y cerca de ti."}</span>
+          <Link to={areaRoute("perfil")}>Mi perfil</Link>
+        </footer>
+      </div>
+    );
+  }
   return (
     <div className="workspace" data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
       <aside className={open ? "sidebar open" : "sidebar"}>
@@ -1962,44 +2060,7 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
           </span>
           <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><button className="theme-toggle motion-toggle" type="button" onClick={() => setMotionEnabled((value) => !value)} aria-pressed={motionEnabled} title={motionEnabled ? "Desactivar animaciones" : "Activar animaciones"}><span>{motionEnabled ? "Animaciones: sí" : "Animaciones: no"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
         </header>
-        <main className="workspace-main">
-          <Routes>
-            <Route path={areaBase} element={<HomePage user={user} audience={area} />} />
-            {Object.entries(routes)
-              .filter(([path]) => canOpen(path))
-              .map(([path, [kind, title, readonly]]) => (
-                <Route
-                  key={path}
-                  path={path}
-                  element={
-                    kind === "roles" ? (
-                      <RoleMatrix user={user} />
-                    ) : kind === "homeowner" ? (
-                      <HomeownerOverview user={user} />
-                    ) : (
-                      <Records
-                        key={kind}
-                        kind={kind}
-                        user={user}
-                        title={title}
-                        readonly={readonly}
-                      />
-                    )
-                  }
-                />
-              ))}
-            {visibleResources.map((resource) => {
-              const page = modelPage(resource.model);
-              const path = areaRoute(resource.menu_path);
-              return page && canOpen(path) ? <Route key={`resource-${resource.id}`} path={path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
-            })}
-            {canOpen(areaRoute("catalogos")) && (
-              <Route path={areaRoute("catalogos")} element={<Catalogs user={user} />} />
-            )}
-            <Route path={areaRoute("perfil")} element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
-            {navigationReady && <Route path="*" element={<Navigate to={areaBase} replace />} />}
-          </Routes>
-        </main>
+        <main className="workspace-main">{pageContent}</main>
       </div>
     </div>
   );
