@@ -2662,6 +2662,17 @@ body,
 .customer-portal small { color: #65756d; }
 .customer-portal .page-heading { margin-bottom: 28px; }
 .customer-portal .owner-section[id] { scroll-margin-top: 104px; }
+.customer-portal .dashboard-heading {
+  position: relative;
+  align-items: flex-end;
+  overflow: hidden;
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid #dce9de;
+  border-radius: 26px;
+  background: radial-gradient(ellipse at 92% 8%, rgb(130 190 147 / 23%), transparent 34%), linear-gradient(120deg, #fff 0%, #f4faf4 100%);
+  box-shadow: 0 12px 36px rgb(26 62 43 / 5%);
+}
+.customer-portal .dashboard-heading h1 { max-width: none; }
 .customer-portal .page-heading h1 { color: #153c2d; font-size: clamp(30px, 4vw, 42px); letter-spacing: -.045em; }
 .customer-portal .page-heading p { max-width: 680px; color: #60726a; }
 .customer-portal .eyebrow { color: #3c8364; }
