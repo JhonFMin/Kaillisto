@@ -1722,13 +1722,17 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
   const roles = new Set(user.roles || []);
   const [open, setOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
+  const [navigationReady, setNavigationReady] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
   const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("kaillisto-motion") !== "off");
   const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
   useEffect(() => {
     let active = true;
-    const refresh = () => api.get("/security/navigation/").then(({ data }) => { if (active) setResourceNav(data); }).catch(() => {});
+    const refresh = () => api.get("/security/navigation/")
+      .then(({ data }) => { if (active) setResourceNav(data); })
+      .catch(() => {})
+      .finally(() => { if (active) setNavigationReady(true); });
     refresh();
     const onPermissions = () => refresh();
     window.addEventListener("kaillisto:permissions", onPermissions);
@@ -1993,7 +1997,7 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
               <Route path={areaRoute("catalogos")} element={<Catalogs user={user} />} />
             )}
             <Route path={areaRoute("perfil")} element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
-            <Route path="*" element={<Navigate to={areaBase} replace />} />
+            {navigationReady && <Route path="*" element={<Navigate to={areaBase} replace />} />}
           </Routes>
         </main>
       </div>
