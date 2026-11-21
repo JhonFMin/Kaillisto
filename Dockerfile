@@ -16,4 +16,4 @@ COPY backend/ /app/backend/
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 WORKDIR /app/backend
 RUN DJANGO_SECRET_KEY=build-only-collectstatic-key python manage.py collectstatic --noinput
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --access-logfile -"]
+CMD ["sh", "docker-entrypoint.sh"]
