@@ -9,7 +9,6 @@ import {
   Routes,
   useLocation,
   useNavigate,
-  useParams,
 } from "react-router-dom";
 import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { MoonIcon as Moon } from "@phosphor-icons/react/dist/csr/Moon";
@@ -36,6 +35,14 @@ import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/Use
 import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
 import "leaflet/dist/leaflet.css";
 import api from "./api/axios";
+import { mostImportantAlertsFirst } from "./utils/alerts";
+import {
+  canEnterWorkspace,
+  getPrimaryWorkspace,
+  workspaceBase,
+  workspaceForPath,
+  workspaceRoute,
+} from "./utils/workspaces";
 
 function LocationPicker({ latitude, longitude, onChange, address, kind }) {
   const mapElement = useRef(null);
@@ -482,7 +489,7 @@ function Login({ onLogin, user }) {
     left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
     right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
   });
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={workspaceBase(getPrimaryWorkspace(user))} replace />;
   return (
     <div className="login-layout">
       <div className="login-story">
@@ -1256,13 +1263,13 @@ const formatDashboardDate = (value) => {
   }).format(date);
 };
 
-function Dashboard({ user }) {
+function Dashboard({ user, audience = "portal" }) {
   const roles = user.roles || [];
   const permissions = user.permisos || [];
   const globalAccess = Boolean(user.is_superuser || user.admin || user.full_resource_access);
-  const isTechnician = roles.includes("Técnico de Campo") && !globalAccess;
-  const isLeader = roles.includes("Líder Comunitario") && !globalAccess && !isTechnician;
-  const canRead = (model) => globalAccess || permissions.includes(`view_${model}`);
+  const isTechnician = audience === "field" || (roles.includes("Técnico de Campo") && !globalAccess);
+  const isLeader = audience === "portal" && roles.includes("Líder Comunitario") && !isTechnician;
+  const canRead = (model) => globalAccess || permissions.includes("ALL") || permissions.includes(`view_${model}`);
   const canReadAlerts = canRead("alerta");
   const canReadOrders = canRead("ordentrabajo");
   const canReadDevices = canRead("dispositivo");
@@ -1338,7 +1345,8 @@ function Dashboard({ user }) {
   const activeOrders = orders.filter((order) => !isFinishedRecord(order));
   const closedOrders = orders.filter(isFinishedRecord);
   const devicesWithoutContact = records.devices.filter((device) => !device.ultima_comunicacion);
-  const mode = globalAccess ? "admin" : isTechnician ? "technician" : isLeader ? "leader" : "general";
+  const mode = audience === "admin" ? "admin" : isTechnician ? "technician" : isLeader ? "leader" : "general";
+  const routeFor = (path) => workspaceRoute(audience === "admin" ? "admin" : audience === "field" ? "field" : "portal", path);
   const heading = {
     admin: "Resumen de operación",
     technician: "Mis órdenes y equipos",
@@ -1385,8 +1393,8 @@ function Dashboard({ user }) {
             ]
   ).filter(Boolean);
 
-  const alertPath = isLeader ? "/mi-alertas" : "/alertas";
-  const orderPath = mode === "admin" ? "/mantenimiento" : isTechnician ? "/mis-casos" : isLeader ? "/tecnicos" : "/mantenimiento";
+  const alertPath = routeFor(isLeader ? "mi-alertas" : "alertas");
+  const orderPath = routeFor(mode === "admin" ? "mantenimiento" : isTechnician ? "mis-casos" : isLeader ? "tecnicos" : "mantenimiento");
   const quickKinds =
     mode === "admin"
       ? ["instalaciones", "dispositivos", "ordenes"]
@@ -1437,7 +1445,7 @@ function Dashboard({ user }) {
                 <span className="eyebrow">SEGUIMIENTO</span>
                 <h2 id="dashboard-alerts-title">{isLeader ? "Alertas de mi comunidad" : "Alertas abiertas"}</h2>
               </div>
-              <Link to={alertPath}>Ver todas <ArrowUpRight size={14} /></Link>
+            <Link to={alertPath}>Ver todas <ArrowUpRight size={14} /></Link>
             </div>
             {!loadedRecords.alerts ? (
               <p className="dashboard-empty">{loading ? "Cargando alertas…" : "No se pudieron cargar las alertas."}</p>
@@ -1471,7 +1479,7 @@ function Dashboard({ user }) {
                 <span className="eyebrow">MANTENIMIENTO</span>
                 <h2 id="dashboard-orders-title">{isTechnician ? "Mis órdenes asignadas" : "Órdenes activas"}</h2>
               </div>
-              <Link to={orderPath}>Ver órdenes <ArrowUpRight size={14} /></Link>
+            <Link to={orderPath}>Ver órdenes <ArrowUpRight size={14} /></Link>
             </div>
             {!loadedRecords.orders ? (
               <p className="dashboard-empty">{loading ? "Cargando órdenes…" : "No se pudieron cargar las órdenes."}</p>
@@ -1506,7 +1514,7 @@ function Dashboard({ user }) {
               <span className="eyebrow">CONECTIVIDAD</span>
               <h2 id="dashboard-devices-title">Dispositivos sin comunicación registrada</h2>
             </div>
-            <Link to="/dispositivos">Ver dispositivos <ArrowUpRight size={14} /></Link>
+            <Link to={routeFor("dispositivos")}>Ver dispositivos <ArrowUpRight size={14} /></Link>
           </div>
           {!loadedRecords.devices ? (
             <p className="dashboard-empty">{loading ? "Cargando dispositivos…" : "No se pudieron cargar los dispositivos."}</p>
@@ -1543,16 +1551,13 @@ function Dashboard({ user }) {
           return globalAccess || !permission || permissions.includes(permission);
         }).map((kind) => {
           const Icon = definitions[kind][1];
-          const to =
-            globalAccess
-              ? `/${kind === "ordenes" ? "mantenimiento" : kind}`
-              : kind === "ordenes"
-                ? orderPath
-                : kind === "instalaciones"
-                  ? isTechnician ? "/ficha-tecnica" : isLeader ? "/mi-comunidad" : "/instalaciones"
-                  : kind === "alertas"
-                    ? isLeader ? "/mi-alertas" : "/alertas"
-                    : `/${kind}`;
+          const to = kind === "ordenes"
+            ? orderPath
+            : kind === "alertas"
+              ? alertPath
+              : routeFor(kind === "instalaciones"
+                ? isTechnician ? "ficha-tecnica" : isLeader ? "mi-comunidad" : "instalaciones"
+                : kind);
           return (
             <Link key={kind} className="feature" to={to}>
               <Icon weight="duotone" />
@@ -1579,6 +1584,7 @@ function HomeownerOverview({ user }) {
   const [devices, setDevices] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [showAlertHistory, setShowAlertHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -1609,10 +1615,9 @@ function HomeownerOverview({ user }) {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
-  const openAlerts = alerts.filter((alert) =>
-    !isFinishedRecord(alert),
-  );
+  const openAlerts = mostImportantAlertsFirst(alerts.filter((alert) => !isFinishedRecord(alert)));
   const recentAlerts = newestFirst(alerts, "fecha_creacion");
+  const visibleAlerts = (showAlertHistory ? recentAlerts : openAlerts).slice(0, 8);
   return <>
     <div className="page-heading dashboard-heading">
       <div>
@@ -1663,23 +1668,34 @@ function HomeownerOverview({ user }) {
       </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
     </section>
     <section className="owner-section">
-      <div className="section-intro"><h2>Avisos y novedades</h2><Link to="/alertas">Ver todas las alertas ↗</Link></div>
-      {loading ? <p className="empty">Cargando avisos…</p> : recentAlerts.length ? <div className="owner-alert-list">
-        {recentAlerts.slice(0, 8).map((alert) => <article className="owner-alert" key={idOf(alert)}>
+      <div className="section-intro owner-alert-heading">
+        <div>
+          <h2>{showAlertHistory ? "Historial de avisos" : "Avisos que requieren atención"}</h2>
+          <span className="muted">{showAlertHistory ? "Novedades recientes de tu sistema" : `${openAlerts.length} pendientes en tu instalación`}</span>
+        </div>
+        <div className="owner-alert-actions">
+          {alerts.length > 0 && <button className="owner-alert-toggle" type="button" onClick={() => setShowAlertHistory((current) => !current)} aria-pressed={showAlertHistory}>{showAlertHistory ? "Ver pendientes" : "Ver historial"}</button>}
+          <Link to="/portal/alertas">Todas las alertas ↗</Link>
+        </div>
+      </div>
+      {loading ? <p className="empty">Cargando avisos…</p> : visibleAlerts.length ? <div className="owner-alert-list">
+        {visibleAlerts.map((alert) => <article className="owner-alert" key={idOf(alert)}>
           <Bell size={18} />
           <div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Tu instalación"} · {alert.fecha_creacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.fecha_creacion)) : "Fecha no disponible"}</small></div>
-          <span className={`reading-state ${(alert.estado_display || "").toLowerCase().includes("cerr") ? "normal" : "fuera-de-rango"}`}>{alert.estado_display || "Revisar"}</span>
+          <span className={`reading-state ${isFinishedRecord(alert) ? "normal" : "fuera-de-rango"}`}>{alert.estado_display || "Revisar"}</span>
+          {alert.prioridad_display && <span className="dashboard-pill">{alert.prioridad_display}</span>}
         </article>)}
-      </div> : <p className="empty">No hay avisos registrados para tu sistema. Aquí aparecerán si una lectura requiere atención.</p>}
+      </div> : <p className="empty">{showAlertHistory ? "Aún no hay avisos registrados para tu sistema." : alerts.length ? "No tienes avisos pendientes. Puedes consultar el historial cuando quieras." : "No hay avisos registrados para tu sistema. Aquí aparecerán si una lectura requiere atención."}</p>}
     </section>
     {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
   </>;
 }
 
-function HomePage({ user }) {
+function HomePage({ user, audience = "portal" }) {
   const roles = user.roles || [];
-  const hasGlobalAccess = Boolean(user.is_superuser || user.admin || user.full_resource_access);
-  if (!hasGlobalAccess && roles.length === 0) {
+  if (audience === "admin") return <Dashboard user={user} audience="admin" />;
+  if (audience === "field") return <Dashboard user={user} audience="field" />;
+  if (roles.length === 0) {
     return (
       <section className="dashboard-panel dashboard-no-role" role="status">
         <Shield size={24} />
@@ -1690,14 +1706,20 @@ function HomePage({ user }) {
   }
 
   const homeownerOnly =
-    !hasGlobalAccess &&
     roles.includes("Propietario Solar") &&
     !roles.includes("Técnico de Campo") &&
     !roles.includes("Líder Comunitario");
-  return homeownerOnly ? <HomeownerOverview user={user} /> : <Dashboard user={user} />;
+  return homeownerOnly
+    ? <HomeownerOverview user={user} />
+    : <Dashboard user={user} audience="portal" />;
 }
 
-function Workspace({ user, onLogout, onProfileUpdated }) {
+function Workspace({ user, area, onLogout, onProfileUpdated }) {
+  const areaBase = workspaceBase(area);
+  const areaRoute = (path) => workspaceRoute(area, path);
+  const isAdminArea = area === "admin";
+  const isFieldArea = area === "field";
+  const roles = new Set(user.roles || []);
   const [open, setOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
   const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
@@ -1721,8 +1743,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  const tech = user.roles.includes("Técnico de Campo");
-  const fieldTechnician = tech && !user.admin && !user.full_resource_access && !user.is_superuser;
+  const fieldTechnician = isFieldArea && roles.has("Técnico de Campo");
   const routePermissions = {
     "/comunidades": "view_comunidad",
     "/instalaciones": "view_instalacion",
@@ -1748,14 +1769,21 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     "/tecnicos": "view_ordentrabajo",
     "/mi-alertas": "view_alerta",
   };
-  const canOpen = (path) =>
-    user.is_superuser ||
-    (path === "/catalogos"
+  const relativePath = (path) => path === areaBase
+    ? "/dashboard"
+    : `/${path.slice(areaBase.length).replace(/^\/+/, "")}`;
+  const canOpen = (path) => {
+    const normalizedPath = relativePath(path);
+    const allReadAccess = user.is_superuser || user.full_resource_access || user.permisos.includes("ALL");
+    return allReadAccess ||
+    (normalizedPath === "/catalogos"
       ? catalogs.some((kind) => user.permisos.includes(catalogPermissions[kind]))
-        : path === "/mi-alertas" && user.roles.includes("Líder Comunitario")
+        : normalizedPath === "/mi-alertas" && roles.has("Líder Comunitario")
         ? user.permisos.includes("view_alerta")
-        : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
-  const baseLinks = [["/dashboard", user.admin ? "Resumen" : "Mi espacio", LayoutDashboard]];
+        : !routePermissions[normalizedPath] || user.permisos.includes(routePermissions[normalizedPath]));
+  };
+  const areaName = isAdminArea ? "Administración" : isFieldArea ? "Trabajo de campo" : "Portal de usuario";
+  const baseLinks = [[areaBase, isAdminArea ? "Resumen operativo" : isFieldArea ? "Mi jornada" : "Mi espacio", LayoutDashboard]];
   const iconForResource = (name) => ({
     "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
     radio: Radio, broadcast: Radio, dispositivo: Radio,
@@ -1767,30 +1795,48 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     clipboard: ClipboardText,
     layers: Layers, stack: Layers,
   }[String(name || "").toLowerCase()] || Layers);
-  const dynamicLinks = resourceNav.map((resource) => [
-    resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
+  const adminOnlyModels = new Set(["usuario", "role", "userrole", "securityauditevent", "resource"]);
+  const userFacingModels = new Set();
+  if (roles.has("Propietario Solar")) {
+    ["instalacion", "dispositivo", "medicion", "alerta", "notificacion"].forEach((model) => userFacingModels.add(model));
+  }
+  if (roles.has("Líder Comunitario")) {
+    ["comunidad", "instalacion", "dispositivo", "medicion", "alerta", "ordentrabajo", "notificacion"].forEach((model) => userFacingModels.add(model));
+  }
+  if (roles.has("Técnico de Campo")) {
+    ["instalacion", "dispositivo", "medicion", "alerta", "ordentrabajo", "repuestoordentrabajo", "notificacion"].forEach((model) => userFacingModels.add(model));
+  }
+  const visibleResources = resourceNav.filter((resource) =>
+    isAdminArea || (
+      !adminOnlyModels.has(String(resource.model || "").toLowerCase())
+      && (!userFacingModels.size || userFacingModels.has(String(resource.model || "").toLowerCase()))
+    ),
+  );
+  const dynamicLinks = visibleResources.map((resource) => [
+    areaRoute(resource.menu_path), resource.name, iconForResource(resource.menu_icon), resource,
   ]);
   const hasResource = (model) => resourceNav.some((resource) => String(resource.model || "").toLowerCase() === model);
   const workflowLinks = [];
   const baseRoutes = {};
   const addWorkflow = (path, label, Icon, kind, title, readonly = true) => {
-    workflowLinks.push([path, label, Icon]);
-    baseRoutes[path] = [kind, title, readonly];
+    const route = areaRoute(path);
+    workflowLinks.push([route, label, Icon]);
+    baseRoutes[route] = [kind, title, readonly];
   };
   if (fieldTechnician) {
     if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "ordenes", "Mis casos asignados", false);
     if (hasResource("instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
     if (hasResource("repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
-  if (user.roles.includes("Líder Comunitario")) {
+  if (!isAdminArea && !isFieldArea && roles.has("Líder Comunitario")) {
     if (hasResource("instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "instalaciones", "Mi comunidad", true);
     if (hasResource("alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
     if (hasResource("ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
-  if (user.roles.includes("Propietario Solar") && hasResource("instalacion")) {
+  if (!isAdminArea && !isFieldArea && roles.has("Propietario Solar") && hasResource("instalacion")) {
     addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
   }
-  const staticLinks = [...baseLinks, ...workflowLinks, ["/perfil", "Mi perfil", UserCircle]];
+  const staticLinks = [...baseLinks, ...workflowLinks, [areaRoute("perfil"), "Mi perfil", UserCircle]];
   const seenPaths = new Set();
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
     if (seenPaths.has(path)) return false;
@@ -1800,7 +1846,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   const routes = {
     ...baseRoutes,
   };
-  const groups = [{ id: "home", label: "Espacio de trabajo", Icon: LayoutDashboard, paths: ["/dashboard", ...workflowLinks.map(([path]) => path)] }]
+  const groups = [{ id: "home", label: areaName, Icon: LayoutDashboard, paths: [areaBase, ...workflowLinks.map(([path]) => path)] }]
     .map((group) => ({ ...group, items: links.filter(([path]) => group.paths.includes(path)) }))
     .filter((group) => group.items.length);
   const dynamicGroups = [...new Set(dynamicLinks.map(([, , , resource]) => resource.menu_group || "Recursos"))]
@@ -1811,12 +1857,18 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
       items: dynamicLinks.filter(([, , , resource]) => (resource.menu_group || "Recursos") === label),
     }));
   groups.push(...dynamicGroups);
+  const switchTo = !isAdminArea && isFieldArea && (roles.has("Propietario Solar") || roles.has("Líder Comunitario"))
+    ? workspaceBase("portal")
+    : !isAdminArea && !isFieldArea && roles.has("Técnico de Campo")
+      ? workspaceBase("field")
+      : null;
+  const switchLabel = switchTo === workspaceBase("field") ? "Área de técnicos" : "Portal de usuario";
   return (
     <div className="workspace" data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
       <aside className={open ? "sidebar open" : "sidebar"}>
         <div className="sidebar-brand-row"><Brand /><button className="sidebar-close icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={18} /></button></div>
         <div className="workspace-label">
-          PLATAFORMA SOLAR <span>01</span>
+          {isAdminArea ? "PANEL ADMINISTRATIVO" : isFieldArea ? "ÁREA DE CAMPO" : "PORTAL DE USUARIO"} <span>01</span>
         </div>
         <nav aria-label="Navegación principal" className="sidebar-groups">
           {groups.map((group) => {
@@ -1831,7 +1883,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                   aria-expanded={expanded}
                   onClick={() => setOpenGroups((current) => {
                     const next = new Set(current);
-                    next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                    if (next.has(group.id)) next.delete(group.id);
+                    else next.add(group.id);
                     return next;
                   })}
                 >
@@ -1855,11 +1908,17 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
           })}
         </nav>
         <div className="sidebar-bottom">
-          {user.is_staff && (
+          {isAdminArea && user.is_staff && (
             <a href="/admin/" target="_blank" rel="noreferrer">
               <Shield size={16} />
               Administración Django ↗
             </a>
+          )}
+          {switchTo && (
+            <Link className="workspace-area-switch" to={switchTo}>
+              {switchTo === workspaceBase("field") ? <Wrench size={16} /> : <Sun size={16} />}
+              {switchLabel}
+            </Link>
           )}
           <div className="profile">
             <span className="avatar">
@@ -1874,7 +1933,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
               </small>
             </div>
           </div>
-          <Link className="profile-settings" to="/perfil">
+          <Link className="profile-settings" to={areaRoute("perfil")}>
             <UserCircle size={16} /> Configurar mi perfil
           </Link>
           <button onClick={onLogout}>
@@ -1895,16 +1954,13 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
             <Menu />
           </button>
           <span>
-            Ka’illisto <span className="muted">/ Espacio de trabajo</span>
+            Ka’illisto <span className="muted">/ {areaName}</span>
           </span>
           <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><button className="theme-toggle motion-toggle" type="button" onClick={() => setMotionEnabled((value) => !value)} aria-pressed={motionEnabled} title={motionEnabled ? "Desactivar animaciones" : "Activar animaciones"}><span>{motionEnabled ? "Animaciones: sí" : "Animaciones: no"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
         </header>
         <main className="workspace-main">
           <Routes>
-            <Route
-              path="/dashboard"
-              element={<HomePage user={user} />}
-            />
+            <Route path={areaBase} element={<HomePage user={user} audience={area} />} />
             {Object.entries(routes)
               .filter(([path]) => canOpen(path))
               .map(([path, [kind, title, readonly]]) => (
@@ -1928,15 +1984,16 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                   }
                 />
               ))}
-            {resourceNav.map((resource) => {
+            {visibleResources.map((resource) => {
               const page = modelPage(resource.model);
-              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
+              const path = areaRoute(resource.menu_path);
+              return page && canOpen(path) ? <Route key={`resource-${resource.id}`} path={path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
             })}
-            {canOpen("/catalogos") && (
-              <Route path="/catalogos" element={<Catalogs user={user} />} />
+            {canOpen(areaRoute("catalogos")) && (
+              <Route path={areaRoute("catalogos")} element={<Catalogs user={user} />} />
             )}
-            <Route path="/perfil" element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path={areaRoute("perfil")} element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
+            <Route path="*" element={<Navigate to={areaBase} replace />} />
           </Routes>
         </main>
       </div>
@@ -2128,24 +2185,36 @@ function Shell() {
         <Login
           user={user}
           onLogin={async () => {
-            await refresh();
-            navigate("/dashboard");
+            const account = await refresh();
+            navigate(workspaceBase(getPrimaryWorkspace(account)));
           }}
         />
       ) : user ? (
-        <Workspace
-          user={user}
-          onProfileUpdated={refresh}
-          onLogout={async () => {
-            try {
-              await api.post("/cerrar_sesion/");
-              setUser(null);
-              navigate("/login");
-            } catch (e) {
-              setError(errorText(e));
-            }
-          }}
-        />
+        (() => {
+          const area = workspaceForPath(loc.pathname);
+          if (area && canEnterWorkspace(user, area)) {
+            return (
+              <Workspace
+                key={`${user.id}-${area}`}
+                user={user}
+                area={area}
+                onProfileUpdated={refresh}
+                onLogout={async () => {
+                  try {
+                    await api.post("/cerrar_sesion/");
+                    setUser(null);
+                    navigate("/login");
+                  } catch (e) {
+                    setError(errorText(e));
+                  }
+                }}
+              />
+            );
+          }
+          const primary = workspaceBase(getPrimaryWorkspace(user));
+          const legacyPath = loc.pathname === "/dashboard" ? "" : loc.pathname;
+          return <Navigate to={area ? primary : `${primary}${legacyPath}`} replace />;
+        })()
       ) : (
         <Navigate to="/login" replace />
       )}

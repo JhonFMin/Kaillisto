@@ -2,6 +2,16 @@
 
 Landing oscura, login, RBAC, usuarios, roles, superadmin de Django y vistas por rol.
 
+## Espacios de trabajo
+
+La aplicación mantiene una sola instalación y separa la experiencia después del inicio de sesión según el rol:
+
+- `/administracion`: resumen de operación, alertas y herramientas administrativas para el rol Administrador.
+- `/portal`: información de la vivienda o comunidad, equipos, mediciones y avisos dentro del alcance del usuario.
+- `/campo`: órdenes asignadas, fichas técnicas y registro de repuestos para Técnicos de Campo.
+
+La página pública y el inicio de sesión siguen en `/` y `/login`. Las rutas anteriores (`/dashboard`, `/alertas`, `/roles` y otras) redirigen al espacio correspondiente para conservar enlaces guardados. El backend sigue aplicando el RBAC y el alcance de datos en cada petición; separar las pantallas no concede permisos nuevos.
+
 ## Arrancar
 
 Desde esta carpeta, en dos terminales PowerShell:
