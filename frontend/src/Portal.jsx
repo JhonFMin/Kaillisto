@@ -36,6 +36,7 @@ import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/Chart
 import "leaflet/dist/leaflet.css";
 import api from "./api/axios";
 import { mostImportantAlertsFirst } from "./utils/alerts";
+import { getOwnerSystemStatus } from "./utils/portalInsights";
 import {
   canEnterWorkspace,
   getPrimaryWorkspace,
@@ -798,7 +799,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     </div>
   );
 }
-function Records({ kind, user, title, readonly = false, endpointOverride, modelName }) {
+function Records({ kind, user, title, readonly = false, endpointOverride, modelName, workspace = "admin" }) {
   const [rows, setRows] = useState([]),
     [schema, setSchema] = useState({}),
     [error, setError] = useState(""),
@@ -861,6 +862,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
           ].includes(k),
       )
     : [];
+  const userWorkspace = workspace !== "admin";
   function display(k, v, row) {
     const relationLabel = row?.[`${k}_display`];
     if (relationLabel != null) return String(relationLabel);
@@ -871,6 +873,68 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     if (Array.isArray(v)) return `${v.length} asignados`;
     return String(v);
   }
+  const filteredRows = rows.filter((row) =>
+    Object.entries(row).some(([key, value]) =>
+      display(key, value, row).toLocaleLowerCase("es-CO").includes(search.toLocaleLowerCase("es-CO")),
+    ),
+  );
+  const cardDetails = (row) => {
+    const titleByKind = {
+      comunidades: row.nombre || row.name,
+      instalaciones: row.nombre || row.name,
+      dispositivos: row.codigo,
+      alertas: row.tipo_alerta_display || row.tipo_medicion_display,
+      ordenes: `Orden de trabajo #${idOf(row)}`,
+      consumos: row.repuesto_display || row.repuesto,
+      mediciones: row.tipo_medicion_display || row.tipo_medicion,
+      notificaciones: row.titulo || row.tipo_alerta_display,
+    };
+    const descriptionByKind = {
+      comunidades: [row.municipio, row.sector].filter(Boolean).join(" · "),
+      instalaciones: [row.direccion, row.barrio, row.ubicacion].filter(Boolean).join(" · "),
+      dispositivos: row.instalacion_display,
+      alertas: row.mensaje,
+      ordenes: [row.descripcion, row.instalacion_display].filter(Boolean).join(" · "),
+      consumos: row.orden_trabajo_display,
+      mediciones: row.dispositivo_display,
+      notificaciones: row.mensaje,
+    };
+    const fieldsByKind = {
+      comunidades: [["referencia", "Referencia"]],
+      instalaciones: [["capacidad", "Capacidad"], ["estado_instalacion", "Estado"], ["comunidad", "Comunidad"]],
+      dispositivos: [["modelo", "Modelo"], ["ultima_comunicacion", "Último contacto"]],
+      alertas: [["prioridad", "Prioridad"], ["fecha_creacion", "Registrado"]],
+      ordenes: [["estado", "Estado"], ["tecnico", "Técnico"], ["fecha_creacion", "Creada"]],
+      consumos: [["cantidad", "Cantidad"], ["fecha_registro", "Registrado"]],
+      mediciones: [["valor", "Lectura"], ["fecha_hora", "Fecha"]],
+      notificaciones: [["fecha_creacion", "Recibida"]],
+    };
+    const statusByKind = {
+      alertas: row.prioridad_display || row.estado_display,
+      ordenes: row.estado_display || "Activa",
+      instalaciones: row.estado_instalacion_display,
+      dispositivos: row.ultima_comunicacion ? "Con comunicación" : "Sin comunicación",
+      mediciones: row.es_anomala ? "Revisar lectura" : "Lectura registrada",
+      notificaciones: typeof row.leida === "boolean" ? row.leida ? "Leída" : "Nueva" : "Notificación",
+    };
+    const statusDetail = kind === "alertas" ? row.estado_display : kind === "notificaciones" && typeof row.leida === "boolean" ? row.leida ? "Leída" : "Pendiente" : "";
+    const fields = (fieldsByKind[kind] || []).filter(([key]) => key in row || `${key}_display` in row).map(([key, label]) => {
+      const value = row[`${key}_display`] ?? row[key];
+      const formatted = /fecha|contacto/i.test(key) && value
+        ? formatDashboardDate(value)
+        : key === "capacidad" && value !== "" && value != null
+          ? `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value))} kW`
+          : display(key, row[key], row);
+      return { label, value: formatted };
+    });
+    return {
+      title: titleByKind[kind] || labelOf(row),
+      description: descriptionByKind[kind] || row.descripcion || row.mensaje || "",
+      status: statusByKind[kind] || "",
+      statusDetail,
+      fields,
+    };
+  };
   const canEdit = !readonly && canEditKind;
   const canRegisterParts =
     kind === "ordenes" &&
@@ -913,7 +977,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
       </div>
       <section className="data-panel">
         <div className="table-toolbar">
-          <span>{rows.length} registros</span>
+          <span>{filteredRows.length} {filteredRows.length === 1 ? "resultado" : "resultados"}{search ? ` de ${rows.length}` : ""}</span>
           <label className="search">
             <Search size={16} />
             <input
@@ -931,6 +995,49 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         )}
         {loading ? (
           <p className="empty">Cargando información…</p>
+        ) : userWorkspace ? (
+          filteredRows.length ? <div className="workspace-record-grid">
+            {filteredRows.map((row) => {
+              const card = cardDetails(row);
+              const Icon = definitions[kind]?.[1] || Layers;
+              const latitude = kind === "dispositivos" ? row.map_latitud : row.latitud;
+              const longitude = kind === "dispositivos" ? row.map_longitud : row.longitud;
+              const locationLabel = kind === "dispositivos"
+                ? `${row.codigo || "Dispositivo"} · ${row.instalacion_display || row.map_ubicacion_nombre || "instalación vinculada"}`
+                : row.nombre || row.ubicacion || title || "Ubicación registrada";
+              return <article className="workspace-record-card" key={idOf(row)}>
+                <div className="workspace-record-card-heading">
+                  <span className="workspace-record-icon"><Icon size={18} /></span>
+                  <div><span className="eyebrow">{definitions[kind]?.[0] || "Información"}</span><h2>{card.title}</h2></div>
+                  {card.status && <span className="workspace-record-status">{card.status}</span>}
+                </div>
+                {card.description && <p className="workspace-record-description">{card.description}</p>}
+                {card.statusDetail && <span className="workspace-record-status-detail">{card.statusDetail}</span>}
+                {card.fields.length > 0 && <dl className="workspace-record-fields">{card.fields.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value ?? "—"}</dd></div>)}</dl>}
+                {(canEdit || canRegisterParts || kind === "dispositivos" || canShowLocation) && <div className="workspace-record-actions">
+                  {canShowLocation && <button aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} />{locationRow === idOf(row) ? "Ocultar ubicación" : "Ver ubicación"}</button>}
+                  {kind === "dispositivos" && <button onClick={() => setCompareDevice(row)}><ChartLine size={15} />Ver lecturas</button>}
+                  {canRegisterParts && !isFinishedRecord(row) && <button onClick={() => setPartOrder(row)}><Package size={15} />Registrar repuesto</button>}
+                  {canEdit && <button disabled={schemaLoading} onClick={() => openEditor(row)}>Actualizar</button>}
+                </div>}
+                {canShowLocation && locationRow === idOf(row) && <div className="workspace-record-location">
+                  {latitude != null && longitude != null
+                    ? <LocationMap latitude={latitude} longitude={longitude} label={locationLabel} />
+                    : <p className="empty">Este registro todavía no tiene una ubicación guardada.</p>}
+                </div>}
+              </article>;
+            })}
+          </div> : <div className="empty workspace-record-empty">
+            <Layers size={28} />
+            <h3>{rows.length ? "No encontramos coincidencias" : kind === "ordenes" && user.roles.includes("Técnico de Campo") ? "No tienes trabajos asignados" : kind === "instalaciones" && user.roles.includes("Líder Comunitario") ? "Tu comunidad aún no tiene instalaciones vinculadas" : "Aún no hay información"}</h3>
+            <p>{rows.length
+              ? "Prueba con otro nombre o término de búsqueda."
+              : kind === "ordenes" && user.roles.includes("Técnico de Campo")
+                ? "Cuando te asignen un trabajo, aparecerá aquí con sus pasos y detalles."
+                : kind === "instalaciones" && user.roles.includes("Líder Comunitario")
+                  ? "Pide al administrador que vincule las instalaciones de tu comunidad."
+                  : `Cuando haya ${String(title || definitions[kind]?.[0] || "datos").toLocaleLowerCase("es-CO")} disponibles, aparecerán aquí.`}</p>
+          </div>
         ) : (
           <div className="table-scroll">
             <table>
@@ -943,15 +1050,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                 </tr>
               </thead>
               <tbody>
-                {rows
-                  .filter((r) =>
-                    Object.entries(r).some(([k, v]) =>
-                      display(k, v, r)
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    ),
-                  )
-                  .map((row) => (
+                {filteredRows.map((row) => (
                     <Fragment key={idOf(row)}>
                     <tr>
                       {columns.map((k) => (
@@ -1019,12 +1118,14 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                   ))}
               </tbody>
             </table>
-            {!rows.length && (
+            {!filteredRows.length && (
               <div className="empty">
                 <Layers size={28} />
-                <h3>Aún no hay registros</h3>
+                <h3>{rows.length ? "No encontramos coincidencias" : "Aún no hay registros"}</h3>
                 <p>
-                  {user.admin || user.full_resource_access
+                  {rows.length
+                    ? "Prueba con otro nombre o término de búsqueda."
+                    : user.admin || user.full_resource_access
                     ? "Crea el primer registro para comenzar."
                     : kind === "consumos" &&
                         user.roles.includes("Técnico de Campo")
@@ -1313,7 +1414,7 @@ function Dashboard({ user, audience = "portal" }) {
   }, [loadDashboard]);
 
   const alerts = newestFirst(records.alerts, "fecha_creacion");
-  const activeAlerts = alerts.filter((alert) => !isFinishedRecord(alert));
+  const activeAlerts = mostImportantAlertsFirst(alerts.filter((alert) => !isFinishedRecord(alert)));
   const orders = newestFirst(records.orders, "fecha_creacion");
   const activeOrders = orders.filter((order) => !isFinishedRecord(order));
   const closedOrders = orders.filter(isFinishedRecord);
@@ -1368,6 +1469,18 @@ function Dashboard({ user, audience = "portal" }) {
 
   const alertPath = routeFor(isLeader ? "mi-alertas" : "alertas");
   const orderPath = routeFor(mode === "admin" ? "mantenimiento" : isTechnician ? "mis-casos" : isLeader ? "tecnicos" : "mantenimiento");
+  const priorityAlert = canReadAlerts ? activeAlerts[0] : null;
+  const priorityOrder = canReadOrders ? activeOrders[0] : null;
+  const priorityItem = isTechnician
+    ? priorityOrder ? { type: "order", record: priorityOrder, path: orderPath } : null
+    : isLeader
+      ? priorityAlert ? { type: "alert", record: priorityAlert, path: alertPath } : priorityOrder ? { type: "order", record: priorityOrder, path: orderPath } : null
+      : priorityAlert ? { type: "alert", record: priorityAlert, path: alertPath } : priorityOrder ? { type: "order", record: priorityOrder, path: orderPath } : null;
+  const priorityLoaded = priorityItem
+    ? priorityItem.type === "alert" ? loadedRecords.alerts : loadedRecords.orders
+    : isTechnician
+      ? !canReadOrders || loadedRecords.orders
+      : (canReadAlerts ? loadedRecords.alerts : true) && (canReadOrders ? loadedRecords.orders : true);
   const quickKinds =
     mode === "admin"
       ? ["instalaciones", "dispositivos", "ordenes"]
@@ -1383,7 +1496,8 @@ function Dashboard({ user, audience = "portal" }) {
         <div>
           <span className="eyebrow">TU RED DE ENERGÍA</span>
           <h1>{heading}</h1>
-          <p>Hola, {user.username}. {intro}</p>
+          <p>Hola, {user.first_name || user.username}. {intro}</p>
+          {user.username.startsWith("demo_") && <span className="demo-data-badge">CUENTA DEMO · DATOS DE EJEMPLO</span>}
         </div>
         <div className="dashboard-toolbar">
           {lastUpdated && <small aria-live="polite">Actualizado {formatDashboardDate(lastUpdated)}</small>}
@@ -1406,9 +1520,27 @@ function Dashboard({ user, audience = "portal" }) {
         ))}
       </div>
 
+      {mode !== "admin" && <section className={`workspace-priority-card${priorityItem?.type === "alert" ? " priority-alert" : ""}`} aria-live="polite">
+        <span className="workspace-priority-icon">{priorityItem?.type === "alert" ? <Bell size={19} /> : isTechnician ? <Wrench size={19} /> : <Sun size={19} />}</span>
+        <div>
+          <span className="eyebrow">{isTechnician ? "SIGUIENTE TRABAJO" : "LO MÁS IMPORTANTE"}</span>
+          <h2>{!priorityLoaded ? loading ? "Consultando tus prioridades…" : "No pudimos revisar tus prioridades" : priorityItem
+            ? priorityItem.type === "alert" ? priorityItem.record.tipo_alerta_display || priorityItem.record.tipo_medicion_display || "Aviso pendiente" : `Orden de trabajo #${idOf(priorityItem.record)}`
+            : isTechnician ? "No tienes órdenes pendientes" : "No hay tareas pendientes"}</h2>
+          <p>{!priorityLoaded ? loading ? "En un momento te mostraremos qué requiere atención." : "Actualiza el resumen para volver a consultar tus avisos y órdenes." : priorityItem
+            ? priorityItem.type === "alert"
+              ? `${priorityItem.record.mensaje || "Revisa el aviso de tu sistema."} ${priorityItem.record.prioridad_display ? `· Prioridad ${priorityItem.record.prioridad_display}.` : ""}`
+              : [priorityItem.record.descripcion, priorityItem.record.instalacion_display, priorityItem.record.estado_display].filter(Boolean).join(" · ")
+            : isTechnician ? "Tus nuevas órdenes aparecerán aquí cuando te asignen un trabajo." : "Cuando aparezca un aviso o una orden, la verás destacada aquí."}</p>
+        </div>
+        {!priorityLoaded && !loading
+          ? <button type="button" className="workspace-priority-retry" onClick={loadDashboard} disabled={refreshing}>Actualizar <ArrowRight size={15} /></button>
+          : priorityLoaded && priorityItem && <Link to={priorityItem.path}>Abrir detalle <ArrowRight size={15} /></Link>}
+      </section>}
+
       <div className="section-intro dashboard-section-intro">
-        <h2>{mode === "technician" ? "Trabajos por atender" : "Prioridades de la red"}</h2>
-        <span className="muted">Accesos directos a la operación</span>
+        <h2>{mode === "technician" ? "Continúa tu jornada" : mode === "leader" ? "Explora tu comunidad" : mode === "admin" ? "Prioridades de la red" : "Explora tu espacio"}</h2>
+        <span className="muted">{mode === "admin" ? "Accesos directos a la operación" : "Entra a cada apartado cuando lo necesites"}</span>
       </div>
       <div className="dashboard-board">
         {canReadAlerts && (
@@ -1535,7 +1667,14 @@ function Dashboard({ user, audience = "portal" }) {
             <Link key={kind} className="feature" to={to}>
               <Icon weight="duotone" />
               <h3>{definitions[kind][0]}</h3>
-              <p>Consulta la información y continúa con tu trabajo.</p>
+              <p>{{
+                instalaciones: "Sistemas solares dentro de tu ámbito.",
+                dispositivos: "Equipos y sus últimas lecturas.",
+                ordenes: "Trabajos y pasos por completar.",
+                alertas: "Avisos que necesitan seguimiento.",
+                notificaciones: "Novedades de tu sistema.",
+                consumos: "Materiales usados en tus trabajos.",
+              }[kind]}</p>
               <ArrowUpRight size={18} />
             </Link>
           );
@@ -1556,27 +1695,58 @@ function HomeownerOverview({ user }) {
   const location = useLocation();
   const [installations, setInstallations] = useState([]);
   const [devices, setDevices] = useState([]);
+  const [deviceReports, setDeviceReports] = useState({});
+  const [deviceReportErrors, setDeviceReportErrors] = useState({});
   const [alerts, setAlerts] = useState([]);
+  const [availability, setAvailability] = useState({ installations: false, devices: false, alerts: false });
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [showAlertHistory, setShowAlertHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState("");
+  const [detailError, setDetailError] = useState("");
   const loadedOnce = useRef(false);
   const loadOverview = useCallback(async () => {
     if (loadedOnce.current) setRefreshing(true);
     else setLoading(true);
     setError("");
     try {
-      const [installationResponse, deviceResponse, alertResponse] = await Promise.all([
+      const results = await Promise.allSettled([
         api.get("/security/portal/instalaciones/"),
         api.get("/security/portal/dispositivos/"),
         api.get("/security/portal/alertas/"),
       ]);
-      setInstallations(responseRows(installationResponse.data));
-      setDevices(responseRows(deviceResponse.data));
-      setAlerts(responseRows(alertResponse.data));
+      const labels = ["instalaciones", "equipos", "avisos"];
+      const failed = results.flatMap((result, index) => result.status === "rejected" ? [labels[index]] : []);
+      setAvailability({
+        installations: results[0].status === "fulfilled",
+        devices: results[1].status === "fulfilled",
+        alerts: results[2].status === "fulfilled",
+      });
+      const nextInstallations = results[0].status === "fulfilled" ? responseRows(results[0].value.data) : [];
+      const nextDevices = results[1].status === "fulfilled" ? responseRows(results[1].value.data) : [];
+      const nextAlerts = results[2].status === "fulfilled" ? responseRows(results[2].value.data) : [];
+      setInstallations(nextInstallations);
+      setDevices(nextDevices);
+      setAlerts(nextAlerts);
+      setError(failed.length === results.length ? errorText(results.find((result) => result.status === "rejected").reason) : "");
+
+      const comparisonResults = await Promise.allSettled(
+        nextDevices.slice(0, 4).map((device) => api.get(`/security/portal/dispositivos/${idOf(device)}/comparativa/`)),
+      );
+      const nextReports = {};
+      const nextReportErrors = {};
+      comparisonResults.forEach((result, index) => {
+        if (result.status === "fulfilled") nextReports[String(idOf(nextDevices[index]))] = result.value.data;
+        else {
+          failed.push("lecturas de equipos");
+          nextReportErrors[String(idOf(nextDevices[index]))] = true;
+        }
+      });
+      setDeviceReports(nextReports);
+      setDeviceReportErrors(nextReportErrors);
+      setDetailError(failed.length ? `No se pudieron cargar ${[...new Set(failed)].join(", ")}. Los demás datos siguen disponibles.` : "");
       setLastUpdated(new Date());
     } catch (requestError) {
       setError(errorText(requestError));
@@ -1595,35 +1765,58 @@ function HomeownerOverview({ user }) {
     section?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [location.hash]);
   const openAlerts = mostImportantAlertsFirst(alerts.filter((alert) => !isFinishedRecord(alert)));
+  const disconnectedDevices = devices.filter((device) => !device.ultima_comunicacion);
   const recentAlerts = newestFirst(alerts, "fecha_creacion");
   const visibleAlerts = (showAlertHistory ? recentAlerts : openAlerts).slice(0, 8);
+  const systemStatus = getOwnerSystemStatus({
+    loading,
+    error,
+    installations,
+    devices,
+    devicesWithoutContact: disconnectedDevices,
+    openAlerts,
+    availability,
+  });
   return <>
     <div className="page-heading dashboard-heading">
       <div>
         <span className="eyebrow">TU SISTEMA SOLAR</span>
         <h1>Mi vivienda</h1>
-        <p>Consulta el estado de tu instalación, los equipos conectados, las mediciones y los avisos recientes.</p>
+        <p>Consulta tu sistema, sus lecturas y lo que necesita atención.</p>
       </div>
       <div className="dashboard-toolbar">
-        <span className="tag">PROPIETARIO / {user.username}</span>
+        <span className="tag">PROPIETARIO SOLAR</span>
         {lastUpdated && <small aria-live="polite">Actualizado {formatDashboardDate(lastUpdated)}</small>}
         <button className="dashboard-refresh" type="button" onClick={loadOverview} disabled={loading || refreshing}>
           {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
       </div>
     </div>
+    {user.username.startsWith("demo_") && <p className="demo-data-badge" role="note">CUENTA DE DEMOSTRACIÓN · Los datos que ves son de ejemplo.</p>}
     {error && <p role="alert" className="notice">{error}</p>}
+    {detailError && <p role="status" className="notice">{detailError}</p>}
     <div className="stat-grid homeowner-stats">
       {[
-        ["Instalaciones", installations.length],
-        ["Dispositivos", devices.length],
-        ["Avisos activos", openAlerts.length],
-        ["Avisos registrados", alerts.length],
-      ].map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
+        ["Instalaciones", installations.length, Layers, availability.installations],
+        ["Equipos", devices.length, Radio, availability.devices],
+        ["Avisos activos", openAlerts.length, Bell, availability.alerts],
+        ["Avisos registrados", alerts.length, ChartLine, availability.alerts],
+      ].map(([label, value, Icon, sourceReady]) => <article key={label}><Icon size={18} /><span>{label}</span><strong>{loading || !sourceReady ? "—" : value}</strong><small>{sourceReady ? "En tu vivienda" : "No disponible"}</small></article>)}
     </div>
+    <section className={`owner-system-status ${systemStatus.tone}`} aria-live="polite" aria-labelledby="owner-system-status-title">
+      <span className="owner-status-icon">{systemStatus.tone === "attention" ? <Bell size={20} /> : systemStatus.tone === "caution" ? <Radio size={20} /> : <Sun size={20} />}</span>
+      <div className="owner-status-copy">
+        <span className="eyebrow">ESTADO DE TU SISTEMA</span>
+        <h2 id="owner-system-status-title">{systemStatus.title}</h2>
+        <p>{systemStatus.description}</p>
+      </div>
+      {systemStatus.action && (systemStatus.target
+        ? <a className="owner-status-action" href={systemStatus.target}>{systemStatus.action}<ArrowRight size={16} /></a>
+        : <button className="owner-status-action" type="button" onClick={loadOverview} disabled={loading || refreshing}>{refreshing ? "Actualizando…" : systemStatus.action}<ArrowRight size={16} /></button>)}
+    </section>
     <section className="owner-section" id="mi-sistema">
       <div className="section-intro"><h2>Tu instalación</h2><span className="muted">Ubicación y estado</span></div>
-      {loading ? <p className="empty">Cargando los datos de tu sistema…</p> : installations.length ? <div className="owner-card-grid">
+      {loading ? <p className="empty">Cargando los datos de tu sistema…</p> : !availability.installations ? <p className="empty">No se pudo cargar tu instalación. Usa “Actualizar” para volver a intentarlo.</p> : installations.length ? <div className="owner-card-grid">
         {installations.map((item) => <article className="feature owner-card" key={idOf(item)}>
           <Layers size={19} />
           <h3>{item.nombre}</h3>
@@ -1636,15 +1829,30 @@ function HomeownerOverview({ user }) {
     </section>
     <section className="owner-section" id="equipos">
       <div className="section-intro"><h2>Mediciones del sistema</h2><span className="muted">Valores recientes y comparación con los rangos esperados</span></div>
-      {!loading && devices.length ? <div className="owner-card-grid">
-        {devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
+      {!loading && availability.devices && devices.length ? <div className="owner-card-grid">
+        {devices.slice(0, 4).map((device) => {
+          const report = deviceReports[String(idOf(device))];
+          return <article className="feature owner-card" key={idOf(device)}>
           <Radio size={19} />
           <h3>{device.codigo}</h3>
           <p>{device.modelo || "Dispositivo IoT"} · {device.instalacion_display || "Instalación vinculada"}</p>
-          <small>Último contacto: {device.ultima_comunicacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.ultima_comunicacion)) : "Sin comunicación registrada"}</small>
+          <span className={`device-contact-state${device.ultima_comunicacion ? " recorded" : " missing"}`}><i />{device.ultima_comunicacion ? `Último contacto: ${formatDashboardDate(device.ultima_comunicacion)}` : "Sin comunicación registrada"}</span>
+          {report?.mediciones?.length ? <div className="owner-reading-grid" aria-label="Últimas lecturas del equipo">
+            {report.mediciones.slice(0, 3).map((reading) => <div className="owner-reading" key={reading.tipo_medicion}>
+              <span>{reading.tipo_medicion}</span>
+              <strong>{reading.valor == null ? "—" : new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(reading.valor))}<small>{reading.valor == null ? "" : ` ${reading.unidad || ""}`}</small></strong>
+              <small className={`reading-state ${String(reading.estado).toLowerCase().replaceAll(" ", "-")}`}>{reading.estado}</small>
+            </div>)}
+          </div> : deviceReportErrors[String(idOf(device))]
+            ? <p className="owner-no-readings">No se pudieron cargar las lecturas recientes.</p>
+            : report && <p className="owner-no-readings">Aún no hay lecturas recientes para mostrar.</p>}
           <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>
-        </article>)}
-      </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
+        </article>;
+        })}
+      </div> : !loading && !availability.devices
+        ? <p className="empty">No se pudieron cargar tus equipos. Usa “Actualizar” para volver a intentarlo.</p>
+        : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
+      {!loading && devices.length > 4 && <Link className="owner-more-link" to="/portal/dispositivos">Ver los {devices.length} equipos <ArrowRight size={15} /></Link>}
     </section>
     <section className="owner-section" id="avisos">
       <div className="section-intro owner-alert-heading">
@@ -1657,7 +1865,7 @@ function HomeownerOverview({ user }) {
           <Link to="/portal/alertas">Todas las alertas ↗</Link>
         </div>
       </div>
-      {loading ? <p className="empty">Cargando avisos…</p> : visibleAlerts.length ? <div className="owner-alert-list">
+      {loading ? <p className="empty">Cargando avisos…</p> : !availability.alerts ? <p className="empty">No se pudieron cargar los avisos. Usa “Actualizar” para volver a intentarlo.</p> : visibleAlerts.length ? <div className="owner-alert-list">
         {visibleAlerts.map((alert) => <article className="owner-alert" key={idOf(alert)}>
           <Bell size={18} />
           <div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Tu instalación"} · {alert.fecha_creacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(alert.fecha_creacion)) : "Fecha no disponible"}</small></div>
@@ -1853,7 +2061,7 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
             key={path}
             path={path}
             element={kind === "homeowner" ? <HomeownerOverview user={user} /> : (
-              <Records key={kind} kind={kind} user={user} title={title} readonly={readonly} />
+              <Records key={kind} kind={kind} user={user} title={title} readonly={readonly} workspace={area} />
             )}
           />
         ))}
@@ -1865,7 +2073,7 @@ function Workspace({ user, area, onLogout, onProfileUpdated }) {
             key={`resource-${resource.id}`}
             path={path}
             element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : (
-              <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />
+              <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} workspace={area} />
             )}
           />
         ) : null;
