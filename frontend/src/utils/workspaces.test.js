@@ -5,6 +5,7 @@ import {
   getPrimaryWorkspace,
   hasUserWorkspace,
   isAdministrator,
+  resolveLoginWorkspace,
   workspaceForPath,
   workspaceRoute,
 } from "./workspaces.js";
@@ -30,6 +31,21 @@ test("homeowners and community leaders enter the user portal", () => {
     assert.equal(getPrimaryWorkspace(user), "portal");
     assert.equal(canEnterWorkspace(user, "portal"), true);
   }
+});
+
+test("login choice routes only to workspaces allowed by the account roles", () => {
+  const administrator = { is_superuser: true, roles: [] };
+  const homeowner = { roles: ["Propietario Solar"] };
+  const technician = { roles: ["Técnico de Campo"] };
+  const combined = { admin: true, roles: ["Administrador", "Propietario Solar"] };
+
+  assert.equal(resolveLoginWorkspace(administrator, "admin"), "admin");
+  assert.equal(resolveLoginWorkspace(administrator, "portal"), null);
+  assert.equal(resolveLoginWorkspace(homeowner, "portal"), "portal");
+  assert.equal(resolveLoginWorkspace(homeowner, "admin"), null);
+  assert.equal(resolveLoginWorkspace(technician, "portal"), "field");
+  assert.equal(resolveLoginWorkspace(combined, "admin"), "admin");
+  assert.equal(resolveLoginWorkspace(combined, "portal"), "portal");
 });
 
 test("roleless accounts reach the portal's safe empty state", () => {

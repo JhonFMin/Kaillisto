@@ -39,6 +39,7 @@ import { mostImportantAlertsFirst } from "./utils/alerts";
 import {
   canEnterWorkspace,
   getPrimaryWorkspace,
+  resolveLoginWorkspace,
   workspaceBase,
   workspaceForPath,
   workspaceRoute,
@@ -340,145 +341,105 @@ function Brand() {
   );
 }
 function Landing() {
+  const experiences = [
+    {
+      icon: Radio,
+      number: "01",
+      title: "Monitoreamos",
+      description: "Equipos y mediciones en un solo vistazo.",
+    },
+    {
+      icon: Wrench,
+      number: "02",
+      title: "Cuidamos",
+      description: "Avisos claros y mantenimiento con seguimiento.",
+    },
+    {
+      icon: Users,
+      number: "03",
+      title: "Conectamos",
+      description: "Hogares, técnicos y comunidades solares.",
+    },
+  ];
   return (
-    <div className="landing">
-      <header className="public-nav">
+    <div className="public-landing">
+      <header className="public-nav public-nav--solar">
         <Brand />
-        <nav>
-          <a href="#plataforma">Plataforma</a>
-          <a href="#comunidades">Hogares y comunidades</a>
+        <nav aria-label="Navegación principal">
+          <a href="#que-hacemos">Qué hacemos</a>
+          <a href="#accesos">Espacios</a>
         </nav>
-        <Link className="button" to="/login">
-          Iniciar sesión <ArrowUpRight size={15} />
+        <Link className="button public-nav-login" to="/login?area=portal">
+          Entrar <ArrowUpRight size={15} />
         </Link>
       </header>
-      <main>
-        <section className="hero">
-          <span className="tag">
-            <span className="signal" /> Sistemas solares para cada escala
-          </span>
-          <h1>
-            Sol que llega a cada techo.
-            <br />
-            <span>Energía que une territorios.</span>
-          </h1>
-          <p>
-            Gestiona paneles solares en viviendas y proyectos comunitarios.
-            <br />
-            Reúne operación, alertas y mantenimiento en un solo espacio.
-          </p>
-          <Link className="button primary" to="/login">
-            Entrar a la plataforma <ArrowRight size={16} />
-          </Link>
-          <a className="text-link" href="#plataforma">
-            Conoce cómo funciona ↓
-          </a>
-        </section>
-        <section className="showcase" id="plataforma">
-          <div className="section-intro">
-            <div>
-              <span className="eyebrow">UNA RED, MÁS POSIBILIDADES</span>
-              <h2>Visibilidad para actuar a tiempo.</h2>
+      <main className="public-main">
+        <section className="public-hero" aria-labelledby="public-title">
+          <div className="public-hero-copy">
+            <span className="public-kicker"><span /> ENERGÍA SOLAR · LA GUAJIRA</span>
+            <h1 id="public-title">Energía limpia,<br /><em>más cerca de todos.</em></h1>
+            <p>Conectamos hogares y comunidades con energía solar que podemos cuidar juntos.</p>
+            <div className="public-hero-actions">
+              <a className="button primary public-primary" href="#accesos">Encuentra tu espacio <ArrowRight size={16} /></a>
+              <a className="public-text-link" href="#que-hacemos">Conoce Ka’illisto <ArrowUpRight size={14} /></a>
             </div>
-            <p>
-              Desde la instalación hasta el trabajo en campo,
-              <br />
-              cada persona tiene su espacio.
-            </p>
           </div>
-          <div className="feature-grid">
-            <article className="feature">
-              <Radio weight="duotone" />
-              <h3>Infraestructura conectada</h3>
-              <p>
-                Cada instalación se vincula a una comunidad o a quien responde por una vivienda.
-              </p>
-              <img className="feature-image" src="/solar-home.jpg" alt="Vivienda rural con paneles solares al atardecer" loading="lazy" />
-              <div className="solar-grid" aria-hidden="true">
-                {Array.from({ length: 24 }, (_, i) => (
-                  <span key={i} />
-                ))}
-              </div>
-              <div className="preview-foot">
-                <span>ESP32 / TELEMETRÍA</span>
-                <span>→</span>
-              </div>
-            </article>
-            <article className="feature">
-              <Wrench weight="duotone" />
-              <h3>Atención con seguimiento</h3>
-              <p>
-                Órdenes asignadas, diagnóstico y soluciones. Todo el contexto
-                que necesita un técnico en campo.
-              </p>
-              <img className="feature-image" src="/solar-technician.jpg" alt="Técnico revisando el inversor de una instalación solar" loading="lazy" />
-              <div className="steps">
-                {[
-                  "01 / Asignar una orden",
-                  "02 / Registrar el diagnóstico",
-                  "03 / Documentar la solución",
-                ].map((x) => (
-                  <div key={x}>
-                    {x}
-                    <ArrowUpRight size={15} />
-                  </div>
-                ))}
-              </div>
-              <div className="preview-foot">
-                <span>MANTENIMIENTO / TRAZABILIDAD</span>
-                <span>→</span>
-              </div>
-            </article>
-          </div>
+          <figure className="public-hero-visual">
+            <img src="/solar-guajira-dawn.webp" alt="Vivienda con paneles solares al amanecer en La Guajira" fetchPriority="high" />
+            <figcaption className="public-photo-label"><Sun size={17} /><span>Sol para el territorio</span><span>CO · GUAJIRA</span></figcaption>
+            <span className="public-image-index" aria-hidden="true">K / 01</span>
+          </figure>
         </section>
-        <section id="comunidades" className="community-section">
-          <span className="eyebrow">HECHO PARA EL TERRITORIO</span>
-          <h2>
-            Herramientas para cada
-            <br />
-            forma de energía solar.
-          </h2>
-          <div className="three-grid">
-            {[
-              [
-                Shield,
-                "Administración",
-                "Organiza la infraestructura, los usuarios y sus accesos.",
-              ],
-              [
-                Wrench,
-                "Técnicos de campo",
-                "Consulta tus casos y documenta cada intervención.",
-              ],
-              [
-                MapPin,
-                "Hogares solares",
-                "Da seguimiento a los paneles y equipos asociados a cada vivienda.",
-              ],
-              [
-                MapPin,
-                "Proyectos comunitarios",
-                "Consulta instalaciones, novedades y tareas de mantenimiento por comunidad.",
-              ],
-            ].map(([Icon, t, d]) => (
-              <article key={t}>
-                <Icon />
-                <h3>{t}</h3>
-                <p>{d}</p>
+        <section className="public-section public-work" id="que-hacemos" aria-labelledby="what-title">
+          <div className="public-section-heading">
+            <span className="public-kicker">QUÉ HACEMOS</span>
+            <h2 id="what-title">Energía solar,<br /><em>bien acompañada.</em></h2>
+          </div>
+          <div className="public-service-grid">
+            {experiences.map(({ icon: Icon, number, title, description }) => (
+              <article className="public-service-card" key={number}>
+                <div className="public-card-top"><span>{number}</span><Icon size={21} /></div>
+                <h3>{title}</h3>
+                <p>{description}</p>
               </article>
             ))}
           </div>
         </section>
+        <section className="public-section public-access" id="accesos" aria-labelledby="access-title">
+          <div className="public-section-heading">
+            <span className="public-kicker">ACCESO A K A ’ I L L I S T O</span>
+            <h2 id="access-title">¿A dónde<br /><em>quieres ir?</em></h2>
+          </div>
+          <div className="public-access-grid">
+            <Link className="public-access-card" to="/login?area=portal">
+              <span className="public-access-icon"><Users size={21} /></span>
+              <span className="public-kicker">HOGARES · COMUNIDADES · CAMPO</span>
+              <strong>Espacio de usuarios</strong>
+              <span className="public-access-desc">Consulta tu sistema, tus avisos y tus tareas.</span>
+              <span className="public-access-link">Entrar al portal <ArrowRight size={17} /></span>
+            </Link>
+            <Link className="public-access-card public-access-admin" to="/login?area=admin">
+              <span className="public-access-icon"><Shield size={21} /></span>
+              <span className="public-kicker">OPERACIÓN · CONFIGURACIÓN</span>
+              <strong>Panel administrativo</strong>
+              <span className="public-access-desc">Gestiona instalaciones, usuarios y operación.</span>
+              <span className="public-access-link">Entrar a administración <ArrowRight size={17} /></span>
+            </Link>
+          </div>
+        </section>
       </main>
-      <footer>
+      <footer className="public-footer">
         <Brand />
-        <span>Gestión solar para hogares y comunidades · Colombia.</span>
-        <Link to="/login">Acceso a la plataforma ↗</Link>
+        <span>Gestión solar para hogares y comunidades · La Guajira, Colombia.</span>
+        <a href="#public-title">Volver arriba ↑</a>
       </footer>
     </div>
   );
 }
 function Login({ onLogin, user }) {
+  const location = useLocation();
+  const initialChoice = new URLSearchParams(location.search).get("area") === "admin" ? "admin" : "portal";
+  const [workspaceChoice, setWorkspaceChoice] = useState(initialChoice);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [challenge, setChallenge] = useState(() => ({
@@ -489,7 +450,7 @@ function Login({ onLogin, user }) {
     left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
     right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
   });
-  if (user) return <Navigate to={workspaceBase(getPrimaryWorkspace(user))} replace />;
+  if (user) return <Navigate to={workspaceBase(resolveLoginWorkspace(user, workspaceChoice) || getPrimaryWorkspace(user))} replace />;
   return (
     <div className="login-layout">
       <div className="login-story">
@@ -511,10 +472,18 @@ function Login({ onLogin, user }) {
         <Link className="back" to="/">
           ← Volver al inicio
         </Link>
-        <div>
-          <span className="tag">ACCESO A LA PLATAFORMA</span>
-          <h2>Bienvenido de nuevo.</h2>
-          <p>Ingresa con tu cuenta para continuar.</p>
+        <div className="login-content">
+          <span className="public-kicker">ELIGE TU ESPACIO</span>
+          <h2>Tu energía,<br /><em>tu espacio.</em></h2>
+          <div className="login-choice-grid" role="group" aria-label="Elige el espacio al que quieres entrar">
+            <button className={`login-choice${workspaceChoice === "portal" ? " selected" : ""}`} type="button" aria-pressed={workspaceChoice === "portal"} onClick={() => { setWorkspaceChoice("portal"); setError(""); }}>
+              <Users size={19} /><span><strong>Usuarios</strong><small>Hogares, comunidades y campo</small></span>
+            </button>
+            <button className={`login-choice${workspaceChoice === "admin" ? " selected" : ""}`} type="button" aria-pressed={workspaceChoice === "admin"} onClick={() => { setWorkspaceChoice("admin"); setError(""); }}>
+              <Shield size={19} /><span><strong>Administración</strong><small>Gestión de la plataforma</small></span>
+            </button>
+          </div>
+          <p className="login-selected-space">Acceso seleccionado: <strong>{workspaceChoice === "admin" ? "Panel administrativo" : "Espacio de usuarios"}</strong></p>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -527,7 +496,11 @@ function Login({ onLogin, user }) {
                   challenge_left: challenge.left,
                   challenge_right: challenge.right,
                 });
-                await onLogin();
+                const loginError = await onLogin(workspaceChoice);
+                if (loginError) {
+                  setError(loginError);
+                  refreshChallenge();
+                }
               } catch (e) {
                 setError(errorText(e));
                 refreshChallenge();
@@ -570,7 +543,7 @@ function Login({ onLogin, user }) {
               </p>
             )}
             <button className="primary" disabled={busy}>
-              {busy ? "Ingresando…" : "Iniciar sesión"}
+              {busy ? "Ingresando…" : workspaceChoice === "admin" ? "Entrar a administración" : "Entrar al portal"}
               <ArrowRight size={16} />
             </button>
           </form>
@@ -2249,9 +2222,18 @@ function Shell() {
       ) : loc.pathname === "/login" ? (
         <Login
           user={user}
-          onLogin={async () => {
-            const account = await refresh();
-            navigate(workspaceBase(getPrimaryWorkspace(account)));
+          onLogin={async (choice) => {
+            const { data: account } = await api.get("/security/session/");
+            const destination = resolveLoginWorkspace(account, choice);
+            if (!destination) {
+              await api.post("/cerrar_sesion/");
+              return choice === "admin"
+                ? "Esta cuenta no tiene acceso al panel administrativo. Elige el espacio de usuarios o solicita acceso a un administrador."
+                : "Esta cuenta no tiene acceso al portal de usuarios. Elige administración si corresponde a tu rol.";
+            }
+            setUser(account);
+            navigate(workspaceBase(destination));
+            return null;
           }}
         />
       ) : user ? (

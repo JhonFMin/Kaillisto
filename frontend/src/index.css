@@ -2775,3 +2775,423 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .customer-portal *, .customer-portal *::before, .customer-portal *::after { animation: none !important; transition: none !important; }
 }
+
+/* Public and customer-facing pages adapt the supplied token set to Ka’illisto.
+   Project imagery and copy stay solar-focused; only the visual system is shared. */
+.public-landing,
+.login-layout,
+.customer-portal {
+  --color-near-black: #090909;
+  --color-almost-white: #f7f9fa;
+  --color-soft-white: #f0f0f0;
+  --color-steel: #828384;
+  --color-graphite: #474747;
+  --color-iron: #423738;
+  --color-ash: #6b6b6b;
+  --color-signal-violet: #af50ff;
+  --color-lavender-mist: #e1bdff;
+  --font-whyte-inktrap: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-whyte-inktrap-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-grandslang: Georgia, "Times New Roman", serif;
+  --radius-cards: 19.2px;
+  --radius-buttons: 8px;
+  --shadow-subtle: rgba(16, 24, 40, 0.05) 0px 1px 2px 0px;
+}
+
+.public-landing {
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--color-almost-white);
+  background:
+    radial-gradient(ellipse at 82% 9%, rgb(175 80 255 / 8%), transparent 26%),
+    var(--color-near-black);
+  font-family: var(--font-whyte-inktrap);
+}
+.public-landing .public-nav--solar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 100%;
+  max-width: none;
+  height: 78px;
+  padding-inline: max(24px, calc((100vw - 1200px) / 2));
+  border-bottom: 1px solid rgb(247 249 250 / 16%);
+  background: rgb(51 50 72 / 70%);
+  backdrop-filter: blur(10px);
+}
+.public-landing .public-nav--solar .brand { color: var(--color-almost-white); }
+.public-landing .public-nav--solar .brand-dot { color: var(--color-signal-violet); }
+.public-landing .public-nav--solar nav {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  color: var(--color-steel);
+}
+.public-landing .public-nav--solar nav a { padding-block: 10px; }
+.public-landing .public-nav--solar nav a:hover,
+.public-landing .public-footer > a:last-child:hover { color: var(--color-almost-white); text-decoration: underline; text-underline-offset: 5px; }
+.public-landing .public-nav-login { border-radius: var(--radius-buttons); border-color: rgb(247 249 250 / 45%); }
+.public-landing .public-nav-login:hover { border-color: var(--color-almost-white); background: rgb(247 249 250 / 8%); }
+.public-main { width: min(1200px, calc(100% - 56px)); margin: 0 auto; }
+.public-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, .94fr);
+  align-items: center;
+  gap: clamp(40px, 7vw, 100px);
+  min-height: min(700px, calc(100vh - 78px));
+  padding: 64px 0 78px;
+}
+.public-hero-copy { max-width: 590px; }
+.public-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-steel);
+  font-family: var(--font-whyte-inktrap-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.public-kicker > span {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--color-signal-violet);
+}
+.public-hero h1 {
+  margin: 26px 0 20px;
+  color: var(--color-almost-white);
+  font-size: clamp(48px, 6.4vw, 82px);
+  font-weight: 400;
+  line-height: .98;
+  letter-spacing: -.065em;
+}
+.public-hero h1 em,
+.public-section-heading h2 em,
+.login-content h2 em {
+  color: var(--color-lavender-mist);
+  font-family: var(--font-grandslang);
+  font-weight: 400;
+  letter-spacing: -.045em;
+}
+.public-hero-copy > p {
+  max-width: 430px;
+  margin: 0;
+  color: var(--color-steel);
+  font-size: 17px;
+  line-height: 1.55;
+}
+.public-hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 22px; margin-top: 31px; }
+.public-landing .public-primary,
+.login-layout .public-primary {
+  min-height: 50px;
+  padding: 13px 18px;
+  border: 1px solid var(--color-signal-violet);
+  border-radius: var(--radius-buttons);
+  color: var(--color-near-black) !important;
+  background: var(--color-signal-violet) !important;
+  font-size: 14px;
+  font-weight: 600;
+  transition: transform 180ms ease, background 180ms ease;
+}
+.public-landing .public-primary:hover,
+.login-layout .public-primary:hover { transform: translateY(-2px); background: #bd70ff !important; }
+.public-text-link { display: inline-flex; align-items: center; gap: 7px; color: var(--color-soft-white); font-size: 13px; }
+.public-text-link:hover { color: var(--color-lavender-mist); }
+.public-hero-visual {
+  position: relative;
+  min-width: 0;
+  height: clamp(350px, 42vw, 520px);
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgb(247 249 250 / 20%);
+  border-radius: var(--radius-cards);
+  background: var(--color-iron);
+  animation: public-float-in 650ms cubic-bezier(.2,.7,.2,1) both;
+}
+.public-hero-visual::after {
+  position: absolute;
+  inset: 35% 0 0;
+  background: linear-gradient(180deg, transparent, rgb(9 9 9 / 82%));
+  content: "";
+  pointer-events: none;
+}
+.public-hero-visual img { width: 100%; height: 100%; object-fit: cover; object-position: 61% center; }
+.public-photo-label {
+  position: absolute;
+  z-index: 1;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-almost-white);
+  font-size: 12px;
+}
+.public-photo-label svg { color: var(--color-lavender-mist); }
+.public-photo-label span:last-child { margin-left: auto; color: var(--color-soft-white); font-family: var(--font-whyte-inktrap-mono); font-size: 9px; letter-spacing: .12em; }
+.public-image-index { position: absolute; top: 16px; right: 16px; z-index: 1; color: white; font: 10px var(--font-whyte-inktrap-mono); letter-spacing: .12em; }
+.public-section { padding: 88px 0 94px; border-top: 1px solid rgb(247 249 250 / 13%); scroll-margin-top: 86px; }
+.public-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 32px; margin-bottom: 30px; }
+.public-section-heading h2 {
+  margin: 12px 0 0;
+  color: var(--color-almost-white);
+  font-size: clamp(36px, 4.6vw, 58px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.055em;
+}
+.public-service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.public-service-card {
+  min-height: 202px;
+  padding: 22px 24px 24px;
+  border: 1px solid rgb(247 249 250 / 15%);
+  border-radius: var(--radius-cards);
+  background: linear-gradient(145deg, rgb(247 249 250 / 3%), transparent 66%);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.public-service-card:hover { transform: translateY(-3px); border-color: rgb(247 249 250 / 36%); }
+.public-card-top { display: flex; justify-content: space-between; align-items: center; color: var(--color-steel); }
+.public-card-top > span { font: 10px var(--font-whyte-inktrap-mono); letter-spacing: .1em; }
+.public-card-top svg { color: var(--color-almost-white); }
+.public-service-card h3 { margin: 31px 0 7px; color: var(--color-almost-white); font-size: 23px; letter-spacing: -.035em; }
+.public-service-card p { max-width: 270px; margin: 0; color: var(--color-steel); font-size: 14px; line-height: 1.5; }
+.public-access { padding-bottom: 105px; }
+.public-access-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.public-access-card {
+  position: relative;
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 27px 28px 24px;
+  overflow: hidden;
+  border: 1px solid rgb(247 249 250 / 19%);
+  border-radius: var(--radius-cards);
+  color: var(--color-almost-white);
+  background: rgb(247 249 250 / 2%);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.public-access-card:hover { transform: translateY(-3px); border-color: rgb(247 249 250 / 48%); background: rgb(247 249 250 / 5%); }
+.public-access-card:focus-visible { outline: 2px solid var(--color-lavender-mist); outline-offset: 4px; }
+.public-access-card .public-kicker { margin-top: 22px; font-size: 9px; }
+.public-access-icon { display: grid; width: 43px; height: 43px; place-items: center; border: 1px solid rgb(247 249 250 / 18%); border-radius: 12px; background: rgb(247 249 250 / 5%); }
+.public-access-card strong { margin-top: 12px; font-size: clamp(22px, 2.5vw, 30px); font-weight: 500; letter-spacing: -.04em; }
+.public-access-desc { margin-top: 6px; color: var(--color-steel); font-size: 13px; }
+.public-access-link { display: flex; align-items: center; gap: 9px; margin-top: auto; padding-top: 22px; color: var(--color-almost-white); font-size: 13px; }
+.public-access-link svg { transition: transform 160ms ease; }
+.public-access-card:hover .public-access-link svg { transform: translateX(4px); }
+.public-access-admin { border-color: rgb(247 249 250 / 15%); background: radial-gradient(ellipse at 88% 0%, rgb(175 80 255 / 13%), transparent 44%), rgb(247 249 250 / 2%); }
+.public-footer {
+  width: min(1200px, calc(100% - 56px));
+  max-width: none;
+  min-height: 88px;
+  padding: 18px 0;
+  border-top-color: rgb(247 249 250 / 14%);
+}
+.public-footer .brand { color: var(--color-almost-white); }
+.public-footer .brand-dot { color: var(--color-signal-violet); }
+.public-footer > span,
+.public-footer > a:last-child { color: var(--color-steel); }
+.public-footer > a:last-child { font-size: 12px; }
+
+/* The access chooser keeps both entry points visible before credentials. */
+.login-layout {
+  min-height: 100vh;
+  color: var(--color-almost-white);
+  background-color: var(--color-near-black);
+  background-image:
+    radial-gradient(ellipse at 78% 14%, rgb(175 80 255 / 10%), transparent 29%),
+    linear-gradient(110deg, rgb(9 9 9 / 79%), rgb(9 9 9 / 96%)),
+    url("/solar-guajira-dawn.webp");
+  background-size: auto, cover, cover;
+  background-position: center, center, 45% center;
+  font-family: var(--font-whyte-inktrap);
+}
+.login-story { border-right-color: rgb(247 249 250 / 15%); background-image: linear-gradient(180deg, rgb(9 9 9 / 18%), rgb(9 9 9 / 85%)), url("/solar-technician.jpg"); }
+.login-story .brand { color: var(--color-almost-white); }
+.login-story .brand-dot { color: var(--color-signal-violet); }
+.login-story h1 { color: var(--color-almost-white); }
+.login-story h1 span { color: var(--color-lavender-mist); }
+.login-story .eyebrow { color: var(--color-soft-white); }
+.login-story p { max-width: 410px; color: var(--color-soft-white); }
+.login-form { gap: 18px; background: linear-gradient(135deg, rgb(9 9 9 / 83%), rgb(9 9 9 / 97%)); }
+.login-form > div.login-content { width: min(100%, 460px); max-width: 460px; margin: 0 auto; }
+.login-form .back { align-self: center; width: min(100%, 460px); color: var(--color-steel); }
+.login-form .back:hover { color: var(--color-almost-white); }
+.login-content > .public-kicker { color: var(--color-steel); }
+.login-content h2 { margin: 17px 0 21px; color: var(--color-almost-white); font-size: clamp(34px, 4vw, 46px); line-height: 1; letter-spacing: -.055em; }
+.login-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.login-choice {
+  display: flex;
+  min-height: 82px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 11px;
+  padding: 14px 12px;
+  border: 1px solid rgb(247 249 250 / 17%);
+  border-radius: 12px;
+  color: var(--color-almost-white);
+  background: rgb(247 249 250 / 3%);
+  text-align: left;
+}
+.login-choice:hover { background: rgb(247 249 250 / 7%); }
+.login-choice.selected { border-color: var(--color-signal-violet); background: rgb(175 80 255 / 10%); }
+.login-choice > svg { flex: 0 0 auto; margin-top: 2px; color: var(--color-almost-white); }
+.login-choice span { display: grid; gap: 4px; }
+.login-choice strong { font-size: 13px; font-weight: 550; }
+.login-choice small { color: var(--color-steel); font-size: 10px; line-height: 1.35; }
+.login-selected-space { margin: 0; color: var(--color-steel); font-size: 11px; }
+.login-selected-space strong { color: var(--color-almost-white); font-weight: 500; }
+.login-form form { gap: 15px; margin: 20px 0 10px; }
+.login-form label { color: var(--color-soft-white); }
+.login-form input { min-height: 46px; border-color: rgb(247 249 250 / 20%); color: var(--color-almost-white); background: rgb(247 249 250 / 5%); }
+.login-form input:focus { border-color: var(--color-lavender-mist); outline-color: var(--color-lavender-mist); }
+.login-form form > button.primary { min-height: 48px; justify-content: space-between; margin-top: 5px; padding: 12px 15px; border: 1px solid var(--color-signal-violet); border-radius: var(--radius-buttons); color: var(--color-near-black) !important; background: var(--color-signal-violet) !important; }
+.login-form .caption { color: var(--color-steel); }
+
+/* User and field spaces use the same tokens with card-first, readable layouts. */
+.customer-portal {
+  --accent: #af50ff;
+  --muted: #828384;
+  --customer-ink: #f7f9fa;
+  color: var(--color-almost-white);
+  background:
+    radial-gradient(ellipse at 85% 0%, rgb(175 80 255 / 6%), transparent 25%),
+    var(--color-near-black);
+  font-family: var(--font-whyte-inktrap);
+}
+.customer-portal .customer-header { border-bottom-color: rgb(247 249 250 / 16%); background: rgb(51 50 72 / 70%); }
+.customer-portal .brand,
+.customer-portal .customer-footer .brand { color: var(--color-almost-white); }
+.customer-portal .brand-dot { color: var(--color-signal-violet); }
+.customer-portal .customer-nav a { color: var(--color-steel); }
+.customer-portal .customer-nav a:hover,
+.customer-portal .customer-nav a.active { color: var(--color-almost-white); background: rgb(247 249 250 / 9%); }
+.customer-portal .customer-account { color: var(--color-soft-white); }
+.customer-portal .customer-account button,
+.customer-portal .customer-role-switch { border-color: rgb(247 249 250 / 22%); color: var(--color-almost-white); background: rgb(247 249 250 / 4%); }
+.customer-portal .customer-main { color: var(--color-almost-white); }
+.customer-portal h1,
+.customer-portal h2,
+.customer-portal h3,
+.customer-portal .page-heading h1,
+.customer-portal .section-intro h2 { color: var(--color-almost-white); }
+.customer-portal p,
+.customer-portal .muted,
+.customer-portal small,
+.customer-portal .page-heading p { color: var(--color-steel); }
+.customer-portal .eyebrow { color: var(--color-steel); }
+.customer-portal .tag { border-color: rgb(247 249 250 / 18%); color: var(--color-soft-white); background: rgb(247 249 250 / 5%); }
+.customer-portal .dashboard-heading {
+  border-color: rgb(247 249 250 / 20%);
+  background-image: linear-gradient(100deg, rgb(9 9 9 / 92%), rgb(9 9 9 / 54%)), url("/solar-home.jpg");
+  background-size: cover;
+  background-position: center 55%;
+  box-shadow: none;
+}
+.customer-portal.field-portal .dashboard-heading { background-image: linear-gradient(100deg, rgb(9 9 9 / 93%), rgb(9 9 9 / 58%)), url("/solar-technician.jpg"); }
+.customer-portal .stat-grid article,
+.customer-portal .dashboard-panel,
+.customer-portal .dashboard-record,
+.customer-portal .dashboard-device,
+.customer-portal .feature,
+.customer-portal .data-panel,
+.customer-portal .owner-alert,
+.customer-portal .location-picker,
+.customer-portal .matrix-context,
+.customer-portal .modal {
+  border-color: rgb(247 249 250 / 15%);
+  border-radius: var(--radius-cards);
+  color: var(--color-almost-white);
+  background-color: rgb(247 249 250 / 3%);
+  box-shadow: none;
+}
+.customer-portal .stat-grid article > svg,
+.customer-portal .owner-card > svg { color: var(--color-almost-white); }
+.customer-portal .stat-grid span,
+.customer-portal .stat-grid small,
+.customer-portal .owner-meta span { color: var(--color-steel); }
+.customer-portal .stat-grid strong,
+.customer-portal .dashboard-record-title strong,
+.customer-portal .dashboard-device strong,
+.customer-portal .owner-card h3,
+.customer-portal .owner-meta strong { color: var(--color-almost-white); }
+.customer-portal .dashboard-record-copy > span:not(.dashboard-record-title) { color: var(--color-soft-white); }
+.customer-portal .dashboard-panel-heading > a,
+.customer-portal .section-intro a,
+.customer-portal .owner-alert-actions a { color: var(--color-lavender-mist); }
+.customer-portal .dashboard-record:hover { border-color: rgb(247 249 250 / 38%); background: rgb(247 249 250 / 7%); }
+.customer-portal .dashboard-pill { border-color: rgb(247 249 250 / 18%); color: var(--color-soft-white); background: rgb(247 249 250 / 6%); }
+.customer-portal .dashboard-record-mark { color: var(--color-almost-white); background: rgb(247 249 250 / 8%); }
+.customer-portal .order-mark,
+.customer-portal .device-mark { color: var(--color-almost-white); background: rgb(247 249 250 / 8%); }
+.customer-portal .dashboard-refresh,
+.customer-portal .owner-action { border-color: rgb(247 249 250 / 25%); color: var(--color-almost-white); background: rgb(247 249 250 / 5%); }
+.customer-portal .dashboard-refresh:hover,
+.customer-portal .owner-action:hover { border-color: rgb(247 249 250 / 50%); background: rgb(247 249 250 / 10%); }
+.customer-portal .owner-meta,
+.customer-portal .owner-alert { border-color: rgb(247 249 250 / 14%); }
+.customer-portal .owner-alert { background: rgb(247 249 250 / 3%); }
+.customer-portal input:not([type="checkbox"]),
+.customer-portal select,
+.customer-portal textarea { border-color: rgb(247 249 250 / 21%); color: var(--color-almost-white); background: rgb(247 249 250 / 4%); }
+.customer-portal .primary { border-color: var(--color-signal-violet); color: var(--color-near-black) !important; background: var(--color-signal-violet) !important; }
+.customer-portal .primary:hover { background: #bd70ff !important; }
+.customer-portal .customer-footer { border-top-color: rgb(247 249 250 / 14%); color: var(--color-steel); background: transparent; }
+.customer-portal .customer-footer > a:last-child { color: var(--color-lavender-mist); }
+.customer-portal[data-motion="on"] .feature:hover,
+.customer-portal[data-motion="on"] .owner-card:hover { transform: translateY(-2px); border-color: rgb(247 249 250 / 32%); box-shadow: none; }
+
+@keyframes public-float-in {
+  from { opacity: 0; transform: translateY(12px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 900px) {
+  .public-hero { grid-template-columns: minmax(0, 1fr) minmax(280px, .85fr); gap: 32px; min-height: 590px; }
+  .public-hero h1 { font-size: clamp(44px, 6vw, 62px); }
+  .public-service-grid { gap: 10px; }
+  .public-service-card { padding: 19px; }
+}
+@media (max-width: 760px) {
+  .public-landing .public-nav--solar { height: 70px; padding-inline: 18px; }
+  .public-landing .public-nav--solar nav { display: none; }
+  .public-main,
+  .public-footer { width: calc(100% - 36px); }
+  .public-hero { grid-template-columns: 1fr; gap: 29px; min-height: auto; padding: 58px 0 64px; }
+  .public-hero h1 { margin-top: 20px; font-size: clamp(45px, 12vw, 68px); }
+  .public-hero-copy > p { max-width: 360px; font-size: 15px; }
+  .public-hero-visual { height: clamp(260px, 68vw, 400px); }
+  .public-section { padding: 62px 0 68px; }
+  .public-section-heading { margin-bottom: 22px; }
+  .public-section-heading h2 { font-size: clamp(37px, 10vw, 49px); }
+  .public-service-grid { grid-template-columns: 1fr; }
+  .public-service-card { min-height: 160px; }
+  .public-service-card h3 { margin-top: 22px; }
+  .public-access-grid { grid-template-columns: 1fr; }
+  .public-access-card { min-height: 230px; }
+  .public-footer { align-items: flex-start; }
+  .public-footer > span { max-width: 290px; }
+  .login-layout { grid-template-columns: 1fr; }
+  .login-story { min-height: 250px; padding: 24px; gap: 30px; }
+  .login-story h1 { font-size: clamp(32px, 8vw, 44px); }
+  .login-form { min-height: auto; padding: 30px 22px 42px; }
+  .login-form .back { margin-bottom: 25px; }
+  .customer-portal .customer-header-inner { background: transparent; }
+  .customer-portal .dashboard-heading { background-position: 61% center; }
+}
+@media (max-width: 400px) {
+  .public-landing .public-nav--solar .brand { font-size: 21px; }
+  .public-landing .public-nav-login { min-height: 38px; padding: 8px 13px; }
+  .public-hero-actions { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .login-choice-grid { grid-template-columns: 1fr; }
+  .login-choice { min-height: 66px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-landing *,
+  .login-layout *,
+  .customer-portal * { animation: none !important; scroll-behavior: auto !important; transition: none !important; }
+}

@@ -30,6 +30,14 @@ export function getPrimaryWorkspace(user) {
   return "portal";
 }
 
+export function resolveLoginWorkspace(user, choice) {
+  if (!user) return null;
+  if (choice === "admin") return canEnterWorkspace(user, "admin") ? "admin" : null;
+  if (choice !== "portal" || !canEnterWorkspace(user, "portal")) return null;
+  if (rolesOf(user).has("Técnico de Campo") && canEnterWorkspace(user, "field")) return "field";
+  return "portal";
+}
+
 export function canEnterWorkspace(user, workspace) {
   if (!user || !WORKSPACE_BASES[workspace]) return false;
   if (workspace === "admin") return isAdministrator(user);
