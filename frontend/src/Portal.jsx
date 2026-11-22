@@ -920,8 +920,10 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     const statusDetail = kind === "alertas" ? row.estado_display : kind === "notificaciones" && typeof row.leida === "boolean" ? row.leida ? "Leída" : "Pendiente" : "";
     const fields = (fieldsByKind[kind] || []).filter(([key]) => key in row || `${key}_display` in row).map(([key, label]) => {
       const value = row[`${key}_display`] ?? row[key];
-      const formatted = /fecha|contacto/i.test(key) && value
-        ? formatDashboardDate(value)
+      const formatted = key === "ultima_comunicacion" && !value
+        ? "Sin registro"
+        : /fecha|contacto/i.test(key) && value
+          ? formatDashboardDate(value)
         : key === "capacidad" && value !== "" && value != null
           ? `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(value))} kW`
           : display(key, row[key], row);
@@ -960,6 +962,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
               { usuarios: "Usuarios", roles: "Roles y permisos" }[kind] ||
               definitions[kind]?.[0]}
           </h1>
+          {user.username.startsWith("demo_") && <span className="demo-data-badge" role="note">CUENTA DE DEMOSTRACIÓN · DATOS DE EJEMPLO</span>}
           <p>
             {kind === "usuarios"
               ? "Administra las cuentas y el acceso a la plataforma."
