@@ -122,14 +122,12 @@ Commit: `77b058e` — `Separate personal and admin workspace shells`.
 
 ## Pendiente para terminar el frontend
 
-1. **Registro y aprobación de instalaciones:** backend cubierto por pruebas automatizadas y la interfaz se cargó en el preview. Falta que Jhon recorra el registro, la solicitud y la revisión en navegador con cuentas de prueba y confirme detalles visuales.
-2. **Separación de espacios:** el selector y los cascarones diferentes están implementados; probar que una cuenta dual alterna entre “Mi espacio” y “Administración” conservando la sesión y el menú apropiado.
-3. **Experiencias por rol:** probar en preview los espacios de líder y técnico y validar la cuenta dual. La vista de propietario y mediciones se inspeccionó con la sesión demo; falta confirmar que datos, mapas, órdenes y alertas quedan dentro del ámbito de los demás roles.
-4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
-5. **Notificaciones:** bandeja con leído/no leído y enlaces a alertas/órdenes; después implementar suscripción web push real (VAPID, almacenamiento de suscripciones, permisos, bajas y envío desde backend).
-6. **Uso con conectividad limitada:** revisar qué datos se pueden guardar localmente sin exponer información de otros usuarios; la PWA actual solo conserva recursos estáticos y una página offline.
-7. **Control de calidad:** pruebas móviles, teclado/accesibilidad, estados vacíos/errores, permisos por rol, y revisión de carga en conexiones lentas. No fusionar hasta que Jhon pruebe el preview.
-8. **Modelo comercial:** preparar planes o demostración para hogares y comunidades cuando las funciones principales estén estables; no introducir anuncios todavía.
+1. **Validación manual por rol:** recorrer líder comunitario, técnico, propietario y cuenta dual en móvil y escritorio; confirmar que RBAC real del panel refleja los cambios tras iniciar sesión de nuevo.
+2. **Push web real:** falta configurar VAPID, guardar suscripciones y enviar avisos desde el backend. La bandeja in-app ya tiene estado leído/no leído.
+3. **Inventario:** el técnico puede registrar y ajustar repuestos usados por orden; descontar existencias requiere definir existencias iniciales, mínimos y quién los administra.
+4. **Modo sin conexión:** la PWA ofrece instalación y una pantalla offline; aún no almacena datos privados ni permite operar con datos sincronizados sin conexión.
+5. **Revisión final de interfaz:** comprobar navegación por teclado, estados vacíos y pantallas pequeñas; la compilación sigue mostrando el aviso de bundle principal mayor a 500 KB.
+6. **Modelo comercial:** preparar planes o demostración para hogares y comunidades después de estabilizar el flujo principal; no hay anuncios implementados.
 
 ### 9. RBAC y tarjetas en “Mi espacio” (desplegado)
 
@@ -166,10 +164,20 @@ Commits: `f5211b8` — `Paginate personal workspace records`; `765927a` — `Scr
 - `pnpm run lint`: sin errores, conserva 14 advertencias existentes en otros hooks/componentes. `pnpm run build`: correcto; Vite conserva el aviso de bundle principal >500 KB. `manage.py test`: 22 pruebas correctas, incluidas alta, privacidad, aprobación/rechazo residencial/comunitario y permisos. `manage.py check`, `makemigrations --check --dry-run` y `git diff --check`: correctos.
 - Render está actualizado a `index-D7Acn6V0.js` e `index-Bv0oQgxO.css`; los commits están subidos a `frontend`. El preview aún usa datos de simulación académica, no telemetría real del hardware.
 
+### 12. Registro de repuestos y lectura de notificaciones (en main)
+
+Commit: `dfcdbd7` — `Improve technician workflow and notifications`.
+
+- Desde una orden asignada, el técnico puede registrar repuestos utilizados y ajustar la cantidad ya registrada. El backend limita las órdenes visibles y editables a las asignadas a ese técnico.
+- En “Mi espacio”, cada destinatario puede marcar su notificación como leída; la acción es idempotente y no permite cambiar avisos ajenos. La bandeja presenta cuáles son nuevas y cuántas siguen sin leer.
+- La migración `core.0021` agrega `leida_en` como campo opcional; la migración `core.0020` crea la tabla de solicitudes de vinculación. Ambas son aditivas.
+- Verificación local: 22 pruebas Django correctas (incluidos los nuevos flujos), `manage.py check`, `makemigrations --check --dry-run`, lint sin errores y build correctos. El lint conserva advertencias de hooks ya existentes; Vite mantiene el aviso del bundle >500 KB.
+- Se subió `dfcdbd7` tanto a `frontend` como a `main`. El chequeo HTTP de Render principal agotó su espera de 30 segundos; falta confirmar que el deploy termine y probarlo visualmente.
+
 ## Cuidado con Neon y Render
 
-El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los previews de Render pueden copiar variables del servicio base al crearse; antes de cualquier migración futura, confirmar de nuevo que `DATABASE_URL` sigue apuntando a la rama de prueba. No imprimir ni pegar credenciales en el chat o en commits.
+El preview usa una rama aislada de Neon. Render ejecuta migraciones al iniciar el servicio; antes de una migración futura de preview, confirmar que `DATABASE_URL` sigue en la rama aislada. No imprimir ni pegar credenciales en el chat o en commits.
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa `git status`/`git log`. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Los commits más recientes son `f5211b8` y `765927a`: Mi espacio usa tarjetas con 12 elementos por página y paginación que vuelve al inicio; Administración conserva las tablas lineales. En el preview autenticado se validaron mediciones (216 lecturas simuladas), la página de solicitud y el resumen del propietario; el detalle muestra dispositivo/modelo, instalación, barrio, comunidad, propietario y mapa. `pnpm run build`, lint (14 avisos previos), 22 pruebas Django, `manage.py check`, `makemigrations --check --dry-run` y `git diff --check` pasan. Render sirve `index-D7Acn6V0.js` e `index-Bv0oQgxO.css`. Los datos visibles son de simulación, no de hardware conectado. Pendiente: que Jhon pruebe alta/solicitud/revisión desde navegador, líder, técnico y cuenta dual; verificar móvil/accesibilidad; luego mejorar registro de repuestos usados y notificaciones leído/no leído y push VAPID. La PWA instala y muestra offline estático, pero aún no guarda datos privados ni hace push real. Mantén violeta, Inter y tarjetas. No cierres PR ni fusiones.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto; lee FRONTEND_HANDOFF.md y revisa `git status`/`git log`. La rama `frontend` se publicó en `main`; el último commit de funciones es `dfcdbd7`. Preview: https://kaillisto-pr-3.onrender.com. Producción: https://kaillisto.onrender.com. “Mi espacio” tiene tarjetas y paginación; Administración conserva sus listas lineales. Hay registro/aprobación de instalaciones, permisos y datos aislados por rol, detalle de medición con dispositivo/zona/comunidad/propietario/mapa, flujo de técnico con repuestos y notificaciones leído/no leído. El último chequeo de Render principal agotó 30 segundos; confirmar el despliegue antes de nuevos cambios. `pnpm run build`, lint sin errores (con advertencias existentes), 22 pruebas Django, `manage.py check`, `makemigrations --check --dry-run` y `git diff --check` pasan. Pendiente: revisión manual de los demás roles y móvil, push real VAPID, flujo de existencias y pulido de accesibilidad/tamaño de bundle. Mantén violeta, Inter, tarjetas, navegación adaptable y el panel administrativo separado.
