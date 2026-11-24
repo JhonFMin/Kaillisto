@@ -4,7 +4,9 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El commit `8cafaed` (`Polish public portal visual theme`) está publicado en `frontend`. El incremento de elección de espacio está implementado y probado localmente; falta crear su commit y confirmar el despliegue del preview.
+El commit remoto más reciente es `52a0f78` (`Add login workspace selection`). Render ya sirve ese bundle. La pantalla de selección está en `/login`; una sesión abierta en `/usuarios` seguirá mostrando administración.
+
+El siguiente incremento de backend está en el árbol local: registro sin roles privilegiados y solicitudes de vinculación con revisión. Su migración nueva (`core.0020`) todavía no se ha subido. El contenedor aplica migraciones al arrancar, así que no publicaré esa migración hasta verificar que el preview use una rama aislada de Neon.
 
 ## Rama y prueba
 
@@ -49,6 +51,14 @@ Commit: `b8eac53` — `Add Android-installable PWA foundation`.
 - La pantalla usa las credenciales y el endpoint de sesión existentes; todavía no crea cuentas ni solicitudes de servicio.
 - Las rutas personales se determinan con los roles y permisos de la sesión, sin esperar la carga del menú.
 
+### 5. Backend para registro y solicitudes (en curso, local)
+
+- `POST /api/security/register/` crea cuentas activas sin roles de negocio ni privilegios y limita intentos anónimos.
+- `GET/POST /api/security/solicitudes-vinculacion/` permite a una persona autenticada registrar un hogar o proyecto comunitario con mapa, capacidad, fecha y datos de ubicación.
+- Las solicitudes solo las ve su solicitante; administración y superadministradores pueden revisar todas.
+- El endpoint `POST .../{id}/revisar/` exige rol administrador o superadministrador. La aprobación crea la comunidad e instalación cuando es un nuevo sitio; permite vincular un líder a una comunidad existente sin duplicarla. Asigna Líder Comunitario o Propietario Solar en una transacción. El rechazo requiere motivo y deja volver a presentar una nueva solicitud.
+- La migración `core.0020_solicitudvinculacion` requiere despliegue contra una base aislada. No se ha enviado a Render.
+
 Verificación del incremento anterior (técnico/PWA):
 
 - Build de producción de Vite: correcto.
@@ -61,7 +71,13 @@ Verificación local del selector de espacio:
 - `pnpm run build`: correcto.
 - `pnpm run lint`: terminó con advertencias existentes del proyecto; no reportó errores nuevos en el selector.
 - `git diff --check`: correcto.
-- Pendiente: probar visualmente el login y las rutas en el preview de Render.
+- Preview de Render en `/login`, HTML/CSS/JS: 200; el bundle contiene “Mi espacio”, “Administración” y sus estilos. No se hizo una prueba visual interactiva del formulario.
+
+Verificación local del backend de solicitudes:
+
+- `python manage.py test`: 22 pruebas correctas en SQLite temporal; incluye registro, privacidad y revisión residencial/comunitaria.
+- `makemigrations --check --dry-run` y `manage.py check`: correctos.
+- `git diff --check`: correcto. Falta confirmar `DATABASE_URL` aislada de Neon antes de publicar `core.0020`.
 
 ## Pendiente para terminar el frontend
 

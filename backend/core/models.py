@@ -92,6 +92,93 @@ class Usuario(AbstractUser):
     def __str__(self):
         return self.username
 
+
+class SolicitudVinculacion(models.Model):
+    class Tipo(models.TextChoices):
+        RESIDENCIAL = "residencial", "Vivienda solar"
+        COMUNITARIA = "comunitaria", "Proyecto comunitario"
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente de revisión"
+        APROBADA = "aprobada", "Aprobada"
+        RECHAZADA = "rechazada", "Requiere ajustes"
+
+    id_solicitud = models.BigAutoField(primary_key=True)
+    solicitante = models.ForeignKey(
+        Usuario,
+        on_delete=models.PROTECT,
+        related_name="solicitudes_vinculacion",
+    )
+    tipo = models.CharField(max_length=20, choices=Tipo.choices)
+    nombre = models.CharField(max_length=150)
+    municipio = models.CharField(max_length=120)
+    sector = models.CharField(max_length=160, blank=True)
+    direccion = models.CharField(max_length=255, blank=True)
+    barrio = models.CharField(max_length=120, blank=True)
+    referencia = models.CharField(max_length=255, blank=True)
+    latitud = models.DecimalField(max_digits=9, decimal_places=6)
+    longitud = models.DecimalField(max_digits=9, decimal_places=6)
+    capacidad = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_instalacion = models.DateField()
+    descripcion = models.TextField(blank=True)
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+        db_index=True,
+    )
+    nota_revision = models.TextField(blank=True)
+    revisada_por = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="solicitudes_vinculacion_revisadas",
+    )
+    revisada_en = models.DateTimeField(null=True, blank=True)
+    comunidad = models.ForeignKey(
+        Comunidad,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitudes_vinculacion",
+    )
+    instalacion = models.OneToOneField(
+        "Instalacion",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="solicitud_vinculacion",
+    )
+    creada_en = models.DateTimeField(auto_now_add=True)
+    actualizada_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "solicitud_vinculacion"
+        ordering = ["-creada_en", "-id_solicitud"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solicitante"],
+                condition=models.Q(estado="pendiente"),
+                name="unique_pending_link_request_per_user",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(latitud__gte=-90, latitud__lte=90),
+                name="link_request_latitude_range",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(longitud__gte=-180, longitud__lte=180),
+                name="link_request_longitude_range",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(capacidad__gt=0),
+                name="link_request_capacity_positive",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Solicitud #{self.pk} · {self.nombre} ({self.estado})"
+
 class EstadoInstalacion(models.Model):
     id_estado_instalacion = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=50)

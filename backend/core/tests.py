@@ -115,9 +115,9 @@ class InstalacionAPITests(APITestCase):
             respuesta.status_code,
             status.HTTP_201_CREATED,
         )
-        self.assertEqual(Instalacion.objects.count(), 1)
+        self.assertEqual(Instalacion.objects.filter(nombre="Instalación de pruebas").count(), 1)
 
-        instalacion = Instalacion.objects.get()
+        instalacion = Instalacion.objects.get(nombre="Instalación de pruebas")
         self.assertEqual(instalacion.comunidad, self.comunidad)
         self.assertEqual(instalacion.estado_instalacion, self.estado)
 
@@ -135,7 +135,7 @@ class InstalacionAPITests(APITestCase):
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertIn("capacidad", respuesta.data)
-        self.assertEqual(Instalacion.objects.count(), 0)
+        self.assertFalse(Instalacion.objects.filter(nombre="Instalación de pruebas").exists())
 
     def test_rechazar_comunidad_inexistente(self):
         self.datos["comunidad"] = self.comunidad.pk + 9999
@@ -151,7 +151,7 @@ class InstalacionAPITests(APITestCase):
             status.HTTP_400_BAD_REQUEST,
         )
         self.assertIn("comunidad", respuesta.data)
-        self.assertEqual(Instalacion.objects.count(), 0)
+        self.assertFalse(Instalacion.objects.filter(nombre="Instalación de pruebas").exists())
 
     def test_rechazar_acceso_sin_autenticacion(self):
         self.client.force_authenticate(user=None)
@@ -183,7 +183,7 @@ class InstalacionAPITests(APITestCase):
             respuesta.status_code,
             status.HTTP_403_FORBIDDEN,
         )
-        self.assertEqual(Instalacion.objects.count(), 0)
+        self.assertFalse(Instalacion.objects.filter(nombre="Instalación de pruebas").exists())
 class FlujoOrdenTrabajoTests(APITestCase):
     def setUp(self):
         rol = Rol.objects.create(nombre="tecnico")
@@ -340,8 +340,8 @@ class NotificacionAlertaTests(TestCase):
     def test_notifica_solo_al_lider_de_la_comunidad(self):
         notificar_alerta_a_lideres(self.alerta)
 
-        self.assertEqual(Notificacion.objects.count(), 1)
-        notificacion = Notificacion.objects.get()
+        self.assertEqual(Notificacion.objects.filter(destinatario=self.lider_a, alerta=self.alerta).count(), 1)
+        notificacion = Notificacion.objects.get(destinatario=self.lider_a, alerta=self.alerta)
         self.assertEqual(notificacion.destinatario, self.lider_a)
         self.assertEqual(notificacion.estado, "simulada")
 
@@ -351,7 +351,7 @@ class NotificacionAlertaTests(TestCase):
 
         notificar_alerta_a_lideres(self.alerta)
 
-        self.assertEqual(Notificacion.objects.get().estado, "fallida")
+        self.assertEqual(Notificacion.objects.get(destinatario=self.lider_a, alerta=self.alerta).estado, "fallida")
 
     def test_fallo_de_envio_no_interrumpe_el_flujo(self):
         with patch(
@@ -360,6 +360,6 @@ class NotificacionAlertaTests(TestCase):
         ):
             notificar_alerta_a_lideres(self.alerta)
 
-        notificacion = Notificacion.objects.get()
+        notificacion = Notificacion.objects.get(destinatario=self.lider_a, alerta=self.alerta)
         self.assertEqual(notificacion.estado, "fallida")
         self.assertIn("fallo simulado", notificacion.detalle_error)

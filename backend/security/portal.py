@@ -6,14 +6,15 @@ from django.db import transaction
 from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.db.models.deletion import ProtectedError
+from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.response import Response
 from core import models as m
-from core.serializers import DispositivoSerializer
+from core.serializers import DispositivoSerializer, SolicitudVinculacionSerializer
 from .models import Role, UserRole, has_effective_role, get_effective_permissions
 from .models import Resource
 from .audit import audit_security_change
@@ -215,6 +216,150 @@ class Users(viewsets.ModelViewSet):
                                          'is_staff': obj.is_staff}},
         )
         return Response(self.get_serializer(obj).data)
+
+
+class SolicitudesVinculacion(viewsets.ModelViewSet):
+    """Let a signed-in person request a site; only administrators can decide."""
+    serializer_class = SolicitudVinculacionSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'head', 'options']
+    queryset = m.SolicitudVinculacion.objects.select_related(
+        'solicitante', 'revisada_por', 'comunidad', 'instalacion'
+    )
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_superuser or admin(user):
+            return queryset
+        return queryset.filter(solicitante=user)
+
+    def create(self, request, *args, **kwargs):
+        if m.SolicitudVinculacion.objects.filter(
+            solicitante=request.user,
+            estado=m.SolicitudVinculacion.Estado.PENDIENTE,
+        ).exists():
+            raise ValidationError({'detail': 'Ya tienes una solicitud pendiente de revisión.'})
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if (
+            serializer.validated_data.get('tipo') == m.SolicitudVinculacion.Tipo.COMUNITARIA
+            and self.request.user.comunidad_id
+        ):
+            raise ValidationError({
+                'tipo': 'Tu cuenta ya está vinculada a una comunidad. Contacta con administración para solicitar un cambio.'
+            })
+        serializer.save(solicitante=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def revisar(self, request, pk=None):
+        user = request.user
+        if not (user.is_superuser or admin(user)):
+            raise PermissionDenied('Solo administración puede revisar solicitudes de vinculación.')
+        try:
+            application = self.get_queryset().select_for_update().get(pk=pk)
+        except m.SolicitudVinculacion.DoesNotExist as exc:
+            raise NotFound() from exc
+        if application.estado != m.SolicitudVinculacion.Estado.PENDIENTE:
+            raise ValidationError('Esta solicitud ya fue revisada.')
+
+        decision = request.data.get('decision')
+        note = str(request.data.get('nota_revision', '')).strip()
+        if decision not in ('aprobar', 'rechazar'):
+            raise ValidationError({'decision': 'Usa "aprobar" o "rechazar".'})
+        if decision == 'rechazar' and not note:
+            raise ValidationError({'nota_revision': 'Explica qué información debe corregirse.'})
+
+        now = timezone.now()
+        changes = {'estado': application.estado, 'decision': decision}
+        if decision == 'aprobar':
+            community_id = request.data.get('comunidad_id')
+            if community_id not in (None, ''):
+                try:
+                    community_id = int(community_id)
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError({'comunidad_id': 'Usa el identificador numérico de una comunidad.'}) from exc
+                if community_id < 1:
+                    raise ValidationError({'comunidad_id': 'El identificador de comunidad debe ser positivo.'})
+            if application.tipo == m.SolicitudVinculacion.Tipo.RESIDENCIAL and community_id:
+                raise ValidationError({'comunidad_id': 'Una solicitud residencial no se puede vincular a una comunidad desde esta revisión.'})
+            installation_state = m.EstadoInstalacion.objects.filter(nombre='Operativa').first()
+            if installation_state is None:
+                raise ValidationError('No existe el estado de instalación "Operativa" en los catálogos.')
+            role_name = (
+                'Propietario Solar'
+                if application.tipo == m.SolicitudVinculacion.Tipo.RESIDENCIAL
+                else 'Líder Comunitario'
+            )
+            role = Role.objects.filter(name=role_name, is_active=True).first()
+            if role is None:
+                raise ValidationError(f'El rol "{role_name}" no está configurado o está inactivo.')
+
+            community = None
+            installation = None
+            if application.tipo == m.SolicitudVinculacion.Tipo.COMUNITARIA:
+                if community_id:
+                    community = m.Comunidad.objects.filter(pk=community_id).first()
+                    if community is None:
+                        raise ValidationError({'comunidad_id': 'La comunidad seleccionada no existe.'})
+                else:
+                    community = m.Comunidad.objects.create(
+                        nombre=application.nombre,
+                        ubicacion=application.municipio,
+                        municipio=application.municipio,
+                        sector=application.sector,
+                        referencia=application.referencia,
+                        latitud=application.latitud,
+                        longitud=application.longitud,
+                        descripcion=application.descripcion,
+                    )
+            if application.tipo == m.SolicitudVinculacion.Tipo.RESIDENCIAL or not community_id:
+                installation = m.Instalacion.objects.create(
+                    tipo=application.tipo,
+                    comunidad=community,
+                    responsable=application.solicitante if application.tipo == m.SolicitudVinculacion.Tipo.RESIDENCIAL else None,
+                    nombre=application.nombre,
+                    direccion=application.direccion,
+                    barrio=application.barrio,
+                    ubicacion=application.municipio,
+                    latitud=application.latitud,
+                    longitud=application.longitud,
+                    capacidad=application.capacidad,
+                    fecha_instalacion=application.fecha_instalacion,
+                    estado_instalacion=installation_state,
+                )
+            UserRole.objects.get_or_create(
+                usuario=application.solicitante,
+                rol=role,
+                defaults={'asignado_por': user},
+            )
+            if community is not None:
+                application.solicitante.comunidad = community
+                application.solicitante.save(update_fields=['comunidad'])
+            application.comunidad = community
+            application.instalacion = installation
+            application.estado = m.SolicitudVinculacion.Estado.APROBADA
+            changes['instalacion_id'] = installation.pk if installation else None
+            if community is not None:
+                changes['comunidad_id'] = community.pk
+        else:
+            application.estado = m.SolicitudVinculacion.Estado.RECHAZADA
+
+        application.nota_revision = note
+        application.revisada_por = user
+        application.revisada_en = now
+        application.save()
+        audit_security_change(
+            request,
+            'service_request.reviewed',
+            'solicitud_vinculacion',
+            application.pk,
+            application.nombre,
+            changes,
+        )
+        return Response(self.get_serializer(application).data)
 
 RESOURCES = {
     'comunidades': m.Comunidad, 'instalaciones': m.Instalacion,

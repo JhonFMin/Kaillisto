@@ -2,7 +2,53 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from .models import Alerta, Medicion, TipoMedicion
 from .models import Dispositivo
-from .models import Comunidad, EstadoInstalacion, Instalacion, Umbral, OrdenTrabajo, Repuesto, RepuestoOrdenTrabajo
+from .models import Comunidad, EstadoInstalacion, Instalacion, Umbral, OrdenTrabajo, Repuesto, RepuestoOrdenTrabajo, SolicitudVinculacion
+
+
+class SolicitudVinculacionSerializer(serializers.ModelSerializer):
+    solicitante_nombre = serializers.SerializerMethodField()
+    solicitante_email = serializers.EmailField(source="solicitante.email", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+
+    class Meta:
+        model = SolicitudVinculacion
+        fields = [
+            "id_solicitud", "solicitante", "solicitante_nombre", "solicitante_email",
+            "tipo", "nombre", "municipio", "sector", "direccion", "barrio",
+            "referencia", "latitud", "longitud", "capacidad", "fecha_instalacion",
+            "descripcion", "estado", "estado_display", "nota_revision", "revisada_por",
+            "revisada_en", "comunidad", "instalacion", "creada_en", "actualizada_en",
+        ]
+        read_only_fields = [
+            "id_solicitud", "solicitante", "estado", "estado_display", "nota_revision",
+            "revisada_por", "revisada_en", "comunidad", "instalacion", "creada_en", "actualizada_en",
+        ]
+
+    def get_solicitante_nombre(self, obj):
+        return " ".join(part for part in (obj.solicitante.first_name, obj.solicitante.last_name) if part).strip() or obj.solicitante.username
+
+    def validate(self, attrs):
+        kind = attrs.get("tipo", getattr(self.instance, "tipo", None))
+        address = attrs.get("direccion", getattr(self.instance, "direccion", ""))
+        neighborhood = attrs.get("barrio", getattr(self.instance, "barrio", ""))
+        latitude = attrs.get("latitud", getattr(self.instance, "latitud", None))
+        longitude = attrs.get("longitud", getattr(self.instance, "longitud", None))
+        capacity = attrs.get("capacidad", getattr(self.instance, "capacidad", None))
+        errors = {}
+        if latitude is not None and not -90 <= latitude <= 90:
+            errors["latitud"] = "La latitud debe estar entre -90 y 90."
+        if longitude is not None and not -180 <= longitude <= 180:
+            errors["longitud"] = "La longitud debe estar entre -180 y 180."
+        if capacity is not None and capacity <= 0:
+            errors["capacidad"] = "La capacidad debe ser mayor que cero."
+        if kind == SolicitudVinculacion.Tipo.RESIDENCIAL:
+            if not str(address or "").strip():
+                errors["direccion"] = "Escribe la dirección de la vivienda."
+            if not str(neighborhood or "").strip():
+                errors["barrio"] = "Escribe el barrio o sector residencial."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
 class ComunidadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comunidad
