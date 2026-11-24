@@ -4,9 +4,9 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El commit remoto más reciente es `52a0f78` (`Add login workspace selection`). Render ya sirve ese bundle. La pantalla de selección está en `/login`; una sesión abierta en `/usuarios` seguirá mostrando administración.
+El último commit remoto es `faf0fa9` (`Add solar service registration workflow`); Render aplicó `core.0020` en la rama aislada de Neon. Un smoke test creó una cuenta y una solicitud ficticias en esa base. La pestaña `/usuarios` seguirá mostrando administración; la elección de espacio está en `/login`.
 
-El siguiente incremento de backend está en el árbol local: registro sin roles privilegiados y solicitudes de vinculación con revisión. Su migración nueva (`core.0020`) todavía no se ha subido. El contenedor aplica migraciones al arrancar, así que no publicaré esa migración hasta verificar que el preview use una rama aislada de Neon.
+El frontend de registro, solicitud con mapa y revisión administrativa está en el árbol local, aún sin commit. Su build de producción pasa. Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación.
 
 ## Rama y prueba
 
@@ -51,13 +51,21 @@ Commit: `b8eac53` — `Add Android-installable PWA foundation`.
 - La pantalla usa las credenciales y el endpoint de sesión existentes; todavía no crea cuentas ni solicitudes de servicio.
 - Las rutas personales se determinan con los roles y permisos de la sesión, sin esperar la carga del menú.
 
-### 5. Backend para registro y solicitudes (en curso, local)
+### 5. Backend para registro y solicitudes
 
 - `POST /api/security/register/` crea cuentas activas sin roles de negocio ni privilegios y limita intentos anónimos.
 - `GET/POST /api/security/solicitudes-vinculacion/` permite a una persona autenticada registrar un hogar o proyecto comunitario con mapa, capacidad, fecha y datos de ubicación.
 - Las solicitudes solo las ve su solicitante; administración y superadministradores pueden revisar todas.
 - El endpoint `POST .../{id}/revisar/` exige rol administrador o superadministrador. La aprobación crea la comunidad e instalación cuando es un nuevo sitio; permite vincular un líder a una comunidad existente sin duplicarla. Asigna Líder Comunitario o Propietario Solar en una transacción. El rechazo requiere motivo y deja volver a presentar una nueva solicitud.
-- La migración `core.0020_solicitudvinculacion` requiere despliegue contra una base aislada. No se ha enviado a Render.
+- La migración `core.0020_solicitudvinculacion` fue aplicada al preview conectado a la rama aislada de Neon; no se ha aplicado a producción.
+- Datos ficticios creados para el smoke test: `codex.preview.test.20261123` y la solicitud “Prueba solar automática faf0fa9”. Se reconocen como prueba y están solo en la rama Neon aislada.
+
+### 6. Alta y revisión desde la interfaz (en curso, árbol local)
+
+- Portada y login enlazan a la creación de cuenta. Después de iniciar sesión, las cuentas sin rol ven un onboarding para solicitar un hogar o comunidad.
+- Formulario de solicitud con selección de tipo, capacidad, fecha y mapa; permite consultar el estado y volver a enviar solicitudes que requieren corrección.
+- Administración tiene una vista para revisar solicitudes, ver la ubicación, aprobar o pedir correcciones y asociar líderes a una comunidad existente.
+- No cambia roles o datos hasta que un administrador aprueba la solicitud.
 
 Verificación del incremento anterior (técnico/PWA):
 
@@ -77,12 +85,19 @@ Verificación local del backend de solicitudes:
 
 - `python manage.py test`: 22 pruebas correctas en SQLite temporal; incluye registro, privacidad y revisión residencial/comunitaria.
 - `makemigrations --check --dry-run` y `manage.py check`: correctos.
-- `git diff --check`: correcto. Falta confirmar `DATABASE_URL` aislada de Neon antes de publicar `core.0020`.
+- `git diff --check`: correcto.
+- Smoke test sobre Render y Neon aislado: registro `201`, login correcto, solicitud `pendiente` creada y visible para el dueño. La prueba dejó los datos ficticios anotados arriba.
+
+Verificación local de la interfaz de solicitudes:
+
+- `pnpm run build`: correcto.
+- `pnpm run lint`: termina con advertencias preexistentes; sin errores nuevos de esta interfaz.
+- `git diff --check`: correcto. Aún falta commit, push y probar el bundle nuevo en Render.
 
 ## Pendiente para terminar el frontend
 
-1. **Registro y aprobación de instalaciones:** formularios para propietario solar y líder comunitario con mapa, datos necesarios, revisión administrativa, estados de solicitud y aprobación antes de crear la instalación/comunidad definitiva.
-2. **Separación de espacios:** selector visible para “Mi espacio” y “Administración” en el acceso; permitir que una misma persona tenga roles operativos y administrativos sin que el panel administrativo bloquee sus funciones de propietario. Revisar el alcance de datos del backend antes de asumir que ocultar navegación protege datos.
+1. **Registro y aprobación de instalaciones:** terminar la prueba en preview y ajustar después de la revisión de Jhon. El backend está listo; la interfaz está en curso.
+2. **Separación de espacios:** el selector de acceso está implementado; revisar que la experiencia combinada de roles sea natural y conservar permisos RBAC del backend.
 3. **Experiencias por rol:** terminar tarjetas y vistas gráficas de propietario, líder comunitario y técnico; mapas y alertas solo dentro del ámbito del rol; mostrar órdenes, visita y técnico asignado donde corresponda.
 4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
 5. **Notificaciones:** bandeja con leído/no leído y enlaces a alertas/órdenes; después implementar suscripción web push real (VAPID, almacenamiento de suscripciones, permisos, bajas y envío desde backend).
@@ -92,8 +107,8 @@ Verificación local del backend de solicitudes:
 
 ## Cuidado con Neon y Render
 
-No hay migraciones nuevas en los dos incrementos descritos. Los previews de servicio de Render copian las variables del servicio base al crearse, incluida la conexión de base de datos. Antes de ejecutar migraciones, seed o escrituras desde un preview, asignar `DATABASE_URL` a una rama de prueba aislada de Neon y confirmar que el servicio de preview la usa. No imprimir ni pegar credenciales en el chat o en commits.
+El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los previews de Render pueden copiar variables del servicio base al crearse; antes de cualquier migración futura, confirmar de nuevo que `DATABASE_URL` sigue apuntando a la rama de prueba. No imprimir ni pegar credenciales en el chat o en commits.
 
 ## Instrucción para continuar en otro chat
 
-> Continúa Ka’illisto en `C:\Users\Jhon\Documents\ChatGPT\Kaillisto`, rama `frontend`; lee `FRONTEND_HANDOFF.md` y revisa `git status`/`git log`. El PR de prueba es https://github.com/JhonFMin/Kaillisto/pull/3 y el preview actual es https://kaillisto-pr-3.onrender.com. No fusiones a `main`. Sigue con registro de propietario/líder comunitario y revisión/aprobación administrativa, validando primero los modelos y APIs existentes. Cada avance grande debe tener pruebas, commit, push y prueba en el preview. Antes de cualquier migración o escritura, apunta el preview a una rama de prueba Neon, nunca a la base productiva. Al cerrar cada avance, actualiza esta nota con lo terminado y lo pendiente.
+> Continúa Ka’illisto en `C:\Users\Jhon\Documents\ChatGPT\Kaillisto`, rama `frontend`; lee `FRONTEND_HANDOFF.md` y revisa `git status`/`git log`. PR https://github.com/JhonFMin/Kaillisto/pull/3; preview https://kaillisto-pr-3.onrender.com. No fusiones a `main`. El backend de solicitudes está en el commit `faf0fa9`, ya probado con la rama Neon aislada. El formulario web y el panel de revisión están en curso en el árbol local; build y lint ya se ejecutaron. Jhon pidió aviso antes de cambiar frontend, así que avísale antes del próximo incremento de interfaz. Termina pruebas, commit, push y verificación del preview; actualiza esta nota y conserva el modo oscuro/violeta, Inter y tarjetas visuales.

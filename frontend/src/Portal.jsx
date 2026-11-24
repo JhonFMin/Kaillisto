@@ -9,7 +9,6 @@ import {
   Routes,
   useLocation,
   useNavigate,
-  useParams,
 } from "react-router-dom";
 import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { MoonIcon as Moon } from "@phosphor-icons/react/dist/csr/Moon";
@@ -365,6 +364,9 @@ function Landing() {
             <Link className="button primary" to="/login">
               Entrar a la plataforma <ArrowRight size={16} />
             </Link>
+            <Link className="button enrollment-link" to="/registro">
+              Solicitar servicio solar <ArrowUpRight size={15} />
+            </Link>
             <InstallAppButton />
           </div>
           <a className="text-link" href="#plataforma">
@@ -595,13 +597,264 @@ function Login({ onLogin, user, destination }) {
             </button>
           </form>
           <p className="caption">
-            ¿Necesitas una cuenta? Contacta al administrador.
+            ¿Primera vez aquí? <Link to="/registro">Crea tu cuenta</Link> para solicitar la vinculación de tu hogar o comunidad.
           </p>
         </div>
       </main>
     </div>
   );
 }
+
+function AccountRegistration() {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState("");
+  return (
+    <div className="login-layout signup-layout">
+      <div className="login-story">
+        <Brand />
+        <div>
+          <span className="eyebrow">EMPIEZA CON KA’ILLISTO</span>
+          <h1>
+            Tu energía.
+            <br />
+            <span>Tu espacio.</span>
+          </h1>
+          <p>Crea tu cuenta para solicitar la vinculación de una vivienda solar o una comunidad.</p>
+        </div>
+        <span className="muted">Ka’illisto / Hogares y comunidades</span>
+      </div>
+      <main className="login-form">
+        <div className="login-card signup-card">
+          <Link className="back" to="/">← Volver al inicio</Link>
+          {created ? <>
+            <span className="tag">CUENTA CREADA</span>
+            <h2>Ya puedes continuar.</h2>
+            <p className="signup-success">Tu cuenta <strong>{created}</strong> está lista. Inicia sesión y envía la información del lugar para que administración la revise.</p>
+            <Link className="button primary signup-submit" to="/login">Ir a iniciar sesión <ArrowRight size={16} /></Link>
+          </> : <>
+            <span className="tag">REGISTRO PERSONAL</span>
+            <h2>Crea tu cuenta.</h2>
+            <p>Solo tomará unos minutos. No asignaremos acceso operativo hasta que se apruebe tu solicitud.</p>
+            <form onSubmit={async (event) => {
+              event.preventDefault(); setBusy(true); setError("");
+              const values = Object.fromEntries(new FormData(event.currentTarget));
+              if (values.password !== values.password_confirmation) {
+                setError("Las contraseñas no coinciden."); setBusy(false); return;
+              }
+              delete values.password_confirmation;
+              try {
+                const { data } = await api.post("/security/register/", values);
+                setCreated(data.username);
+              } catch (e) { setError(errorText(e)); }
+              finally { setBusy(false); }
+            }}>
+              <div className="signup-fields">
+                <label>Nombre<input name="first_name" autoComplete="given-name" required maxLength={150} /></label>
+                <label>Apellido<input name="last_name" autoComplete="family-name" required maxLength={150} /></label>
+                <label>Nombre de usuario<input name="username" autoComplete="username" required maxLength={150} /></label>
+                <label>Correo electrónico<input name="email" type="email" autoComplete="email" required maxLength={150} /></label>
+                <label>Teléfono <small>(opcional)</small><input name="telefono" type="tel" autoComplete="tel" maxLength={30} /></label>
+                <label>Documento <small>(opcional)</small><input name="documento" autoComplete="off" maxLength={30} /></label>
+                <label>Contraseña<input name="password" type="password" autoComplete="new-password" minLength={8} required /></label>
+                <label>Confirma la contraseña<input name="password_confirmation" type="password" autoComplete="new-password" minLength={8} required /></label>
+              </div>
+              {error && <p role="alert" className="notice">{error}</p>}
+              <button className="primary signup-submit" disabled={busy}>{busy ? "Creando cuenta…" : "Crear cuenta y continuar"}<ArrowRight size={16} /></button>
+            </form>
+            <p className="caption">¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>.</p>
+          </>}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const emptyLinkRequest = {
+  tipo: "residencial", nombre: "", municipio: "", sector: "", direccion: "", barrio: "",
+  referencia: "", latitud: "", longitud: "", capacidad: "", fecha_instalacion: "", descripcion: "",
+};
+
+function ServiceRequestPortal({ user }) {
+  const [requests, setRequests] = useState([]);
+  const [form, setForm] = useState(emptyLinkRequest);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api.get("/security/solicitudes-vinculacion/")
+      .then(({ data }) => { if (active) setRequests(data); })
+      .catch((e) => { if (active) setError(errorText(e)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const pending = requests.find((item) => item.estado === "pendiente");
+  const latest = requests[0];
+  const canRequest = !pending;
+  const statusIcon = latest?.estado === "aprobada" ? <Shield size={18} /> : <MapPin size={18} />;
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async (event) => {
+    event.preventDefault(); setBusy(true); setError(""); setSent(false);
+    if (!form.latitud || !form.longitud) {
+      setError("Marca el lugar en el mapa o escribe las dos coordenadas."); setBusy(false); return;
+    }
+    const payload = { ...form };
+    delete payload.ubicacion;
+    try {
+      const { data } = await api.post("/security/solicitudes-vinculacion/", payload);
+      setRequests((current) => [data, ...current]); setForm(emptyLinkRequest); setSent(true);
+    } catch (e) { setError(errorText(e)); }
+    finally { setBusy(false); }
+  };
+
+  return <>
+    <div className="page-heading">
+      <div><span className="eyebrow">VINCULA TU LUGAR</span><h1>Solicita el servicio solar.</h1><p>Cuéntanos dónde está el sistema. Administración revisará los datos antes de vincularlo.</p></div>
+      <span className="tag">{user.username}</span>
+    </div>
+    {error && <p role="alert" className="notice">{error}</p>}
+    {sent && <p role="status" className="notice">Solicitud enviada. Puedes ver su estado aquí; administración revisará la ubicación y los datos.</p>}
+    {loading ? <p className="empty">Cargando tus solicitudes…</p> : <>
+      {requests.length > 0 && <section className="application-history">
+        <div className="section-intro"><h2>Estado de tu solicitud</h2><span className="muted">{requests.length} {requests.length === 1 ? "registro" : "registros"}</span></div>
+        {requests.map((item) => <article className={`application-status-card status-${item.estado}`} key={item.id_solicitud}>
+          {statusIcon}
+          <div><strong>{item.nombre}</strong><p>{item.tipo === "residencial" ? "Vivienda solar" : "Proyecto comunitario"} · {item.municipio} · {item.estado_display}</p>
+            {item.nota_revision && <small>Nota de administración: {item.nota_revision}</small>}
+            <small>Enviada {item.creada_en ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(item.creada_en)) : "recientemente"}</small>
+          </div>
+          {item.latitud && item.longitud && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.latitud},${item.longitud}`)}`} target="_blank" rel="noreferrer">Ver punto ↗</a>}
+        </article>)}
+      </section>}
+      {canRequest ? <section className="service-request-panel">
+        <div className="section-intro"><div><span className="eyebrow">NUEVO REGISTRO</span><h2>{latest?.estado === "rechazada" ? "Corrige los datos y vuelve a enviar." : "¿Qué lugar quieres vincular?"}</h2></div><span className="muted">Paso 1 de 1</span></div>
+        {latest?.estado === "rechazada" && <p className="application-retry">Tu solicitud anterior necesita ajustes. Usa la nota de revisión de arriba como guía.</p>}
+        <form className="service-request-form" onSubmit={submit}>
+          <fieldset className="request-type-picker"><legend>Tipo de lugar</legend>
+            <label className={form.tipo === "residencial" ? "selected" : ""}><input type="radio" name="tipo" value="residencial" checked={form.tipo === "residencial"} onChange={() => update("tipo", "residencial")} /><Sun size={20} /><span><strong>Vivienda solar</strong><small>Una casa con paneles solares</small></span></label>
+            <label className={form.tipo === "comunitaria" ? "selected" : ""}><input type="radio" name="tipo" value="comunitaria" checked={form.tipo === "comunitaria"} onChange={() => update("tipo", "comunitaria")} /><Users size={20} /><span><strong>Proyecto comunitario</strong><small>Un sistema para varias familias</small></span></label>
+          </fieldset>
+          <div className="request-fields">
+            <label>{form.tipo === "residencial" ? "Nombre para identificar la vivienda" : "Nombre de la comunidad o proyecto"}<input value={form.nombre} required maxLength={150} onChange={(e) => update("nombre", e.target.value)} /></label>
+            <label>Municipio<input value={form.municipio} required maxLength={120} onChange={(e) => update("municipio", e.target.value)} /></label>
+            {form.tipo === "residencial" ? <>
+              <label>Dirección<input value={form.direccion} required maxLength={255} onChange={(e) => update("direccion", e.target.value)} /></label>
+              <label>Barrio o vereda<input value={form.barrio} required maxLength={120} onChange={(e) => update("barrio", e.target.value)} /></label>
+            </> : <>
+              <label>Vereda, barrio o sector<input value={form.sector} required maxLength={160} onChange={(e) => update("sector", e.target.value)} /></label>
+              <label>Referencia cercana<input value={form.referencia} maxLength={255} onChange={(e) => update("referencia", e.target.value)} /></label>
+            </>}
+            <label>Capacidad aproximada (kW)<input type="number" min="0.01" step="0.01" value={form.capacidad} required onChange={(e) => update("capacidad", e.target.value)} /></label>
+            <label>Fecha de instalación<input type="date" value={form.fecha_instalacion} required onChange={(e) => update("fecha_instalacion", e.target.value)} /></label>
+          </div>
+          <LocationPicker kind={form.tipo === "comunitaria" ? "comunidades" : "instalaciones"} latitude={form.latitud} longitude={form.longitud} address={[form.direccion, form.barrio, form.sector, form.municipio].filter(Boolean).join(", ")} onChange={(point) => setForm((current) => ({ ...current, ...point }))} />
+          <label className="request-description">Información útil para la revisión <small>(opcional)</small><textarea rows={3} value={form.descripcion} maxLength={2000} onChange={(e) => update("descripcion", e.target.value)} placeholder="Por ejemplo: cantidad de viviendas beneficiadas o detalles de acceso al lugar." /></label>
+          <div className="request-consent"><MapPin size={18} /><p>La ubicación solo se comparte con el equipo de Ka’illisto para revisar esta solicitud y atender el sistema.</p></div>
+          <button className="primary" disabled={busy}>{busy ? "Enviando solicitud…" : "Enviar para revisión"}<ArrowRight size={16} /></button>
+        </form>
+      </section> : pending && <p className="application-waiting">Tu solicitud está en revisión. Te avisaremos cuando cambie el estado.</p>}
+    </>}
+  </>;
+}
+
+function ServiceRequestReview() {
+  const [requests, setRequests] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [filter, setFilter] = useState("pendiente");
+  const [communityTargets, setCommunityTargets] = useState({});
+  const [notes, setNotes] = useState({});
+  const [busyId, setBusyId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const refresh = async () => {
+    setError("");
+    const [requestResult, communityResult] = await Promise.allSettled([
+      api.get("/security/solicitudes-vinculacion/"),
+      api.get("/security/portal/comunidades/"),
+    ]);
+    if (requestResult.status === "fulfilled") setRequests(requestResult.value.data);
+    else setError(errorText(requestResult.reason));
+    if (communityResult.status === "fulfilled") setCommunities(communityResult.value.data);
+    setLoading(false);
+  };
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled([
+      api.get("/security/solicitudes-vinculacion/"),
+      api.get("/security/portal/comunidades/"),
+    ]).then(([requestResult, communityResult]) => {
+      if (!active) return;
+      if (requestResult.status === "fulfilled") setRequests(requestResult.value.data);
+      else setError(errorText(requestResult.reason));
+      if (communityResult.status === "fulfilled") setCommunities(communityResult.value.data);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+  const counts = {
+    pendiente: requests.filter((item) => item.estado === "pendiente").length,
+    aprobada: requests.filter((item) => item.estado === "aprobada").length,
+    rechazada: requests.filter((item) => item.estado === "rechazada").length,
+  };
+  const visibleRequests = filter === "todas" ? requests : requests.filter((item) => item.estado === filter);
+  const review = async (item, decision) => {
+    const note = (notes[item.id_solicitud] || "").trim();
+    if (decision === "rechazar" && !note) {
+      setError("Escribe una nota breve para que la persona sepa qué corregir."); return;
+    }
+    const payload = { decision, nota_revision: note };
+    if (decision === "aprobar" && item.tipo === "comunitaria" && communityTargets[item.id_solicitud]) {
+      payload.comunidad_id = Number(communityTargets[item.id_solicitud]);
+    }
+    setBusyId(item.id_solicitud); setError(""); setNotice("");
+    try {
+      const { data } = await api.post(`/security/solicitudes-vinculacion/${item.id_solicitud}/revisar/`, payload);
+      setRequests((current) => current.map((request) => request.id_solicitud === data.id_solicitud ? data : request));
+      setNotice(decision === "aprobar" ? "Solicitud aprobada y vinculada correctamente." : "Solicitud devuelta con la nota de revisión.");
+    } catch (e) { setError(errorText(e)); }
+    finally { setBusyId(null); }
+  };
+  return <>
+    <div className="page-heading"><div><span className="eyebrow">GESTIÓN DE INGRESOS</span><h1>Revisa nuevos lugares.</h1><p>Comprueba la ubicación y los datos antes de vincular un hogar o comunidad.</p></div><button type="button" onClick={() => { setLoading(true); refresh(); }} disabled={loading}>Actualizar</button></div>
+    {error && <p role="alert" className="notice">{error}</p>}
+    {notice && <p role="status" className="notice">{notice}</p>}
+    <div className="stat-grid application-review-stats">
+      {[['Por revisar', counts.pendiente], ['Aprobadas', counts.aprobada], ['Requieren ajustes', counts.rechazada]].map(([label, value]) => <article key={label}><ClipboardText size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong></article>)}
+    </div>
+    <div className="tabs application-review-tabs">
+      {[['pendiente', 'Pendientes'], ['todas', 'Todas'], ['aprobada', 'Aprobadas'], ['rechazada', 'Requieren ajustes']].map(([value, label]) => <button className={filter === value ? "active" : ""} key={value} onClick={() => setFilter(value)}>{label}</button>)}
+    </div>
+    {loading ? <p className="empty">Cargando solicitudes…</p> : visibleRequests.length ? <div className="review-request-grid">
+      {visibleRequests.map((item) => <article className="review-request-card" key={item.id_solicitud}>
+        <header><div><span className="eyebrow">{item.tipo === "residencial" ? "VIVIENDA SOLAR" : "PROYECTO COMUNITARIO"} · #{item.id_solicitud}</span><h2>{item.nombre}</h2><p>{item.solicitante_nombre} · {item.solicitante_email}</p></div><span className="tag">{item.estado_display}</span></header>
+        <div className="review-request-facts">
+          <div><small>Municipio</small><strong>{item.municipio}</strong></div>
+          <div><small>Sector</small><strong>{item.tipo === "residencial" ? item.barrio : item.sector || "Sin indicar"}</strong></div>
+          {item.tipo === "residencial" && <div><small>Dirección</small><strong>{item.direccion}</strong></div>}
+          <div><small>Capacidad</small><strong>{item.capacidad} kW</strong></div>
+          <div><small>Instalación</small><strong>{item.fecha_instalacion}</strong></div>
+          <div><small>Enviada</small><strong>{item.creada_en ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(item.creada_en)) : "—"}</strong></div>
+        </div>
+        {item.referencia && <p>Referencia: {item.referencia}</p>}
+        {item.descripcion && <p>{item.descripcion}</p>}
+        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.latitud},${item.longitud}`)}`} target="_blank" rel="noreferrer">Ver ubicación exacta en el mapa ↗</a>
+        {item.estado === "pendiente" ? <>
+          {item.tipo === "comunitaria" && <label>Al aprobar<select value={communityTargets[item.id_solicitud] || ""} onChange={(event) => setCommunityTargets((current) => ({ ...current, [item.id_solicitud]: event.target.value }))}>
+            <option value="">Crear comunidad y sistema nuevos</option>
+            {communities.map((community) => <option value={community.id_comunidad} key={community.id_comunidad}>Vincular a {community.nombre} (sin duplicar el sistema)</option>)}
+          </select></label>}
+          <label>Nota para el solicitante<textarea className="review-note" rows={2} value={notes[item.id_solicitud] || ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id_solicitud]: event.target.value }))} placeholder="Si devuelves la solicitud, explica qué debe corregir." /></label>
+          <div className="review-request-actions"><button className="approve" type="button" disabled={busyId === item.id_solicitud} onClick={() => review(item, "aprobar")}>{busyId === item.id_solicitud ? "Guardando…" : "Aprobar y vincular"}</button><button className="reject" type="button" disabled={busyId === item.id_solicitud} onClick={() => review(item, "rechazar")}>Solicitar corrección</button></div>
+        </> : item.nota_revision && <p className="application-retry">Nota de revisión: {item.nota_revision}</p>}
+      </article>)}
+    </div> : <div className="empty-state"><ClipboardText size={30} /><h2>No hay solicitudes en esta vista.</h2><p>Los nuevos registros aparecerán aquí para que administración pueda revisarlos.</p></div>}
+  </>;
+}
+
 function Editor({ kind, row, schema, onClose, onSave, user }) {
   const [data, setData] = useState(() => {
     const d = {};
@@ -1154,6 +1407,15 @@ function Dashboard({ user }) {
       .then((r) => setStats(r.data))
       .catch((e) => setError(errorText(e)));
   }, []);
+  if (!user.is_superuser && !user.admin && !user.full_resource_access && !user.roles.length) {
+    return <section className="onboarding-panel">
+      <div className="onboarding-art" aria-hidden="true"><Sun size={52} weight="duotone" /><span /><span /><span /></div>
+      <div className="onboarding-copy"><span className="eyebrow">BIENVENIDO A KA’ILLISTO</span><h1>Tu hogar también puede ser parte.</h1><p>Registra una vivienda solar o un proyecto comunitario. Revisaremos el lugar y te avisaremos antes de vincularlo.</p>
+        <div className="onboarding-steps"><span><b>01</b> Comparte el lugar</span><span><b>02</b> Administración lo revisa</span><span><b>03</b> Consulta tu espacio solar</span></div>
+        <Link className="button primary" to="/solicitud-vinculacion">Solicitar vinculación <ArrowRight size={16} /></Link>
+      </div>
+    </section>;
+  }
   return (
     <>
       <div className="page-heading">
@@ -1236,6 +1498,11 @@ function Dashboard({ user }) {
           );
         })}
       </div>
+      <section className="service-request-promo">
+        <MapPin size={22} />
+        <div><strong>¿Tienes otro hogar o comunidad solar?</strong><p>Vincúlalo a tu cuenta y consulta sus novedades desde Ka’illisto.</p></div>
+        <Link className="button" to="/solicitud-vinculacion">Solicitar vinculación <ArrowRight size={15} /></Link>
+      </section>
       <section className="territory dashboard-territory">
         <Sun size={36} weight="duotone" />
         <div>
@@ -1599,6 +1866,9 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   if (user.roles.includes("Propietario Solar") && user.permisos.includes("view_instalacion")) {
     addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
   }
+  if (user.is_superuser || user.admin) {
+    addWorkflow("/solicitudes-revision", "Solicitudes de ingreso", ClipboardText, "service-request-review", "Solicitudes de vinculación", false);
+  }
   const staticLinks = [...baseLinks, ...workflowLinks, ["/perfil", "Mi perfil", UserCircle]];
   const seenPaths = new Set();
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
@@ -1736,6 +2006,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                       <HomeownerOverview user={user} />
                     ) : kind === "technician-cases" ? (
                       <TechnicianCases user={user} />
+                    ) : kind === "service-request-review" ? (
+                      <ServiceRequestReview />
                     ) : (
                       <Records
                         key={kind}
@@ -1756,6 +2028,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
             <Route path="/perfil" element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
+            <Route path="/solicitud-vinculacion" element={<ServiceRequestPortal user={user} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -1900,7 +2173,7 @@ function Shell() {
     return r.data;
   }, []);
   useEffect(() => {
-    if (loc.pathname === "/" || loc.pathname === "/login") {
+    if (["/", "/login", "/registro"].includes(loc.pathname)) {
       setLoading(false);
       return;
     }
@@ -1916,7 +2189,7 @@ function Shell() {
   useEffect(() => {
     // Las páginas públicas no consultan sesión ni reaccionan a eventos de
     // foco/otras pestañas. La sincronización solo existe dentro del portal.
-    if (!user || loc.pathname === "/" || loc.pathname === "/login") return;
+    if (!user || ["/", "/login", "/registro"].includes(loc.pathname)) return;
 
     const update = () => refresh().catch(() => setUser(null));
     const onStorage = (event) => {
@@ -1959,6 +2232,8 @@ function Shell() {
             navigate(target);
           }}
         />
+      ) : loc.pathname === "/registro" ? (
+        <AccountRegistration />
       ) : user ? (
         <Workspace
           user={user}
