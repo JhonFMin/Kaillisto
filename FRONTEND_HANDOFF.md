@@ -4,9 +4,9 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El último commit remoto es `faf0fa9` (`Add solar service registration workflow`); Render aplicó `core.0020` en la rama aislada de Neon. Un smoke test creó una cuenta y una solicitud ficticias en esa base. La pestaña `/usuarios` seguirá mostrando administración; la elección de espacio está en `/login`.
+El último commit remoto es `2d4da31` (`Build solar service signup and review UI`), publicado en `frontend` y servido por el preview de Render. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Ya están desplegados el registro, el formulario de solicitud con mapa y la bandeja de revisión administrativa. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
-El frontend de registro, solicitud con mapa y revisión administrativa está en el árbol local, aún sin commit. Su build de producción pasa. Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación.
+Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
 
 ## Rama y prueba
 
@@ -60,7 +60,7 @@ Commit: `b8eac53` — `Add Android-installable PWA foundation`.
 - La migración `core.0020_solicitudvinculacion` fue aplicada al preview conectado a la rama aislada de Neon; no se ha aplicado a producción.
 - Datos ficticios creados para el smoke test: `codex.preview.test.20261123` y la solicitud “Prueba solar automática faf0fa9”. Se reconocen como prueba y están solo en la rama Neon aislada.
 
-### 6. Alta y revisión desde la interfaz (en curso, árbol local)
+### 6. Alta y revisión desde la interfaz (desplegado)
 
 - Portada y login enlazan a la creación de cuenta. Después de iniciar sesión, las cuentas sin rol ven un onboarding para solicitar un hogar o comunidad.
 - Formulario de solicitud con selección de tipo, capacidad, fecha y mapa; permite consultar el estado y volver a enviar solicitudes que requieren corrección.
@@ -72,7 +72,7 @@ Verificación del incremento anterior (técnico/PWA):
 - Build de producción de Vite: correcto.
 - `security.test_portal.PortalAccessTests`: 8 pruebas correctas en SQLite temporal.
 - `git diff --check`: correcto.
-- El preview anterior respondió 200 para portada, manifiesto, service worker, offline y los dos iconos. Falta volver a verificar el preview después del último push.
+- El preview respondió 200 para portada, manifiesto, service worker, offline y los dos iconos.
 
 Verificación local del selector de espacio:
 
@@ -88,15 +88,18 @@ Verificación local del backend de solicitudes:
 - `git diff --check`: correcto.
 - Smoke test sobre Render y Neon aislado: registro `201`, login correcto, solicitud `pendiente` creada y visible para el dueño. La prueba dejó los datos ficticios anotados arriba.
 
-Verificación local de la interfaz de solicitudes:
+Verificación de publicación de la interfaz de solicitudes:
 
 - `pnpm run build`: correcto.
 - `pnpm run lint`: termina con advertencias preexistentes; sin errores nuevos de esta interfaz.
-- `git diff --check`: correcto. Aún falta commit, push y probar el bundle nuevo en Render.
+- `git diff --check`: correcto antes del commit.
+- `git status`: rama `frontend` sincronizada con `origin/frontend` tras el commit `2d4da31`.
+- En Render, `/login`, `/registro`, `/solicitud-vinculacion` y `/solicitudes-revision` devolvieron HTTP 200. El JS (`index-DgdlyH7A.js`) y CSS (`index-DTjXMsjM.css`) nuevos también devolvieron 200; el bundle incluye las pantallas de registro, solicitud y revisión.
+- El smoke test API del backend creó una cuenta ficticia y una solicitud pendiente en Neon aislado. La prueba visual e interactiva desde navegador queda para Jhon.
 
 ## Pendiente para terminar el frontend
 
-1. **Registro y aprobación de instalaciones:** terminar la prueba en preview y ajustar después de la revisión de Jhon. El backend está listo; la interfaz está en curso.
+1. **Registro y aprobación de instalaciones:** Jhon debe recorrer registro, solicitud y revisión en el preview; corregir cualquier problema que encuentre.
 2. **Separación de espacios:** el selector de acceso está implementado; revisar que la experiencia combinada de roles sea natural y conservar permisos RBAC del backend.
 3. **Experiencias por rol:** terminar tarjetas y vistas gráficas de propietario, líder comunitario y técnico; mapas y alertas solo dentro del ámbito del rol; mostrar órdenes, visita y técnico asignado donde corresponda.
 4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
@@ -111,4 +114,4 @@ El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los p
 
 ## Instrucción para continuar en otro chat
 
-> Continúa Ka’illisto en `C:\Users\Jhon\Documents\ChatGPT\Kaillisto`, rama `frontend`; lee `FRONTEND_HANDOFF.md` y revisa `git status`/`git log`. PR https://github.com/JhonFMin/Kaillisto/pull/3; preview https://kaillisto-pr-3.onrender.com. No fusiones a `main`. El backend de solicitudes está en el commit `faf0fa9`, ya probado con la rama Neon aislada. El formulario web y el panel de revisión están en curso en el árbol local; build y lint ya se ejecutaron. Jhon pidió aviso antes de cambiar frontend, así que avísale antes del próximo incremento de interfaz. Termina pruebas, commit, push y verificación del preview; actualiza esta nota y conserva el modo oscuro/violeta, Inter y tarjetas visuales.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Backend de solicitudes (faf0fa9) y frontend de registro, solicitud con mapa y revision administrativa (2d4da31) publicados. La migracion core.0020 esta aplicada a Neon aislado. Build/lint y verificacion HTTP de rutas/assets del preview pasaron; el lint conserva advertencias preexistentes. Jhon debe probar interactivamente el flujo antes del siguiente incremento; avisa antes de cambiar frontend. Conserva el modo oscuro/violeta, Inter y tarjetas visuales.
