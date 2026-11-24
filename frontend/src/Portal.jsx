@@ -34,6 +34,7 @@ import { ClipboardTextIcon as ClipboardText } from "@phosphor-icons/react/dist/c
 import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/UserCircle";
 import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
+import InstallAppButton from "./components/InstallAppButton.jsx";
 import "leaflet/dist/leaflet.css";
 import api from "./api/axios";
 
@@ -360,9 +361,12 @@ function Landing() {
             <br />
             Reúne operación, alertas y mantenimiento en un solo espacio.
           </p>
-          <Link className="button primary" to="/login">
-            Entrar a la plataforma <ArrowRight size={16} />
-          </Link>
+          <div className="hero-actions">
+            <Link className="button primary" to="/login">
+              Entrar a la plataforma <ArrowRight size={16} />
+            </Link>
+            <InstallAppButton />
+          </div>
           <a className="text-link" href="#plataforma">
             Conoce cómo funciona ↓
           </a>

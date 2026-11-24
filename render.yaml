@@ -7,6 +7,8 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/csrf/
+    previews:
+      generation: manual
     envVars:
       - key: DJANGO_SECRET_KEY
         generateValue: true

@@ -2,9 +2,15 @@
   "name": "Ka’illisto · Gestión solar",
   "short_name": "Ka’illisto",
   "description": "Gestión solar para viviendas y proyectos comunitarios.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090d",
   "theme_color": "#09090d",
-  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "/pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }
