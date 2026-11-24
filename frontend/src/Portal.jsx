@@ -505,10 +505,10 @@ function Login({ onLogin, user }) {
         <span className="muted">Ka’illisto / Plataforma de gestión solar</span>
       </div>
       <main className="login-form">
-        <Link className="back" to="/">
-          ← Volver al inicio
-        </Link>
-        <div>
+        <div className="login-card">
+          <Link className="back" to="/">
+            ← Volver al inicio
+          </Link>
           <span className="tag">ACCESO A LA PLATAFORMA</span>
           <h2>Bienvenido de nuevo.</h2>
           <p>Ingresa con tu cuenta para continuar.</p>

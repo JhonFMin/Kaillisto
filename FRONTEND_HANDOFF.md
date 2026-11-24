@@ -2,6 +2,10 @@
 
 Actualizado: 23 de noviembre de 2026
 
+## Pendiente de publicar
+
+El ajuste de armonía visual descrito abajo está aplicado en el árbol de trabajo, pero aún no está en un commit. En esta sesión el entorno montó `.git` como solo lectura y bloqueó la lectura de los paquetes Vite/Oxlint dentro de `node_modules/.pnpm`. Por eso no pude hacer el build de este ajuste ni publicar un commit nuevo en Render. La rama remota continúa en `460caf4` hasta resolver ese bloqueo y volver a probar.
+
 ## Rama y prueba
 
 - Rama de trabajo: `frontend`, creada desde `main`.
@@ -29,6 +33,13 @@ Commit: `b8eac53` — `Add Android-installable PWA foundation`.
 - Cada tarjeta incluye dirección, barrio, comunidad y coordenadas de la instalación, con enlace para abrir la ruta en Google Maps. Las coordenadas son las guardadas en la instalación.
 - Añadidos campos de solo lectura al serializer de órdenes; no requiere migración.
 - Corregido un nombre de modelo ausente usado al cambiar superadministración y ajustadas pruebas antiguas que no reflejaban permisos RBAC, protección del último superadministrador, estados sembrados y el reto del login.
+
+### 3. Armonía visual de portada y acceso
+
+- Unifica la tipografía de la portada, el login y la plataforma en Inter.
+- Reutiliza el fondo oscuro, violeta Ka’illisto (`#af50ff`) y lavanda (`#e1bdff`) del panel administrativo.
+- Actualiza el acceso con tarjeta de contraste, campos enfocados visibles, CTA consistente y mejor ajuste móvil.
+- No cambia el flujo de autenticación ni pretende limitar el alcance de los datos por un selector visual.
 
 Verificación local de este incremento:
 

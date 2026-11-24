@@ -1,11 +1,12 @@
 :root {
-  font-family: "Matter", Inter, "Segoe UI", sans-serif;
-  color: #faf9f6;
-  background: #000;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  color: #f7f9fa;
+  background: #090909;
   font-synthesis: none;
-  --muted: #a0a0a0;
-  --border: #333;
-  --accent: #cbb0f7;
+  --muted: #9a9b9d;
+  --border: rgb(247 249 250 / 15%);
+  --accent: #af50ff;
+  --accent-soft: #e1bdff;
 }
 * {
   box-sizing: border-box;
@@ -1083,6 +1084,7 @@ tr:hover td {
   --border: rgb(247 249 250 / 15%);
   --accent: #af50ff;
   --color-lavender-mist: #e1bdff;
+  --accent-soft: #e1bdff;
 }
 body {
   color: #f7f9fa;
@@ -1170,7 +1172,7 @@ small,
 }
 .hero h1 span,
 .login-story h1 span {
-  color: #a3a3a6;
+  color: var(--accent-soft);
 }
 .feature,
 .stat-grid article,
@@ -1199,7 +1201,9 @@ footer,
 }
 .login-layout {
   background-color: #090909;
-  background-image: radial-gradient(ellipse at 75% 45%, rgb(175 80 255 / 9%), transparent 38%);
+  background-image:
+    radial-gradient(ellipse at 78% 46%, rgb(175 80 255 / 10%), transparent 38%),
+    radial-gradient(ellipse at 4% 100%, rgb(175 80 255 / 5%), transparent 34%);
 }
 .login-story {
   background-image:
@@ -1208,6 +1212,117 @@ footer,
   background-size: cover;
   background-position: center;
   border-color: rgb(247 249 250 / 13%);
+}
+.login-form {
+  align-items: center;
+  background: transparent;
+}
+.login-form > div.login-card {
+  width: min(460px, 100%);
+  max-width: 460px;
+  margin: auto;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid rgb(225 189 255 / 18%);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgb(175 80 255 / 7%), transparent 42%),
+    rgb(12 12 14 / 94%);
+  box-shadow: 0 24px 75px rgb(0 0 0 / 40%);
+  backdrop-filter: blur(16px);
+}
+.login-card .back {
+  display: inline-flex;
+  margin: 0 0 27px;
+  color: #c5b7d2;
+  transition: color 150ms ease;
+}
+.login-card .back:hover { color: var(--accent-soft); }
+.login-card .tag {
+  color: #e1bdff;
+  border-color: rgb(225 189 255 / 24%);
+  background: rgb(175 80 255 / 8%);
+  letter-spacing: .12em;
+}
+.login-card h2 {
+  margin: 20px 0 8px;
+  color: #f7f9fa;
+  font-size: clamp(28px, 4vw, 34px);
+  font-weight: 500;
+  letter-spacing: -.04em;
+}
+.login-card > p { margin: 0; color: #a9a9ad; }
+.login-card form {
+  gap: 17px;
+  margin: 27px 0 18px;
+}
+.login-card label { color: #d1cfd4; font-size: 12px; }
+.login-card input {
+  min-height: 48px;
+  border-color: rgb(247 249 250 / 18%);
+  border-radius: 9px;
+  background: rgb(247 249 250 / 4%);
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+.login-card input:hover { border-color: rgb(225 189 255 / 38%); }
+.login-card input:focus {
+  border-color: #af50ff;
+  background: rgb(175 80 255 / 5%);
+  box-shadow: 0 0 0 3px rgb(175 80 255 / 13%);
+  outline: 0;
+}
+.login-card form > button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 3px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.login-card .caption {
+  margin: 18px 0 0;
+  color: #96969b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.login-card .notice {
+  margin: 0;
+  color: #f3dfff;
+  background: rgb(175 80 255 / 9%);
+  border-color: rgb(175 80 255 / 30%);
+}
+.public-nav .button {
+  min-height: 40px;
+  border-radius: 999px;
+}
+.public-nav nav a,
+.text-link,
+.landing footer > a:last-child { transition: color 150ms ease; }
+.public-nav nav a:hover,
+.text-link:hover,
+.landing footer > a:last-child:hover { color: var(--accent-soft); }
+.feature-image {
+  border-color: rgb(225 189 255 / 14%);
+  border-radius: 15px;
+}
+.feature-grid .feature,
+.three-grid article {
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+.feature-grid .feature:hover { transform: translateY(-3px); }
+.landing .signal { background: var(--accent-soft); box-shadow: 0 0 12px rgb(175 80 255 / 75%); }
+.landing .button.primary { box-shadow: 0 9px 28px rgb(175 80 255 / 22%); }
+@media (max-width: 760px) {
+  .login-layout { gap: 0; }
+  .login-story { min-height: 255px; }
+  .login-form { min-height: calc(100vh - 255px); padding: 24px 18px; }
+  .login-form > div.login-card { padding: 24px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing *, .landing *::before, .landing *::after,
+  .login-layout *, .login-layout *::before, .login-layout *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 .workspace {
   background: #090909;
