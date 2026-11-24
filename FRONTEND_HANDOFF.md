@@ -2,9 +2,9 @@
 
 Actualizado: 23 de noviembre de 2026
 
-## Pendiente de publicar
+## Estado de publicación
 
-El ajuste de armonía visual descrito abajo está aplicado en el árbol de trabajo, pero aún no está en un commit. En esta sesión el entorno montó `.git` como solo lectura y bloqueó la lectura de los paquetes Vite/Oxlint dentro de `node_modules/.pnpm`. Por eso no pude hacer el build de este ajuste ni publicar un commit nuevo en Render. La rama remota continúa en `460caf4` hasta resolver ese bloqueo y volver a probar.
+El commit `8cafaed` (`Polish public portal visual theme`) está publicado en `frontend`. El incremento de elección de espacio está implementado y probado localmente; falta crear su commit y confirmar el despliegue del preview.
 
 ## Rama y prueba
 
@@ -41,12 +41,27 @@ Commit: `b8eac53` — `Add Android-installable PWA foundation`.
 - Actualiza el acceso con tarjeta de contraste, campos enfocados visibles, CTA consistente y mejor ajuste móvil.
 - No cambia el flujo de autenticación ni pretende limitar el alcance de los datos por un selector visual.
 
-Verificación local de este incremento:
+### 4. Elección de espacio al iniciar sesión
+
+- Añade dos opciones visibles: “Mi espacio” y “Administración”. La selección solo decide la pantalla inicial; no altera roles ni permisos.
+- Tras entrar, propietarios solares, líderes y técnicos van a su vista de trabajo; quienes tengan acceso administrativo pueden entrar al resumen de gestión.
+- Si una persona escoge administración sin tener acceso, conserva su sesión y aterriza en su espacio personal o dashboard.
+- La pantalla usa las credenciales y el endpoint de sesión existentes; todavía no crea cuentas ni solicitudes de servicio.
+- Las rutas personales se determinan con los roles y permisos de la sesión, sin esperar la carga del menú.
+
+Verificación del incremento anterior (técnico/PWA):
 
 - Build de producción de Vite: correcto.
 - `security.test_portal.PortalAccessTests`: 8 pruebas correctas en SQLite temporal.
 - `git diff --check`: correcto.
 - El preview anterior respondió 200 para portada, manifiesto, service worker, offline y los dos iconos. Falta volver a verificar el preview después del último push.
+
+Verificación local del selector de espacio:
+
+- `pnpm run build`: correcto.
+- `pnpm run lint`: terminó con advertencias existentes del proyecto; no reportó errores nuevos en el selector.
+- `git diff --check`: correcto.
+- Pendiente: probar visualmente el login y las rutas en el preview de Render.
 
 ## Pendiente para terminar el frontend
 

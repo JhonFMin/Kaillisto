@@ -475,9 +475,22 @@ function Landing() {
     </div>
   );
 }
-function Login({ onLogin, user }) {
+function personalDestination(user) {
+  const permissions = user?.permisos || [];
+  if (user?.roles?.includes("Propietario Solar") && permissions.includes("view_instalacion")) return "/mi-vivienda";
+  if (user?.roles?.includes("Líder Comunitario") && permissions.includes("view_instalacion")) return "/mi-comunidad";
+  if (user?.roles?.includes("Técnico de Campo") && permissions.includes("view_ordentrabajo")) return "/mis-casos";
+  return "/dashboard";
+}
+
+function canUseAdminWorkspace(user) {
+  return Boolean(user?.is_superuser || user?.admin || user?.full_resource_access);
+}
+
+function Login({ onLogin, user, destination }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [space, setSpace] = useState("personal");
   const [challenge, setChallenge] = useState(() => ({
     left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
     right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
@@ -486,7 +499,7 @@ function Login({ onLogin, user }) {
     left: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
     right: crypto.getRandomValues(new Uint8Array(1))[0] % 8 + 2,
   });
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={destination} replace />;
   return (
     <div className="login-layout">
       <div className="login-story">
@@ -511,7 +524,17 @@ function Login({ onLogin, user }) {
           </Link>
           <span className="tag">ACCESO A LA PLATAFORMA</span>
           <h2>Bienvenido de nuevo.</h2>
-          <p>Ingresa con tu cuenta para continuar.</p>
+          <p>Elige dónde quieres continuar. Tu cuenta y permisos siguen siendo los mismos.</p>
+          <div className="login-space-picker" role="group" aria-label="Elige tu espacio">
+            <button type="button" className={space === "personal" ? "selected" : ""} aria-pressed={space === "personal"} onClick={() => setSpace("personal")}>
+              <Sun size={19} weight="duotone" />
+              <span><strong>Mi espacio</strong><small>Hogar, comunidad o trabajo de campo</small></span>
+            </button>
+            <button type="button" className={space === "admin" ? "selected" : ""} aria-pressed={space === "admin"} onClick={() => setSpace("admin")}>
+              <Shield size={19} weight="duotone" />
+              <span><strong>Administración</strong><small>Gestión y operación de la plataforma</small></span>
+            </button>
+          </div>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -524,7 +547,7 @@ function Login({ onLogin, user }) {
                   challenge_left: challenge.left,
                   challenge_right: challenge.right,
                 });
-                await onLogin();
+                await onLogin(space);
               } catch (e) {
                 setError(errorText(e));
                 refreshChallenge();
@@ -1557,7 +1580,6 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
   const dynamicLinks = resourceNav.map((resource) => [
     resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
   ]);
-  const hasResource = (model) => resourceNav.some((resource) => String(resource.model || "").toLowerCase() === model);
   const workflowLinks = [];
   const baseRoutes = {};
   const addWorkflow = (path, label, Icon, kind, title, readonly = true) => {
@@ -1565,16 +1587,16 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     baseRoutes[path] = [kind, title, readonly];
   };
   if (tech) {
-    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
-    if (hasResource("instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
-    if (hasResource("repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
+    if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
+    if (user.permisos.includes("view_instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
+    if (user.permisos.includes("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
   if (user.roles.includes("Líder Comunitario")) {
-    if (hasResource("instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "instalaciones", "Mi comunidad", true);
-    if (hasResource("alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
-    if (hasResource("ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
+    if (user.permisos.includes("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "instalaciones", "Mi comunidad", true);
+    if (user.permisos.includes("view_alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
+    if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
-  if (user.roles.includes("Propietario Solar") && hasResource("instalacion")) {
+  if (user.roles.includes("Propietario Solar") && user.permisos.includes("view_instalacion")) {
     addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
   }
   const staticLinks = [...baseLinks, ...workflowLinks, ["/perfil", "Mi perfil", UserCircle]];
@@ -1868,7 +1890,8 @@ function Catalogs({ user }) {
 function Shell() {
   const [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [loginDestination, setLoginDestination] = useState("/dashboard");
   const loc = useLocation(),
     navigate = useNavigate();
   const refresh = useCallback(async () => {
@@ -1925,9 +1948,15 @@ function Shell() {
       ) : loc.pathname === "/login" ? (
         <Login
           user={user}
-          onLogin={async () => {
-            await refresh();
-            navigate("/dashboard");
+          destination={loginDestination}
+          onLogin={async (space) => {
+            const { data: authenticatedUser } = await api.get("/security/session/");
+            const adminUnavailable = space === "admin" && !canUseAdminWorkspace(authenticatedUser);
+            const target = space === "admin" && !adminUnavailable ? "/dashboard" : personalDestination(authenticatedUser);
+            setError(adminUnavailable ? "Esta cuenta no tiene acceso administrativo. Abrimos tu espacio personal." : "");
+            setLoginDestination(target);
+            setUser(authenticatedUser);
+            navigate(target);
           }}
         />
       ) : user ? (
