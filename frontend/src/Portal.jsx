@@ -481,9 +481,11 @@ function Landing() {
 }
 function personalDestination(user) {
   const permissions = user?.permisos || [];
+  const roles = user?.roles || [];
   if (user?.roles?.includes("Propietario Solar") && permissions.includes("view_instalacion")) return "/mi-vivienda";
   if (user?.roles?.includes("Líder Comunitario") && permissions.includes("view_instalacion")) return "/mi-comunidad";
   if (user?.roles?.includes("Técnico de Campo") && permissions.includes("view_ordentrabajo")) return "/mis-casos";
+  if (canUseAdminWorkspace(user) && !roles.some((role) => ["Propietario Solar", "Líder Comunitario", "Técnico de Campo"].includes(role))) return "/solicitud-vinculacion";
   return "/dashboard";
 }
 
@@ -1931,23 +1933,36 @@ function TechnicianCases({ user }) {
   </>;
 }
 
-function Workspace({ user, onLogout, onProfileUpdated }) {
+function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
+  const adminMode = mode === "admin" && canUseAdminWorkspace(user);
+  const personalMode = !adminMode;
+  const themeKey = adminMode ? "kaillisto-admin-theme" : "kaillisto-personal-theme";
+  const initialTheme = () => localStorage.getItem(themeKey) || (adminMode ? localStorage.getItem("kaillisto-theme") || "dark" : "light");
   const [open, setOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
-  const [theme, setTheme] = useState(() => localStorage.getItem("kaillisto-theme") || "dark");
+  const [themeState, setThemeState] = useState(() => ({ key: themeKey, value: initialTheme() }));
   const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("kaillisto-motion") !== "off");
   const [openGroups, setOpenGroups] = useState(() => new Set(["home", "security", "energy", "operations"]));
   const loc = useLocation();
+  const navigate = useNavigate();
+  const theme = themeState.key === themeKey ? themeState.value : initialTheme();
+  const personalHome = personalDestination(user);
+  const toggleTheme = () => setThemeState((current) => {
+    const nextTheme = (current.key === themeKey ? current.value : theme) === "dark" ? "light" : "dark";
+    localStorage.setItem(themeKey, nextTheme);
+    localStorage.setItem("kaillisto-theme", nextTheme);
+    return { key: themeKey, value: nextTheme };
+  });
   useEffect(() => {
+    if (!adminMode) return undefined;
     let active = true;
     const refresh = () => api.get("/security/navigation/").then(({ data }) => { if (active) setResourceNav(data); }).catch(() => {});
     refresh();
     const onPermissions = () => refresh();
     window.addEventListener("kaillisto:permissions", onPermissions);
     return () => { active = false; window.removeEventListener("kaillisto:permissions", onPermissions); };
-  }, [user.id]);
+  }, [adminMode, user.id]);
   useEffect(() => setOpen(false), [loc.pathname]);
-  useEffect(() => { localStorage.setItem("kaillisto-theme", theme); }, [theme]);
   useEffect(() => { localStorage.setItem("kaillisto-motion", motionEnabled ? "on" : "off"); }, [motionEnabled]);
   useEffect(() => {
     if (!open) return;
@@ -1988,7 +2003,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
         : path === "/mi-alertas" && user.roles.includes("Líder Comunitario")
         ? user.permisos.includes("view_alerta")
         : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
-  const baseLinks = [["/dashboard", user.admin ? "Resumen" : "Mi espacio", LayoutDashboard]];
+  const baseLinks = [[adminMode ? "/dashboard" : personalHome, adminMode ? "Resumen" : "Inicio", LayoutDashboard]];
   const iconForResource = (name) => ({
     "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
     radio: Radio, broadcast: Radio, dispositivo: Radio,
@@ -2000,7 +2015,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     clipboard: ClipboardText,
     layers: Layers, stack: Layers,
   }[String(name || "").toLowerCase()] || Layers);
-  const dynamicLinks = resourceNav.map((resource) => [
+  const dynamicLinks = (adminMode ? resourceNav : []).map((resource) => [
     resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
   ]);
   const workflowLinks = [];
@@ -2009,23 +2024,27 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     workflowLinks.push([path, label, Icon]);
     baseRoutes[path] = [kind, title, readonly];
   };
-  if (tech) {
+  if (personalMode && tech) {
     if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
     if (user.permisos.includes("view_instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
     if (user.permisos.includes("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
-  if (user.roles.includes("Líder Comunitario")) {
+  if (personalMode && user.roles.includes("Líder Comunitario")) {
     if (user.permisos.includes("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "community-overview", "Mi comunidad", true);
     if (user.permisos.includes("view_alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
     if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
-  if (user.roles.includes("Propietario Solar") && user.permisos.includes("view_instalacion")) {
+  if (personalMode && user.roles.includes("Propietario Solar") && user.permisos.includes("view_instalacion")) {
     addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
   }
-  if (user.is_superuser || user.admin) {
+  if (adminMode) {
     addWorkflow("/solicitudes-revision", "Solicitudes de ingreso", ClipboardText, "service-request-review", "Solicitudes de vinculación", false);
   }
-  const staticLinks = [...baseLinks, ...workflowLinks, ["/perfil", "Mi perfil", UserCircle]];
+  const personalQuickLinks = personalMode ? [
+    ...(user.permisos.includes("view_notificacion") ? [["/notificaciones", "Notificaciones", Bell]] : []),
+    ["/solicitud-vinculacion", "Solicitar servicio", MapPin],
+  ] : [];
+  const staticLinks = [...baseLinks, ...workflowLinks, ...personalQuickLinks, ["/perfil", "Mi perfil", UserCircle]];
   const seenPaths = new Set();
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
     if (seenPaths.has(path)) return false;
@@ -2045,10 +2064,15 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
       Icon: iconForResource(label),
       items: dynamicLinks.filter(([, , , resource]) => (resource.menu_group || "Recursos") === label),
     }));
-  groups.push(...dynamicGroups);
+  if (adminMode) groups.push(...dynamicGroups);
+  const switchMode = (nextMode) => {
+    const target = nextMode === "admin" ? "/dashboard" : personalHome;
+    onModeChange(nextMode);
+    navigate(target);
+  };
   return (
-    <div className="workspace" data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
-      <aside className={open ? "sidebar open" : "sidebar"}>
+    <div className={`workspace${personalMode ? " user-space" : ""}`} data-theme={theme} data-motion={motionEnabled ? "on" : "off"}>
+      {!personalMode && <aside className={open ? "sidebar open" : "sidebar"}>
         <div className="sidebar-brand-row"><Brand /><button className="sidebar-close icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><X size={18} /></button></div>
         <div className="workspace-label">
           PLATAFORMA SOLAR <span>01</span>
@@ -2117,29 +2141,47 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
             Cerrar sesión
           </button>
         </div>
-      </aside>
-      {open && <button className="sidebar-scrim" aria-label="Cerrar menú de navegación" onClick={() => setOpen(false)} />}
-      <div className="workspace-body">
-        <header className="workspace-header">
-          <button
-            className="mobile-menu icon-button"
-            aria-label={open ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={open}
-            onClick={() => setOpen(!open)}
-          >
-            <Menu />
-          </button>
-          <span>
-            Ka’illisto <span className="muted">/ Espacio de trabajo</span>
-          </span>
-          <div className="header-actions"><button className="theme-toggle" type="button" onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button><button className="theme-toggle motion-toggle" type="button" onClick={() => setMotionEnabled((value) => !value)} aria-pressed={motionEnabled} title={motionEnabled ? "Desactivar animaciones" : "Activar animaciones"}><span>{motionEnabled ? "Animaciones: sí" : "Animaciones: no"}</span></button><span className="tag">GESTIÓN SOLAR</span></div>
+      </aside>}
+      {!personalMode && open && <button className="sidebar-scrim" aria-label="Cerrar menú de navegación" onClick={() => setOpen(false)} />}
+      <div className={`workspace-body${personalMode ? " user-space-body" : ""}`}>
+        <header className={`workspace-header${personalMode ? " user-space-header" : ""}`}>
+          {personalMode ? <>
+            <Brand />
+            <nav className="personal-space-nav" aria-label="Navegación de mi espacio">
+              {links.map(([path, label, Icon]) => <NavLink key={path} to={path} end={path === personalHome}><Icon size={16} /><span>{label}</span></NavLink>)}
+            </nav>
+            <div className="header-actions personal-space-actions">
+              <InstallAppButton />
+              <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button>
+              {canUseAdminWorkspace(user) && <button className="personal-space-switch" type="button" onClick={() => switchMode("admin")}><Shield size={15} /> Administración</button>}
+              <Link className="user-space-account" to="/perfil" aria-label="Mi perfil"><span className="avatar">{user.username.slice(0, 2).toUpperCase()}</span></Link>
+              <button className="user-space-logout" type="button" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><LogOut size={17} /></button>
+            </div>
+          </> : <>
+            <button
+              className="mobile-menu icon-button"
+              aria-label={open ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={open}
+              onClick={() => setOpen(!open)}
+            >
+              <Menu />
+            </button>
+            <span>Ka’illisto <span className="muted">/ Administración</span></span>
+            <div className="header-actions">
+              {canUseAdminWorkspace(user) && <button className="theme-toggle" type="button" onClick={() => switchMode("personal")}>Mi espacio</button>}
+              <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button>
+              <button className="theme-toggle motion-toggle" type="button" onClick={() => setMotionEnabled((value) => !value)} aria-pressed={motionEnabled} title={motionEnabled ? "Desactivar animaciones" : "Activar animaciones"}><span>{motionEnabled ? "Animaciones: sí" : "Animaciones: no"}</span></button><span className="tag">GESTIÓN SOLAR</span>
+            </div>
+          </>}
         </header>
-        <main className="workspace-main">
+        <main className={`workspace-main${personalMode ? " user-space-main" : ""}`}>
           <Routes>
             <Route
               path="/dashboard"
               element={
-                links.length ? (
+                personalMode && personalHome !== "/dashboard" ? (
+                  <Navigate to={personalHome} replace />
+                ) : links.length ? (
                   <Dashboard user={user} />
                 ) : (
                   <p className="notice">
@@ -2178,16 +2220,16 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                   }
                 />
               ))}
-            {resourceNav.map((resource) => {
+            {adminMode && resourceNav.map((resource) => {
               const page = modelPage(resource.model);
               return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
             })}
-            {canOpen("/catalogos") && (
+            {adminMode && canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
             )}
             <Route path="/perfil" element={<ProfileSettings onProfileUpdated={onProfileUpdated} />} />
             <Route path="/solicitud-vinculacion" element={<ServiceRequestPortal user={user} />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to={adminMode ? "/dashboard" : personalHome} replace />} />
           </Routes>
         </main>
       </div>
@@ -2323,8 +2365,18 @@ function Shell() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [loginDestination, setLoginDestination] = useState("/dashboard");
+  const [workspaceMode, setWorkspaceMode] = useState(() => {
+    const savedMode = sessionStorage.getItem("kaillisto-workspace-mode");
+    if (savedMode === "admin" || savedMode === "personal") return savedMode;
+    return ["/dashboard", "/usuarios", "/roles", "/catalogos", "/solicitudes-revision"].includes(window.location.pathname) ? "admin" : "personal";
+  });
   const loc = useLocation(),
     navigate = useNavigate();
+  const changeWorkspaceMode = (mode) => {
+    const safeMode = mode === "admin" ? "admin" : "personal";
+    sessionStorage.setItem("kaillisto-workspace-mode", safeMode);
+    setWorkspaceMode(safeMode);
+  };
   const refresh = useCallback(async () => {
     const r = await api.get("/security/session/");
     setUser(r.data);
@@ -2379,12 +2431,14 @@ function Shell() {
       ) : loc.pathname === "/login" ? (
         <Login
           user={user}
-          destination={loginDestination}
+          destination={user ? (workspaceMode === "admin" && canUseAdminWorkspace(user) ? "/dashboard" : personalDestination(user)) : loginDestination}
           onLogin={async (space) => {
             const { data: authenticatedUser } = await api.get("/security/session/");
             const adminUnavailable = space === "admin" && !canUseAdminWorkspace(authenticatedUser);
-            const target = space === "admin" && !adminUnavailable ? "/dashboard" : personalDestination(authenticatedUser);
+            const resolvedMode = space === "admin" && !adminUnavailable ? "admin" : "personal";
+            const target = resolvedMode === "admin" ? "/dashboard" : personalDestination(authenticatedUser);
             setError(adminUnavailable ? "Esta cuenta no tiene acceso administrativo. Abrimos tu espacio personal." : "");
+            changeWorkspaceMode(resolvedMode);
             setLoginDestination(target);
             setUser(authenticatedUser);
             navigate(target);
@@ -2400,11 +2454,14 @@ function Shell() {
             try {
               await api.post("/cerrar_sesion/");
               setUser(null);
+              changeWorkspaceMode("personal");
               navigate("/login");
             } catch (e) {
               setError(errorText(e));
             }
           }}
+          mode={workspaceMode}
+          onModeChange={changeWorkspaceMode}
         />
       ) : (
         <Navigate to="/login" replace />
