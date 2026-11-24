@@ -4,7 +4,7 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El último commit remoto es `2d4da31` (`Build solar service signup and review UI`), publicado en `frontend` y servido por el preview de Render. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Ya están desplegados el registro, el formulario de solicitud con mapa y la bandeja de revisión administrativa. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
+El último incremento de frontend es `87f10dd` (`Add role-based solar workspace overviews`), publicado en la rama `frontend` y ya servido por el preview de Render. El bundle publicado es `index-DmXCu0xZ.js`; el incremento anterior `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
 Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
 
@@ -97,11 +97,23 @@ Verificación de publicación de la interfaz de solicitudes:
 - En Render, `/login`, `/registro`, `/solicitud-vinculacion` y `/solicitudes-revision` devolvieron HTTP 200. El JS (`index-DgdlyH7A.js`) y CSS (`index-DTjXMsjM.css`) nuevos también devolvieron 200; el bundle incluye las pantallas de registro, solicitud y revisión.
 - El smoke test API del backend creó una cuenta ficticia y una solicitud pendiente en Neon aislado. La prueba visual e interactiva desde navegador queda para Jhon.
 
+### 7. Espacios visuales para propietario y líder comunitario
+
+Commit: `87f10dd` — `Add role-based solar workspace overviews`.
+
+- `/mi-comunidad` ahora es un resumen visual por tarjetas: comunidad y mapa, instalaciones, equipos con acceso al historial de mediciones, órdenes abiertas con ubicación de visita, alertas recientes y estado/canal de las notificaciones.
+- `/mi-vivienda` agrega órdenes abiertas cuando RBAC le da `view_ordentrabajo` y muestra notificaciones de la cuenta. No se cambian los permisos ni el alcance de datos.
+- La vista solicita solo recursos permitidos por RBAC; el backend conserva el filtro de datos por comunidad, instalación y usuario.
+- Compilación de producción correcta. El bundle principal queda en ~505 KB sin comprimir y Vite muestra su aviso de tamaño; compresión gzip ~153 KB.
+- Lint termina sin errores nuevos; conserva advertencias ya presentes en el repositorio. `git diff --check` y 8 pruebas de `security.test_portal` correctas.
+- En Render, `/`, `/login`, `/registro`, `/solicitud-vinculacion`, `/solicitudes-revision`, `/mi-vivienda` y `/mi-comunidad` devolvieron HTTP 200; JS y CSS publicados también devolvieron 200 y el bundle contiene el nuevo espacio comunitario, tarjetas de instalaciones, historial de equipos y notificaciones.
+- Falta la prueba visual/interactiva con cuentas reales de líder y propietario para confirmar sus datos y permisos en uso.
+
 ## Pendiente para terminar el frontend
 
 1. **Registro y aprobación de instalaciones:** Jhon debe recorrer registro, solicitud y revisión en el preview; corregir cualquier problema que encuentre.
 2. **Separación de espacios:** el selector de acceso está implementado; revisar que la experiencia combinada de roles sea natural y conservar permisos RBAC del backend.
-3. **Experiencias por rol:** terminar tarjetas y vistas gráficas de propietario, líder comunitario y técnico; mapas y alertas solo dentro del ámbito del rol; mostrar órdenes, visita y técnico asignado donde corresponda.
+3. **Experiencias por rol:** probar en preview los espacios de propietario, líder y técnico con cuentas reales de prueba. El líder y propietario ya tienen resúmenes con tarjetas; queda seguir afinando la vista del técnico y confirmar que mapas, órdenes y alertas se muestran dentro de su ámbito.
 4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
 5. **Notificaciones:** bandeja con leído/no leído y enlaces a alertas/órdenes; después implementar suscripción web push real (VAPID, almacenamiento de suscripciones, permisos, bajas y envío desde backend).
 6. **Uso con conectividad limitada:** revisar qué datos se pueden guardar localmente sin exponer información de otros usuarios; la PWA actual solo conserva recursos estáticos y una página offline.
@@ -114,4 +126,4 @@ El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los p
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Backend de solicitudes (faf0fa9) y frontend de registro, solicitud con mapa y revision administrativa (2d4da31) publicados. La migracion core.0020 esta aplicada a Neon aislado. Build/lint y verificacion HTTP de rutas/assets del preview pasaron; el lint conserva advertencias preexistentes. Jhon debe probar interactivamente el flujo antes del siguiente incremento; avisa antes de cambiar frontend. Conserva el modo oscuro/violeta, Inter y tarjetas visuales.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Registro/solicitudes están en 2d4da31; espacios visuales del líder y propietario en 87f10dd. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias preexistentes. Render sirve index-DmXCu0xZ.js y rutas/assets respondieron 200; falta revisar con cuentas reales el contenido y permisos. Sigue con control de calidad móvil, repuestos y bandeja/notificaciones push real. Avisa antes de cada incremento de interfaz; conserva violeta, Inter y tarjetas visuales.
