@@ -4,9 +4,9 @@ Actualizado: 24 de noviembre de 2026
 
 ## Estado de publicación
 
-El último incremento de frontend es `4c9f9f3` (`Personalize user workspace cards and RBAC`), en la rama `frontend`; agrega navegación personal ligada al RBAC y tarjetas para las listas de “Mi espacio”. `77b058e` separó los cascarones; `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Render sirve los bundles `index-C9RQISxe.js` e `index-CqkV7Rwe.css`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
+El código más reciente de frontend está en `frontend`, commits `f5211b8` (paginación de tarjetas personales) y `765927a` (volver al inicio de la lista al cambiar de página). Render publica `index-D7Acn6V0.js` e `index-Bv0oQgxO.css`. El preview autenticado se verificó en `/mediciones`: 216 datos de prueba se muestran en páginas de 12 y el detalle abre dispositivo, instalación, barrio, comunidad, propietario y mapa. El panel administrativo conserva sus tablas. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
-Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
+Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. El preview se probó con el usuario de demostración residencial; siguen pendientes las cuentas de líder, técnico y cuenta dual, además de la revisión de Jhon.
 
 ## Rama y prueba
 
@@ -122,9 +122,9 @@ Commit: `77b058e` — `Separate personal and admin workspace shells`.
 
 ## Pendiente para terminar el frontend
 
-1. **Registro y aprobación de instalaciones:** Jhon debe recorrer registro, solicitud y revisión en el preview; corregir cualquier problema que encuentre.
-2. **Separación de espacios:** el selector y los cascarones diferentes están implementados; probar con una cuenta dual que alternar entre “Mi espacio” y “Administración” conserva la sesión y limita cada menú a su función.
-3. **Experiencias por rol:** probar en preview los espacios de propietario, líder y técnico con cuentas reales de prueba. El líder y propietario ya tienen resúmenes con tarjetas; queda seguir afinando la vista del técnico y confirmar que mapas, órdenes y alertas se muestran dentro de su ámbito.
+1. **Registro y aprobación de instalaciones:** backend cubierto por pruebas automatizadas y la interfaz se cargó en el preview. Falta que Jhon recorra el registro, la solicitud y la revisión en navegador con cuentas de prueba y confirme detalles visuales.
+2. **Separación de espacios:** el selector y los cascarones diferentes están implementados; probar que una cuenta dual alterna entre “Mi espacio” y “Administración” conservando la sesión y el menú apropiado.
+3. **Experiencias por rol:** probar en preview los espacios de líder y técnico y validar la cuenta dual. La vista de propietario y mediciones se inspeccionó con la sesión demo; falta confirmar que datos, mapas, órdenes y alertas quedan dentro del ámbito de los demás roles.
 4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
 5. **Notificaciones:** bandeja con leído/no leído y enlaces a alertas/órdenes; después implementar suscripción web push real (VAPID, almacenamiento de suscripciones, permisos, bajas y envío desde backend).
 6. **Uso con conectividad limitada:** revisar qué datos se pueden guardar localmente sin exponer información de otros usuarios; la PWA actual solo conserva recursos estáticos y una página offline.
@@ -139,7 +139,8 @@ Commit: `4c9f9f3` — `Personalize user workspace cards and RBAC`.
 - Una cuenta con acceso administrativo y roles de servicio conserva ambos espacios: la vista administrativa usa sus permisos habituales y la vista personal usa los permisos de sus otros roles. Los listados/tablas del panel administrativo permanecen en el mismo modo lineal.
 - Las listas lineales de `/mi-alertas`, `/tecnicos` y los recursos consultables de Mi espacio ahora se presentan como tarjetas con imagen, búsqueda, estado, fecha, ubicación y detalles desplegables. Las órdenes muestran coordenadas de la instalación en mapa; las tarjetas de dispositivos conservan el acceso a mediciones.
 - `pnpm run build`: correcto. `pnpm run lint`: termina con advertencias existentes del proyecto; no hay errores. `security.test_portal`: 9 pruebas correctas, incluyendo usuario dual y recurso oculto. `git diff --check`: correcto.
-- Render preview `https://kaillisto-pr-3.onrender.com`: HTML, JavaScript y CSS responden HTTP 200. Bundles publicados: `index-C9RQISxe.js` y `index-CqkV7Rwe.css`; el JS contiene el flujo de permisos personales y tarjetas, y el CSS las clases visuales. La sesión de navegador no estuvo disponible desde Codex para inspeccionar una cuenta autenticada; Jhon debe revisar la vista con sus cuentas de roles en el preview.
+- Render preview `https://kaillisto-pr-3.onrender.com`: HTML, JavaScript y CSS responden HTTP 200. Bundles actuales: `index-D7Acn6V0.js` y `index-Bv0oQgxO.css`.
+- Se verificó en navegador una sesión residencial autenticada, la página de solicitud con mapa y las mediciones IoT. Los datos visibles son simulados; aún falta que Jhon revise líder, técnico y cuenta dual.
 
 ### 10. Permisos por rol, navegación adaptable y detalle de mediciones (desplegado)
 
@@ -152,8 +153,18 @@ Commits de código: `1383972` — `Scope personal workspace by role and enrich m
 - La navegación superior de “Mi espacio” ahora desplaza los recursos en horizontal, ofrece flechas accesibles y un menú “Más recursos”; se adapta a móvil sin reducir las tablas del panel de administración.
 - Una tarjeta de medición abre el detalle con código/modelo del dispositivo, lectura y unidad, instalación, barrio/zona, comunidad, nombre del propietario cuando está registrado y mapa con las coordenadas guardadas. No expone correo ni teléfono del propietario.
 - Verificación: `pnpm run build` correcto; `pnpm run lint` termina con advertencias existentes y sin errores; `manage.py test` pasó 22 pruebas en SQLite temporal; `manage.py check`, `makemigrations --check --dry-run` y `git diff --check` correctos.
-- Preview `https://kaillisto-pr-3.onrender.com`: `/`, `/login`, `/mi-comunidad`, `/mi-vivienda`, `/mediciones` y el manifiesto responden HTTP 200. Bundles publicados: `index-Cn8TkHx0.js` y `index-CLVFjAUC.css` (200); incluyen el detalle de mediciones y estilos de navegación responsive.
-- La herramienta de navegador no expuso pestañas para este chat, por eso falta que Jhon compruebe visualmente el espacio autenticado de líder, técnico, propietario y cuenta dual en Render.
+- Preview `https://kaillisto-pr-3.onrender.com`: `/`, `/login`, `/mi-comunidad`, `/mi-vivienda`, `/mediciones` y el manifiesto responden HTTP 200. Bundles actuales: `index-D7Acn6V0.js` y `index-Bv0oQgxO.css`.
+- Se verificó en navegador una sesión residencial autenticada, la página de solicitud con mapa y las mediciones IoT. Los datos visibles son simulados; aún falta que Jhon revise líder, técnico y cuenta dual.
+
+### 11. Pruebas recientes y mejora de mediciones (desplegado)
+
+Commits: `f5211b8` — `Paginate personal workspace records`; `765927a` — `Scroll to records after pagination`.
+
+- Las tarjetas de recursos de “Mi espacio” muestran 12 filas por página, total y controles anterior/siguiente. Buscar vuelve a la página 1. Al cambiar de página, el navegador vuelve al inicio de la lista. No cambia la tabla lineal administrativa.
+- En el preview, se comprobó que `/mediciones` carga 216 lecturas simuladas y que la paginación navega entre 18 páginas. El panel de detalle muestra voltaje/unidad, dispositivo y modelo, instalación, barrio, comunidad, propietario, coordenadas y mapa.
+- En `/mi-vivienda` el usuario de prueba ve su instalación, equipo, alerta, orden abierta y notificaciones. La solicitud presenta el formulario y el mapa; no se envió otra solicitud desde la sesión del usuario.
+- `pnpm run lint`: sin errores, conserva 14 advertencias existentes en otros hooks/componentes. `pnpm run build`: correcto; Vite conserva el aviso de bundle principal >500 KB. `manage.py test`: 22 pruebas correctas, incluidas alta, privacidad, aprobación/rechazo residencial/comunitario y permisos. `manage.py check`, `makemigrations --check --dry-run` y `git diff --check`: correctos.
+- Render está actualizado a `index-D7Acn6V0.js` e `index-Bv0oQgxO.css`; los commits están subidos a `frontend`. El preview aún usa datos de simulación académica, no telemetría real del hardware.
 
 ## Cuidado con Neon y Render
 
@@ -161,4 +172,4 @@ El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los p
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Los commits de código más recientes son 1383972 y acc9744: Mi espacio aplica los roles de negocio incluso para cuentas admin/superadmin; líder, propietario y técnico ven sus recursos autorizados; la navegación superior se puede desplazar y adapta a móvil; las mediciones muestran dispositivo, zona, comunidad, propietario y mapa al abrir el detalle. Propietario Solar ahora consulta solo sus propias órdenes de mantenimiento. Administración conserva su shell y tablas lineales. Build correcto, lint con advertencias previas, 22 pruebas backend correctas, `check`, revisión de migraciones y `git diff --check` correctos. Preview sirve index-Cn8TkHx0.js e index-CLVFjAUC.css. Las migraciones security.0012 y security.0013 afinan presets integrados sin sobrescribir roles personalizados; Neon del preview es el único entorno de aplicación. La herramienta del navegador no estuvo disponible; Jhon debe iniciar sesión y probar el detalle de mediciones y las vistas de líder/técnico/propietario/cuenta dual. Luego sigue revisión móvil, flujo de repuestos y notificaciones push. Conserva violeta, Inter y tarjetas.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa `git status`/`git log`. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Los commits más recientes son `f5211b8` y `765927a`: Mi espacio usa tarjetas con 12 elementos por página y paginación que vuelve al inicio; Administración conserva las tablas lineales. En el preview autenticado se validaron mediciones (216 lecturas simuladas), la página de solicitud y el resumen del propietario; el detalle muestra dispositivo/modelo, instalación, barrio, comunidad, propietario y mapa. `pnpm run build`, lint (14 avisos previos), 22 pruebas Django, `manage.py check`, `makemigrations --check --dry-run` y `git diff --check` pasan. Render sirve `index-D7Acn6V0.js` e `index-Bv0oQgxO.css`. Los datos visibles son de simulación, no de hardware conectado. Pendiente: que Jhon pruebe alta/solicitud/revisión desde navegador, líder, técnico y cuenta dual; verificar móvil/accesibilidad; luego mejorar registro de repuestos usados y notificaciones leído/no leído y push VAPID. La PWA instala y muestra offline estático, pero aún no guarda datos privados ni hace push real. Mantén violeta, Inter y tarjetas. No cierres PR ni fusiones.
