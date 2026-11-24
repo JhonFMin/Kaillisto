@@ -2203,7 +2203,7 @@ const PERSONAL_SUMMARY_RESOURCES = {
 const PERSONAL_WORKFLOW_NAV_HIDDEN = {
   "Líder Comunitario": new Set(["/mi-alertas", "/tecnicos"]),
 };
-const PERSONAL_LOOKUP_RESOURCES = new Set(["estadoinstalacion", "estadoordentrabajo", "tipomedicion", "estadoalerta", "prioridadalerta", "tipoalerta"]);
+const PERSONAL_LOOKUP_RESOURCES = new Set(["estadoinstalacion", "estadoordentrabajo", "tipomedicion", "estadoalerta", "prioridadalerta", "tipoalerta", "repuesto"]);
 
 function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onModeChange, personalAccess = { permissions: [], resources: [] }, onLoadPersonalAccess }) {
   const adminMode = mode === "admin" && canUseAdminWorkspace(accountUser);
@@ -2285,7 +2285,8 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
   };
   const canAccessPersonalPermission = (permission) => personalMode &&
     user.permisos.includes(permission) &&
-    personalResources.some((resource) => resource.model === permission.replace(/^view_/, ""));
+    (personalResources.some((resource) => resource.model === permission.replace(/^view_/, "")) ||
+      PERSONAL_LOOKUP_RESOURCES.has(permission.replace(/^view_/, "")));
   const canOpen = (path) => {
     if (adminMode) {
       return accountUser.is_superuser || (path === "/catalogos"
