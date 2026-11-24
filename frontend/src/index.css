@@ -2881,7 +2881,7 @@ body,
 .personal-collection-count svg { margin-bottom: 3px; color: #e1bdff; }
 .personal-collection-count strong { font-size: 25px; line-height: 1.1; }
 .personal-collection-count span { color: rgb(255 255 255 / 76%); font-size: 11px; }
-.personal-records-shell { min-width: 0; }
+.personal-records-shell { min-width: 0; scroll-margin-top: 24px; }
 .personal-record-toolbar { min-height: 62px; margin: 0 0 14px; padding: 10px 15px; border: 1px solid rgb(247 249 250 / 13%); border-radius: 15px; background: rgb(247 249 250 / 3%); }
 .personal-record-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .personal-record-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 17px; padding: 13px 15px; border: 1px solid rgb(247 249 250 / 11%); border-radius: 14px; color: #bdb5c5; background: rgb(247 249 250 / 3%); font-size: 12px; }

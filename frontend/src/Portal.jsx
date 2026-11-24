@@ -1092,6 +1092,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
   );
 }
 function Records({ kind, user, title, readonly = false, endpointOverride, modelName, personalView = false }) {
+  const recordsRef = useRef(null);
   const [rows, setRows] = useState([]),
     [schema, setSchema] = useState({}),
     [error, setError] = useState(""),
@@ -1248,7 +1249,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         <div className="personal-collection-copy"><span className="eyebrow">KA’ILLISTO / MI ESPACIO</span><h2>{personalVisuals[0]}</h2><p>{personalVisuals[1]}</p></div>
         <div className="personal-collection-count"><PersonalVisualIcon size={22} /><strong>{filteredRows.length}</strong><span>{filteredRows.length === 1 ? "registro" : "registros"}</span></div>
       </section>}
-      <section className={personalView ? "personal-records-shell" : "data-panel"}>
+      <section ref={personalView ? recordsRef : null} className={personalView ? "personal-records-shell" : "data-panel"}>
         <div className={`table-toolbar${personalView ? " personal-record-toolbar" : ""}`}>
           <span>{personalView ? `${filteredRows.length} ${filteredRows.length === 1 ? "registro" : "registros"}` : `${rows.length} registros`}</span>
           <label className="search">
@@ -1305,9 +1306,9 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         {pageCount > 1 && <nav className="personal-record-pagination" aria-label="Paginación de registros">
           <span aria-live="polite">Mostrando {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredRows.length)} de {filteredRows.length}</span>
           <div>
-            <button type="button" className="secondary" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Anterior</button>
+            <button type="button" className="secondary" disabled={currentPage === 1} onClick={() => { setPage((value) => Math.max(1, value - 1)); recordsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>Anterior</button>
             <span aria-label={`Página ${currentPage} de ${pageCount}`}>{currentPage} / {pageCount}</span>
-            <button type="button" className="secondary" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>Siguiente</button>
+            <button type="button" className="secondary" disabled={currentPage === pageCount} onClick={() => { setPage((value) => Math.min(pageCount, value + 1)); recordsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>Siguiente</button>
           </div>
         </nav>}
         </> : <div className="empty personal-record-empty"><Layers size={30} /><h3>{search ? "No encontramos resultados" : "Aún no hay registros"}</h3><p>{search ? "Prueba con otro nombre, estado o ubicación." : kind === "ordenes" ? "Cuando te asignen una visita, aquí verás el estado, el sitio y su ubicación." : "Cuando haya información para tu cuenta, aparecerá aquí organizada en tarjetas."}</p></div> : loading ? (
