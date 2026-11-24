@@ -2727,6 +2727,11 @@ body,
 .tech-case-progress { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 13px; }
 .tech-case-progress > div { min-width: 0; padding-top: 11px; border-top: 1px solid rgb(247 249 250 / 12%); }
 .tech-case-progress p { margin: 5px 0 0; color: #c7c6c9; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.tech-case-parts { margin-top: 13px; padding: 11px 12px; border: 1px solid rgb(225 189 255 / 16%); border-radius: 10px; background: rgb(225 189 255 / 4%); }
+.tech-case-parts > strong { color: #e8d2fa; font-size: 11px; }
+.tech-case-parts ul { display: grid; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
+.tech-case-parts li { display: flex; justify-content: space-between; gap: 12px; color: #c8c2ce; font-size: 11px; }
+.tech-case-parts li b { flex: 0 0 auto; color: #f4eff8; font-weight: 600; }
 .tech-case-actions { justify-content: flex-start; flex-wrap: wrap; margin-top: auto; padding-top: 15px; }
 .tech-case-actions button { min-height: 38px; padding: 8px 12px; font-size: 11px; }
 .tech-case-actions .secondary { border-radius: 999px; }
@@ -2742,6 +2747,7 @@ body,
 .tech-edit-dialog header h2 { margin: 5px 0 0; font-size: 24px; }
 .tech-edit-dialog form { display: grid; gap: 14px; }
 .tech-edit-dialog textarea { width: 100%; resize: vertical; min-height: 84px; padding: 11px 12px; border: 1px solid rgb(247 249 250 / 24%); border-radius: 9px; background: #090909; color: #f7f9fa; font: inherit; font-size: 13px; line-height: 1.5; }
+.tech-edit-dialog input, .tech-edit-dialog select { display: block; width: 100%; min-height: 43px; margin-top: 6px; padding: 9px 11px; border: 1px solid rgb(247 249 250 / 24%); border-radius: 9px; color: #f7f9fa; background: #090909; font: inherit; font-size: 13px; }
 .tech-edit-dialog label { color: #d0cdd4; }
 .tech-edit-note { margin: -2px 0 0; font-size: 11px; }
 .tech-edit-dialog form footer { display: flex; justify-content: flex-end; gap: 9px; padding-top: 6px; }
@@ -2757,12 +2763,17 @@ body,
 .workspace[data-theme="light"] .tech-case-location strong { color: #211d27; }
 .workspace[data-theme="light"] .tech-case-description,
 .workspace[data-theme="light"] .tech-case-progress p { color: #514c59; }
+.workspace[data-theme="light"] .tech-case-parts { border-color: #e7dcef; background: #fbf8ff; }
+.workspace[data-theme="light"] .tech-case-parts > strong { color: #593b76; }
+.workspace[data-theme="light"] .tech-case-parts li { color: #61596a; }
+.workspace[data-theme="light"] .tech-case-parts li b { color: #30273a; }
 .workspace[data-theme="light"] .tech-case-location { background: #faf7ff; border-color: #ded3f0; }
 .workspace[data-theme="light"] .tech-case-location > svg,
 .workspace[data-theme="light"] .tech-case-location a,
 .workspace[data-theme="light"] .tech-parts-link { color: #58368b; }
 .workspace[data-theme="light"] .tech-case-location small { color: #686273; }
 .workspace[data-theme="light"] .tech-edit-dialog textarea { color: #211d27; background: #fff; border-color: #d9cffa; }
+.workspace[data-theme="light"] .tech-edit-dialog input, .workspace[data-theme="light"] .tech-edit-dialog select { color: #211d27; background: #fff; border-color: #d9cffa; }
 @keyframes tech-card-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 980px) { .tech-case-grid { grid-template-columns: 1fr; } }
 @media (max-width: 620px) {

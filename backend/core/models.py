@@ -660,6 +660,7 @@ class Notificacion(models.Model):
     detalle_error = models.TextField(blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_envio = models.DateTimeField(null=True, blank=True)
+    leida_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "notificacion"

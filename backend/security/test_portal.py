@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from django.contrib.auth.models import Permission
 from rest_framework.test import APITestCase, APIClient
 from core import models as m
@@ -25,7 +25,7 @@ class PortalAccessTests(APITestCase):
                         'view_ordentrabajo', 'change_ordentrabajo', 'close_ordentrabajo',
                         'view_estadoordentrabajo', 'view_repuesto',
                         'add_repuestoordentrabajo', 'change_repuestoordentrabajo',
-                        'view_alerta',
+                        'view_alerta', 'view_notificacion',
                     ],
                     'Líder Comunitario': [
                         'view_instalacion', 'view_alerta', 'view_ordentrabajo',
@@ -88,6 +88,78 @@ class PortalAccessTests(APITestCase):
         )
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual([row['id_orden_trabajo'] for row in response.data], [own_order.pk])
+
+    def test_personal_notification_can_be_marked_read_only_by_its_recipient(self):
+        measurement_type, _ = m.TipoMedicion.objects.get_or_create(
+            nombre='Voltaje notificación test', defaults={'unidad': 'V'},
+        )
+        alert_type, _ = m.TipoAlerta.objects.get_or_create(nombre='Notificación test')
+        priority, _ = m.PrioridadAlerta.objects.get_or_create(nombre='Media')
+        alert_state, _ = m.EstadoAlerta.objects.get_or_create(nombre='Vigente')
+        alert = m.Alerta.objects.create(
+            instalacion=self.i1,
+            tipo_medicion=measurement_type,
+            tipo_alerta=alert_type,
+            prioridad=priority,
+            estado=alert_state,
+            mensaje='Aviso para revisar',
+        )
+        own_notification = m.Notificacion.objects.create(
+            destinatario=self.tech, alerta=alert, canal='in-app',
+            estado='enviada', mensaje='Revisa el sistema solar.',
+        )
+        other_notification = m.Notificacion.objects.create(
+            destinatario=self.leader, alerta=alert, canal='in-app',
+            estado='enviada', mensaje='Aviso de otra persona.',
+        )
+        self.client.force_authenticate(self.tech)
+        url = f'/api/security/portal/notificaciones/{own_notification.pk}/marcar-leida/'
+        response = self.client.post(url, HTTP_X_KAILLISTO_WORKSPACE='personal')
+        self.assertEqual(response.status_code, 200, response.content)
+        own_notification.refresh_from_db()
+        first_read_time = own_notification.leida_en
+        self.assertIsNotNone(first_read_time)
+        self.assertEqual(datetime.fromisoformat(response.data['leida_en']), first_read_time)
+
+        again = self.client.post(url, HTTP_X_KAILLISTO_WORKSPACE='personal')
+        own_notification.refresh_from_db()
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(own_notification.leida_en, first_read_time)
+
+        hidden = self.client.post(
+            f'/api/security/portal/notificaciones/{other_notification.pk}/marcar-leida/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(hidden.status_code, 404)
+        other_notification.refresh_from_db()
+        self.assertIsNone(other_notification.leida_en)
+
+    def test_assigned_technician_can_record_and_update_used_parts(self):
+        part = m.Repuesto.objects.create(nombre='Cable solar de prueba', unidad_medida='metros')
+        self.client.force_authenticate(self.tech)
+        url = '/api/security/portal/consumos/'
+        created = self.client.post(
+            url,
+            {'orden_trabajo': self.order.pk, 'repuesto': part.pk, 'cantidad': '1.50'},
+            format='json',
+        )
+        self.assertEqual(created.status_code, 201, created.content)
+        consumption_id = created.data['id_repuesto_orden_trabajo']
+
+        updated = self.client.patch(
+            f'{url}{consumption_id}/', {'cantidad': '2.50'}, format='json',
+        )
+        self.assertEqual(updated.status_code, 200, updated.content)
+        consumption = m.RepuestoOrdenTrabajo.objects.get(pk=consumption_id)
+        self.assertEqual(str(consumption.cantidad), '2.50')
+
+        foreign_order = self.client.post(
+            url,
+            {'orden_trabajo': self.other.pk, 'repuesto': part.pk, 'cantidad': '1.00'},
+            format='json',
+        )
+        self.assertIn(foreign_order.status_code, (403, 404))
+        self.assertEqual(m.RepuestoOrdenTrabajo.objects.count(), 1)
 
     def test_anonymous_and_leader_scope(self):
         url='/api/security/portal/instalaciones/'

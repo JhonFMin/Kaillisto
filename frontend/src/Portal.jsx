@@ -1135,6 +1135,15 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
       setLoading(false);
     }
   }
+  async function markNotificationRead(row) {
+    const id = idOf(row);
+    try {
+      const { data } = await api.post(`${resourceEndpoint}${id}/marcar-leida/`);
+      setRows((current) => current.map((item) => idOf(item) === id ? { ...item, leida_en: data.leida_en } : item));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
   useEffect(() => {
     setRows([]);
     setEditing(null);
@@ -1176,6 +1185,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
       display(key, value, row).toLowerCase().includes(search.toLowerCase()),
     ),
   );
+  const unreadCount = kind === "notificaciones" ? filteredRows.filter((row) => !row.leida_en).length : 0;
   const pageSize = 12;
   const pageCount = Math.ceil(filteredRows.length / pageSize);
   const currentPage = Math.min(page, Math.max(1, pageCount));
@@ -1247,7 +1257,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
       {personalView && <section className="personal-collection-hero" aria-label={personalVisuals[0]}>
         <img src={personalVisuals[2]} alt="" loading="lazy" />
         <div className="personal-collection-copy"><span className="eyebrow">KA’ILLISTO / MI ESPACIO</span><h2>{personalVisuals[0]}</h2><p>{personalVisuals[1]}</p></div>
-        <div className="personal-collection-count"><PersonalVisualIcon size={22} /><strong>{filteredRows.length}</strong><span>{filteredRows.length === 1 ? "registro" : "registros"}</span></div>
+        <div className="personal-collection-count"><PersonalVisualIcon size={22} /><strong>{filteredRows.length}</strong><span>{kind === "notificaciones" ? `${unreadCount} sin leer` : filteredRows.length === 1 ? "registro" : "registros"}</span></div>
       </section>}
       <section ref={personalView ? recordsRef : null} className={personalView ? "personal-records-shell" : "data-panel"}>
         <div className={`table-toolbar${personalView ? " personal-record-toolbar" : ""}`}>
@@ -1273,7 +1283,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         <div className="personal-record-grid">
           {visibleRows.map((row, index) => {
             const location = personalMapPoint(row);
-            const state = row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display || (kind === "mediciones" ? row.es_anomala ? "Lectura anómala" : "Lectura registrada" : "");
+            const state = kind === "notificaciones" ? row.leida_en ? "Leída" : "Nueva" : row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display || (kind === "mediciones" ? row.es_anomala ? "Lectura anómala" : "Lectura registrada" : "");
             const mapLabel = personalCardTitle(row);
             const extraDetails = [
               ["Diagnóstico", row.diagnostico],
@@ -1281,7 +1291,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
               ["Referencia", row.referencia || row.direccion],
             ].filter(([, value]) => value && String(value).trim());
             return <article className="personal-record-card feature" key={idOf(row)} style={{ "--card-index": index }}>
-              <div className="personal-record-card-top"><span>{definitions[kind]?.[0] || title || "Seguimiento"}</span>{state && <span className={`personal-record-status${String(state).toLowerCase().includes("cerr") || String(state).toLowerCase().includes("normal") || String(state).toLowerCase().includes("registrad") ? " is-calm" : ""}`}>{state}</span>}</div>
+              <div className="personal-record-card-top"><span>{definitions[kind]?.[0] || title || "Seguimiento"}</span>{state && <span className={`personal-record-status${String(state).toLowerCase().includes("cerr") || String(state).toLowerCase().includes("normal") || String(state).toLowerCase().includes("registrad") || String(state).toLowerCase().includes("leíd") ? " is-calm" : ""}`}>{state}</span>}</div>
               <h3>{personalCardTitle(row)}</h3>
               <p>{personalCardSummary(row)}</p>
               <div className="personal-record-meta">
@@ -1296,6 +1306,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
                 {location && <button type="button" className="secondary" aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} />{locationRow === idOf(row) ? "Ocultar ubicación" : "Ver ubicación"}</button>}
                 {kind === "dispositivos" && (user.is_superuser || user.permisos.includes("ALL") || user.permisos.includes("view_medicion")) && <button type="button" className="secondary" onClick={() => setCompareDevice(row)}><ChartLine size={15} />Ver mediciones</button>}
                 {personalView && kind === "mediciones" && <button type="button" className="secondary" onClick={() => setSelectedMeasurement(row)}><MapPin size={15} />Ver detalle, equipo y mapa</button>}
+                {personalView && kind === "notificaciones" && !row.leida_en && <button type="button" className="secondary" onClick={() => markNotificationRead(row)}>Marcar como leída</button>}
                 {canEdit && <button type="button" className="secondary" disabled={schemaLoading} onClick={() => openEditor(row)}>Editar</button>}
               </div>
               {extraDetails.length > 0 && <details className="personal-record-details"><summary>Ver detalles del seguimiento</summary><dl>{extraDetails.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></details>}
@@ -1908,6 +1919,13 @@ function CommunityOverview({ user }) {
 function TechnicianCases({ user }) {
   const [orders, setOrders] = useState([]);
   const [states, setStates] = useState([]);
+  const [consumptions, setConsumptions] = useState([]);
+  const [spareCatalog, setSpareCatalog] = useState([]);
+  const [spareOrder, setSpareOrder] = useState(null);
+  const [spareDraft, setSpareDraft] = useState({ repuesto: "", cantidad: "1" });
+  const [spareLoading, setSpareLoading] = useState(false);
+  const [spareSaving, setSpareSaving] = useState(false);
+  const [spareError, setSpareError] = useState("");
   const [filter, setFilter] = useState("Todas");
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState({ diagnostico: "", solucion_aplicada: "", estado: "" });
@@ -1918,15 +1936,18 @@ function TechnicianCases({ user }) {
   const [saved, setSaved] = useState("");
   const canEdit = user.is_superuser || user.permisos.includes("change_ordentrabajo");
   const canClose = user.is_superuser || user.permisos.includes("close_ordentrabajo") || user.permisos.includes("ALL");
+  const canViewParts = user.permisos.includes("view_repuestoordentrabajo");
+  const canEditParts = canViewParts && (user.is_superuser || user.permisos.includes("add_repuestoordentrabajo") || user.permisos.includes("change_repuestoordentrabajo"));
   const normalize = (value) => String(value || "").trim().toLocaleLowerCase("es-CO");
   const stateName = (order) => normalize(order.estado_display);
   const isClosed = (order) => stateName(order).includes("cerrad");
   const isPending = (order) => stateName(order).includes("pendient");
   const isInProgress = (order) => stateName(order).includes("proceso") || stateName(order).includes("atenci");
   const load = useCallback(async () => {
-    const [orderResult, stateResult] = await Promise.allSettled([
+    const [orderResult, stateResult, partsResult] = await Promise.allSettled([
       api.get(endpoint("ordenes")),
       api.get(endpoint("estados-orden")),
+      canViewParts ? api.get(endpoint("consumos")) : Promise.resolve({ data: [] }),
     ]);
     if (orderResult.status === "fulfilled") {
       setOrders(orderResult.value.data);
@@ -1935,8 +1956,10 @@ function TechnicianCases({ user }) {
     else setError(errorText(orderResult.reason));
     if (stateResult.status === "fulfilled") setStates(stateResult.value.data);
     else setStates([]);
+    if (partsResult?.status === "fulfilled") setConsumptions(recordsFrom(partsResult.value.data));
+    else if (canViewParts) setConsumptions([]);
     setLoading(false);
-  }, []);
+  }, [canViewParts]);
   useEffect(() => { load(); }, [load]);
   const refresh = async () => {
     setRefreshing(true);
@@ -1957,6 +1980,42 @@ function TechnicianCases({ user }) {
     return true;
   });
   const statusId = (name) => states.find((state) => normalize(state.nombre) === normalize(name))?.id_estado_orden_trabajo;
+  const partsForOrder = (order) => consumptions.filter((item) => String(item.orden_trabajo) === String(idOf(order)));
+  const openSpareForm = async (order) => {
+    setSpareOrder(order);
+    setSpareError("");
+    const firstUsed = partsForOrder(order)[0];
+    setSpareDraft({ repuesto: firstUsed ? String(firstUsed.repuesto) : "", cantidad: firstUsed?.cantidad || "1" });
+    if (spareCatalog.length) return;
+    setSpareLoading(true);
+    try {
+      const response = await api.get(endpoint("repuestos"));
+      setSpareCatalog(recordsFrom(response.data).filter((part) => part.activo !== false));
+    } catch (e) {
+      setSpareError(errorText(e));
+    } finally {
+      setSpareLoading(false);
+    }
+  };
+  const saveSpareUse = async (event) => {
+    event.preventDefault();
+    if (!spareOrder || !spareDraft.repuesto) return;
+    setSpareSaving(true);
+    setSpareError("");
+    try {
+      const existing = partsForOrder(spareOrder).find((part) => String(part.repuesto) === String(spareDraft.repuesto));
+      const data = { orden_trabajo: idOf(spareOrder), repuesto: Number(spareDraft.repuesto), cantidad: spareDraft.cantidad };
+      if (existing) await api.patch(`${endpoint("consumos")}${idOf(existing)}/`, data);
+      else await api.post(endpoint("consumos"), data);
+      setSaved(`${existing ? "Cantidad actualizada" : "Repuesto agregado"} en la orden #${idOf(spareOrder)}.`);
+      setSpareOrder(null);
+      await load();
+    } catch (e) {
+      setSpareError(errorText(e));
+    } finally {
+      setSpareSaving(false);
+    }
+  };
   const mapLink = (order) => {
     const lat = order.instalacion_latitud;
     const lon = order.instalacion_longitud;
@@ -2038,6 +2097,7 @@ function TechnicianCases({ user }) {
         const priorityClass = normalize(priority).includes("alta") || normalize(priority).includes("crít") ? "high" : "";
         const address = [order.instalacion_direccion, order.instalacion_barrio, order.instalacion_ubicacion, order.instalacion_comunidad_display].filter(Boolean).join(" · ");
         const directions = mapLink(order);
+        const orderParts = partsForOrder(order);
         return <article className="tech-case-card" key={idOf(order)}>
           <header className="tech-case-card-header">
             <span>ORDEN #{idOf(order)}</span>
@@ -2055,9 +2115,11 @@ function TechnicianCases({ user }) {
             <div><span>Diagnóstico</span><p>{order.diagnostico || "Pendiente de registrar"}</p></div>
             <div><span>Solución aplicada</span><p>{order.solucion_aplicada || "Pendiente de documentar"}</p></div>
           </div>
+          {orderParts.length > 0 && <div className="tech-case-parts"><strong>Repuestos utilizados</strong><ul>{orderParts.map((part) => <li key={part.id_repuesto_orden_trabajo}><span>{part.repuesto_nombre || part.repuesto_display || `Repuesto #${part.repuesto}`}</span><b>{part.cantidad} {part.unidad_medida || "unidades"}</b></li>)}</ul></div>}
           <footer className="tech-case-actions">
             {canEdit && isPending(order) && statusId("En proceso") && <button className="primary" type="button" onClick={() => changeState(order, "En proceso")}>Iniciar atención <ArrowRight size={15} /></button>}
             {canEdit && !closed && <button className="secondary" type="button" onClick={() => beginEditing(order)}>Registrar avance</button>}
+            {canEditParts && !closed && <button className="secondary" type="button" onClick={() => openSpareForm(order)}>Registrar repuesto</button>}
             {user.permisos.includes("view_repuestoordentrabajo") && <Link className="tech-parts-link" to="/consumos">Repuestos utilizados ↗</Link>}
           </footer>
         </article>;
@@ -2074,6 +2136,26 @@ function TechnicianCases({ user }) {
           {error && <p role="alert" className="notice">{error}</p>}
           <footer><button className="secondary" type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar avance"}</button></footer>
         </form>
+      </section>
+    </div>}
+    {spareOrder && <div className="tech-edit-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSpareOrder(null); }}>
+      <section className="tech-edit-dialog tech-parts-dialog" role="dialog" aria-modal="true" aria-labelledby="tech-parts-title">
+        <header><div><span className="eyebrow">ORDEN #{idOf(spareOrder)}</span><h2 id="tech-parts-title">Registrar repuesto</h2></div><button className="icon-button" type="button" aria-label="Cerrar" onClick={() => setSpareOrder(null)}><X size={18} /></button></header>
+        {spareLoading ? <p className="empty">Cargando catálogo de repuestos…</p> : spareError && !spareCatalog.length ? <div><p role="alert" className="notice">{spareError}</p><footer><button className="secondary" type="button" onClick={() => openSpareForm(spareOrder)}>Reintentar</button></footer></div> : <form onSubmit={saveSpareUse}>
+          {(() => {
+            const currentUse = partsForOrder(spareOrder).find((part) => String(part.repuesto) === String(spareDraft.repuesto));
+            return spareCatalog.length ? <>
+              <label>Repuesto<select required value={spareDraft.repuesto} onChange={(event) => {
+                const existing = partsForOrder(spareOrder).find((part) => String(part.repuesto) === event.target.value);
+                setSpareDraft({ repuesto: event.target.value, cantidad: existing?.cantidad || "1" });
+              }}><option value="">Selecciona un repuesto</option>{spareCatalog.map((part) => <option key={part.id_repuesto} value={part.id_repuesto}>{part.nombre} · {part.unidad_medida || "unidad"}</option>)}</select></label>
+              <label>Cantidad<input type="number" min="0.01" step="0.01" required value={spareDraft.cantidad} onChange={(event) => setSpareDraft((current) => ({ ...current, cantidad: event.target.value }))} /></label>
+              <p className="tech-edit-note">{currentUse ? "Este repuesto ya figura en la orden; al guardar se actualizará la cantidad total." : "Se agregará al historial de esta orden y quedará visible para su seguimiento."}</p>
+              {spareError && <p role="alert" className="notice">{spareError}</p>}
+              <footer><button className="secondary" type="button" onClick={() => setSpareOrder(null)}>Cancelar</button><button className="primary" type="submit" disabled={spareSaving}>{spareSaving ? "Guardando…" : currentUse ? "Actualizar cantidad" : "Guardar repuesto"}</button></footer>
+            </> : <><p className="tech-edit-note">No hay repuestos activos en el catálogo. Pide al administrador que agregue los materiales necesarios.</p>{spareError && <p role="alert" className="notice">{spareError}</p>}<footer><button className="secondary" type="button" onClick={() => setSpareOrder(null)}>Cerrar</button></footer></>;
+          })()}
+        </form>}
       </section>
     </div>}
   </>;

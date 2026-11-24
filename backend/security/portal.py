@@ -635,9 +635,25 @@ def resource_view(model):
                 'ultima_comunicacion': device.ultima_comunicacion,
                 'mediciones': readings,
             })
+        @action(detail=True, methods=['post'], url_path='marcar-leida')
+        def marcar_leida(self, request, pk=None):
+            if model != m.Notificacion:
+                raise ValidationError('Esta acción solo aplica a notificaciones.')
+            notification = self.get_object()
+            if notification.destinatario_id != request.user.pk:
+                raise NotFound()
+            if notification.leida_en is None:
+                notification.leida_en = timezone.now()
+                notification.save(update_fields=['leida_en'])
+            return Response(self.get_serializer(notification).data)
         def initial(self, request, *args, **kwargs):
             super().initial(request, *args, **kwargs)
             personal = personal_workspace_request(request)
+            if self.action == 'marcar_leida':
+                permissions = get_personal_permissions(request.user) if personal else effective_permissions(request.user)
+                if 'view_notificacion' not in permissions and 'ALL' not in permissions:
+                    raise PermissionDenied('Tu rol no tiene acceso a estas notificaciones.')
+                return
             if request.method != 'OPTIONS' and (personal or not request.user.is_superuser):
                 verb = {'GET': 'view', 'HEAD': 'view', 'POST': 'add', 'PATCH': 'change', 'PUT': 'change', 'DELETE': 'delete'}[request.method]
                 required = f'{verb}_{model._meta.model_name}'
