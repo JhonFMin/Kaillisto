@@ -4,7 +4,7 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El último incremento de frontend es `87f10dd` (`Add role-based solar workspace overviews`), publicado en la rama `frontend` y ya servido por el preview de Render. El bundle publicado es `index-DmXCu0xZ.js`; el incremento anterior `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
+El último incremento de frontend es `77b058e` (`Separate personal and admin workspace shells`), en la rama `frontend`; incluye el nuevo cascarón del espacio personal separado del panel administrativo. `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Verificar en Render después del push de `77b058e`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
 Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
 
@@ -109,10 +109,20 @@ Commit: `87f10dd` — `Add role-based solar workspace overviews`.
 - En Render, `/`, `/login`, `/registro`, `/solicitud-vinculacion`, `/solicitudes-revision`, `/mi-vivienda` y `/mi-comunidad` devolvieron HTTP 200; JS y CSS publicados también devolvieron 200 y el bundle contiene el nuevo espacio comunitario, tarjetas de instalaciones, historial de equipos y notificaciones.
 - Falta la prueba visual/interactiva con cuentas reales de líder y propietario para confirmar sus datos y permisos en uso.
 
+### 8. Separación de espacio personal y administración
+
+Commit: `77b058e` — `Separate personal and admin workspace shells`.
+
+- “Mi espacio” ya tiene encabezado y navegación superior propios, sin menú lateral ni recursos administrativos. Conserva las rutas y componentes personales según rol/permisos.
+- “Administración” conserva su barra lateral, rutas y resumen. Un usuario con ambos accesos puede cambiar de un modo al otro; no se alteran los permisos RBAC.
+- La preferencia visual se guarda por separado: claro como valor inicial para el espacio personal y oscuro para administración; ambos conservan Inter y el violeta Ka’illisto.
+- Para una cuenta administrativa sin rol de hogar, comunidad o técnico, “Mi espacio” abre la solicitud de vinculación.
+- `pnpm run build`, `pnpm run lint` y `git diff --check` pasan; el lint conserva advertencias preexistentes. Las 8 pruebas `security.test_portal` también pasan. Falta comprobar el nuevo diseño en Render con una cuenta administrativa y una cuenta dual.
+
 ## Pendiente para terminar el frontend
 
 1. **Registro y aprobación de instalaciones:** Jhon debe recorrer registro, solicitud y revisión en el preview; corregir cualquier problema que encuentre.
-2. **Separación de espacios:** el selector de acceso está implementado; revisar que la experiencia combinada de roles sea natural y conservar permisos RBAC del backend.
+2. **Separación de espacios:** el selector y los cascarones diferentes están implementados; probar con una cuenta dual que alternar entre “Mi espacio” y “Administración” conserva la sesión y limita cada menú a su función.
 3. **Experiencias por rol:** probar en preview los espacios de propietario, líder y técnico con cuentas reales de prueba. El líder y propietario ya tienen resúmenes con tarjetas; queda seguir afinando la vista del técnico y confirmar que mapas, órdenes y alertas se muestran dentro de su ámbito.
 4. **Repuestos:** facilitar el registro de repuestos usados desde la orden y añadir existencias/stock solo después de definir el flujo administrativo.
 5. **Notificaciones:** bandeja con leído/no leído y enlaces a alertas/órdenes; después implementar suscripción web push real (VAPID, almacenamiento de suscripciones, permisos, bajas y envío desde backend).
@@ -126,4 +136,4 @@ El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los p
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Registro/solicitudes están en 2d4da31; espacios visuales del líder y propietario en 87f10dd. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias preexistentes. Render sirve index-DmXCu0xZ.js y rutas/assets respondieron 200; falta revisar con cuentas reales el contenido y permisos. Sigue con control de calidad móvil, repuestos y bandeja/notificaciones push real. Avisa antes de cada incremento de interfaz; conserva violeta, Inter y tarjetas visuales.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Separación de cascarones en 77b058e; resúmenes de líder/propietario en 87f10dd; registro y solicitudes en 2d4da31. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias previas. Verifica el commit 77b058e y prueba con cuenta dual en Render; luego sigue con el diseño comercial de portada (aún sin referencia del usuario), prueba móvil, repuestos y notificaciones push. Avisa antes de cada incremento visual; conserva violeta, Inter y tarjetas visuales.
