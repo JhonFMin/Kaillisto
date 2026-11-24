@@ -1310,6 +1310,181 @@ function HomeownerOverview({ user }) {
     {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
   </>;
 }
+
+function TechnicianCases({ user }) {
+  const [orders, setOrders] = useState([]);
+  const [states, setStates] = useState([]);
+  const [filter, setFilter] = useState("Todas");
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState({ diagnostico: "", solucion_aplicada: "", estado: "" });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+  const canEdit = user.is_superuser || user.permisos.includes("change_ordentrabajo");
+  const canClose = user.is_superuser || user.permisos.includes("close_ordentrabajo") || user.permisos.includes("ALL");
+  const normalize = (value) => String(value || "").trim().toLocaleLowerCase("es-CO");
+  const stateName = (order) => normalize(order.estado_display);
+  const isClosed = (order) => stateName(order).includes("cerrad");
+  const isPending = (order) => stateName(order).includes("pendient");
+  const isInProgress = (order) => stateName(order).includes("proceso") || stateName(order).includes("atenci");
+  const load = useCallback(async () => {
+    const [orderResult, stateResult] = await Promise.allSettled([
+      api.get(endpoint("ordenes")),
+      api.get(endpoint("estados-orden")),
+    ]);
+    if (orderResult.status === "fulfilled") {
+      setOrders(orderResult.value.data);
+      setError("");
+    }
+    else setError(errorText(orderResult.reason));
+    if (stateResult.status === "fulfilled") setStates(stateResult.value.data);
+    else setStates([]);
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const refresh = async () => {
+    setRefreshing(true);
+    try { await load(); }
+    finally { setRefreshing(false); }
+  };
+
+  const counts = {
+    Todas: orders.length,
+    Pendientes: orders.filter(isPending).length,
+    "En proceso": orders.filter(isInProgress).length,
+    Cerradas: orders.filter(isClosed).length,
+  };
+  const filteredOrders = orders.filter((order) => {
+    if (filter === "Pendientes") return isPending(order);
+    if (filter === "En proceso") return isInProgress(order);
+    if (filter === "Cerradas") return isClosed(order);
+    return true;
+  });
+  const statusId = (name) => states.find((state) => normalize(state.nombre) === normalize(name))?.id_estado_orden_trabajo;
+  const mapLink = (order) => {
+    const lat = order.instalacion_latitud;
+    const lon = order.instalacion_longitud;
+    const destination = lat != null && lon != null
+      ? `${lat},${lon}`
+      : [order.instalacion_direccion, order.instalacion_barrio, order.instalacion_ubicacion, order.instalacion_comunidad_display, "Colombia"].filter(Boolean).join(", ");
+    return destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}` : null;
+  };
+  const beginEditing = (order) => {
+    setSaved("");
+    setEditing(order);
+    setDraft({
+      diagnostico: order.diagnostico || "",
+      solucion_aplicada: order.solucion_aplicada || "",
+      estado: String(order.estado ?? ""),
+    });
+  };
+  const changeState = async (order, nextState) => {
+    const id = statusId(nextState);
+    if (!id) {
+      setError("No encontramos el estado requerido. Actualiza la página o pide al administrador que revise el catálogo de estados.");
+      return;
+    }
+    setError("");
+    try {
+      await api.patch(`${endpoint("ordenes")}${idOf(order)}/`, { estado: id });
+      setSaved(`Orden #${idOf(order)} actualizada.`);
+      await load();
+    } catch (e) { setError(errorText(e)); }
+  };
+  const saveProgress = async (event) => {
+    event.preventDefault();
+    if (!editing) return;
+    setSaving(true);
+    setError("");
+    try {
+      const data = {
+        diagnostico: draft.diagnostico,
+        solucion_aplicada: draft.solucion_aplicada,
+      };
+      if (draft.estado && String(editing.estado) !== draft.estado) data.estado = draft.estado;
+      await api.patch(`${endpoint("ordenes")}${idOf(editing)}/`, data);
+      setEditing(null);
+      setSaved(`Orden #${idOf(editing)} actualizada.`);
+      await load();
+    } catch (e) { setError(errorText(e)); }
+    finally { setSaving(false); }
+  };
+  const statusChoices = states.filter((state) => {
+    const name = normalize(state.nombre);
+    return name.includes("pendient") || name.includes("proceso") || name.includes("atenci") || (canClose && name.includes("cerrad"));
+  });
+
+  return <>
+    <div className="page-heading tech-page-heading">
+      <div>
+        <span className="eyebrow">TRABAJO DE CAMPO</span>
+        <h1>Mi jornada</h1>
+        <p>Órdenes asignadas, ubicación y avance de cada visita.</p>
+      </div>
+      <span className="tag">TÉCNICO / {user.username}</span>
+    </div>
+    {error && <p role="alert" className="notice">{error}</p>}
+    {saved && <p role="status" className="tech-saved-message">{saved}</p>}
+    <div className="tech-order-summary" aria-label="Resumen de órdenes">
+      {[["Pendientes", counts.Pendientes], ["En proceso", counts["En proceso"]], ["Cerradas", counts.Cerradas]].map(([label, value]) => <article key={label}><span>{label}</span><strong>{loading ? "—" : value}</strong></article>)}
+    </div>
+    <div className="tech-order-toolbar" aria-label="Filtrar órdenes">
+      <div className="tech-order-filters">
+        {["Todas", "Pendientes", "En proceso", "Cerradas"].map((name) => <button key={name} type="button" aria-pressed={filter === name} className={filter === name ? "active" : ""} onClick={() => setFilter(name)}>{name}<span>{loading ? "—" : counts[name]}</span></button>)}
+      </div>
+      <button className="secondary tech-refresh" type="button" onClick={refresh} disabled={loading || refreshing}>{refreshing ? "Actualizando…" : "Actualizar"}</button>
+    </div>
+    {loading ? <p className="empty">Cargando las órdenes asignadas…</p> : filteredOrders.length ? <div className="tech-case-grid">
+      {filteredOrders.map((order) => {
+        const state = order.estado_display || "Estado pendiente";
+        const closed = isClosed(order);
+        const priority = order.alerta_prioridad_display || "Atención asignada";
+        const priorityClass = normalize(priority).includes("alta") || normalize(priority).includes("crít") ? "high" : "";
+        const address = [order.instalacion_direccion, order.instalacion_barrio, order.instalacion_ubicacion, order.instalacion_comunidad_display].filter(Boolean).join(" · ");
+        const directions = mapLink(order);
+        return <article className="tech-case-card" key={idOf(order)}>
+          <header className="tech-case-card-header">
+            <span>ORDEN #{idOf(order)}</span>
+            <span className={`tech-status-chip ${closed ? "closed" : isInProgress(order) ? "in-progress" : "pending"}`}>{state}</span>
+          </header>
+          <div className="tech-case-title-row"><div><small>INSTALACIÓN</small><h2>{order.instalacion_display || order.instalacion_nombre || `Instalación #${order.instalacion}`}</h2></div><span className={`tech-priority ${priorityClass}`}>{priority}</span></div>
+          <p className="tech-case-description">{order.descripcion || order.alerta_display || "Visita de mantenimiento asignada."}</p>
+          <div className="tech-case-location">
+            <MapPin size={18} aria-hidden="true" />
+            <div><strong>{address || "Ubicación por confirmar"}</strong>{order.instalacion_latitud != null && order.instalacion_longitud != null && <small>Coordenadas de la instalación: {order.instalacion_latitud}, {order.instalacion_longitud}</small>}</div>
+            {directions && <a href={directions} target="_blank" rel="noreferrer">Cómo llegar ↗</a>}
+          </div>
+          {order.alerta_display && <div className="tech-case-alert"><Bell size={16} /><span>{order.alerta_display}</span></div>}
+          <div className="tech-case-progress">
+            <div><span>Diagnóstico</span><p>{order.diagnostico || "Pendiente de registrar"}</p></div>
+            <div><span>Solución aplicada</span><p>{order.solucion_aplicada || "Pendiente de documentar"}</p></div>
+          </div>
+          <footer className="tech-case-actions">
+            {canEdit && isPending(order) && statusId("En proceso") && <button className="primary" type="button" onClick={() => changeState(order, "En proceso")}>Iniciar atención <ArrowRight size={15} /></button>}
+            {canEdit && !closed && <button className="secondary" type="button" onClick={() => beginEditing(order)}>Registrar avance</button>}
+            {user.permisos.includes("view_repuestoordentrabajo") && <Link className="tech-parts-link" to="/consumos">Repuestos utilizados ↗</Link>}
+          </footer>
+        </article>;
+      })}
+    </div> : <div className="tech-empty-state"><Wrench size={30} /><h2>{orders.length ? "No hay órdenes en este filtro" : "Todavía no tienes visitas asignadas"}</h2><p>{orders.length ? "Elige otro estado para ver tus órdenes." : "Cuando te asignen un mantenimiento, aquí encontrarás la dirección, la ruta y el seguimiento de la intervención."}</p></div>}
+    {editing && <div className="tech-edit-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditing(null); }}>
+      <section className="tech-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="tech-edit-title">
+        <header><div><span className="eyebrow">ORDEN #{idOf(editing)}</span><h2 id="tech-edit-title">Registrar avance</h2></div><button className="icon-button" type="button" aria-label="Cerrar" onClick={() => setEditing(null)}><X size={18} /></button></header>
+        <form onSubmit={saveProgress}>
+          <label>Diagnóstico<textarea rows="3" value={draft.diagnostico} onChange={(event) => setDraft((value) => ({ ...value, diagnostico: event.target.value }))} placeholder="Describe qué encontraste en la instalación." /></label>
+          <label>Solución aplicada<textarea rows="3" value={draft.solucion_aplicada} onChange={(event) => setDraft((value) => ({ ...value, solucion_aplicada: event.target.value }))} placeholder="Registra la reparación o acción realizada." /></label>
+          {statusChoices.length > 0 && <label>Estado de la orden<select value={draft.estado} onChange={(event) => setDraft((value) => ({ ...value, estado: event.target.value }))}>{statusChoices.map((state) => <option key={state.id_estado_orden_trabajo} value={state.id_estado_orden_trabajo} disabled={normalize(state.nombre).includes("cerrad") && !canClose}>{state.nombre}</option>)}</select></label>}
+          <p className="tech-edit-note">Guarda el diagnóstico y la solución para que la comunidad vea el seguimiento.</p>
+          {error && <p role="alert" className="notice">{error}</p>}
+          <footer><button className="secondary" type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="primary" type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar avance"}</button></footer>
+        </form>
+      </section>
+    </div>}
+  </>;
+}
+
 function Workspace({ user, onLogout, onProfileUpdated }) {
   const [open, setOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
@@ -1390,7 +1565,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     baseRoutes[path] = [kind, title, readonly];
   };
   if (tech) {
-    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "ordenes", "Mis casos asignados", true);
+    if (hasResource("ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
     if (hasResource("instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
     if (hasResource("repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
@@ -1537,6 +1712,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                       <RoleMatrix user={user} />
                     ) : kind === "homeowner" ? (
                       <HomeownerOverview user={user} />
+                    ) : kind === "technician-cases" ? (
+                      <TechnicianCases user={user} />
                     ) : (
                       <Records
                         key={kind}

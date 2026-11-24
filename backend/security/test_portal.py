@@ -15,12 +15,28 @@ class PortalAccessTests(APITestCase):
         cls.leader = m.Usuario.objects.create_user(username='leader',email='leader@example.test',comunidad=cls.a)
         for user, name in [(cls.manager,'Administrador'),(cls.tech,'Técnico de Campo'),(cls.leader,'Líder Comunitario')]:
             role, _ = Role.objects.get_or_create(name=name)
-            role.permissions.set(Permission.objects.filter(content_type__app_label='core'))
+            if name == 'Administrador':
+                role.permissions.set(Permission.objects.all())
+            else:
+                allowed = {
+                    'Técnico de Campo': [
+                        'view_instalacion', 'view_dispositivo', 'view_umbral',
+                        'view_ordentrabajo', 'change_ordentrabajo', 'close_ordentrabajo',
+                        'view_estadoordentrabajo', 'view_repuesto',
+                        'add_repuestoordentrabajo', 'change_repuestoordentrabajo',
+                        'view_alerta',
+                    ],
+                    'Líder Comunitario': [
+                        'view_instalacion', 'view_alerta', 'view_ordentrabajo',
+                        'view_dispositivo',
+                    ],
+                }[name]
+                role.permissions.set(Permission.objects.filter(codename__in=allowed))
             UserRole.objects.create(usuario=user,rol=role)
         state = m.EstadoInstalacion.objects.create(nombre='Operativa')
-        cls.i1=m.Instalacion.objects.create(nombre='Solar A',comunidad=cls.a,ubicacion='A',capacidad=5,fecha_instalacion=date.today(),estado_instalacion=state)
+        cls.i1=m.Instalacion.objects.create(nombre='Solar A',comunidad=cls.a,ubicacion='A',direccion='Vereda A',barrio='Sector A',latitud='11.550000',longitud='-72.900000',capacidad=5,fecha_instalacion=date.today(),estado_instalacion=state)
         cls.i2=m.Instalacion.objects.create(nombre='Solar B',comunidad=cls.b,ubicacion='B',capacidad=5,fecha_instalacion=date.today(),estado_instalacion=state)
-        order_state=m.EstadoOrdenTrabajo.objects.create(nombre='Pendiente')
+        order_state, _=m.EstadoOrdenTrabajo.objects.get_or_create(nombre='Pendiente')
         cls.order=m.OrdenTrabajo.objects.create(instalacion=cls.i1,tecnico=cls.tech,estado=order_state,descripcion='Test')
         cls.other=m.OrdenTrabajo.objects.create(instalacion=cls.i2,tecnico=cls.manager,estado=order_state,descripcion='Other')
     def test_anonymous_and_leader_scope(self):
@@ -34,7 +50,15 @@ class PortalAccessTests(APITestCase):
     def test_technician_cannot_reassign_or_read_foreign_order(self):
         self.client.force_authenticate(self.tech)
         url='/api/security/portal/ordenes/'
-        self.assertEqual(len(self.client.get(url).data),1)
+        orders = self.client.get(url).data
+        self.assertEqual(len(orders),1)
+        self.assertEqual(orders[0]['instalacion_direccion'], 'Vereda A')
+        self.assertEqual(orders[0]['instalacion_barrio'], 'Sector A')
+        self.assertEqual(orders[0]['instalacion_ubicacion'], 'A')
+        self.assertEqual(orders[0]['instalacion_latitud'], '11.550000')
+        self.assertEqual(orders[0]['instalacion_longitud'], '-72.900000')
+        self.assertEqual(orders[0]['instalacion_comunidad_display'], 'A')
+        self.assertIsNone(orders[0]['alerta_prioridad_display'])
         self.assertEqual(self.client.patch(url+str(self.order.pk)+'/',{'tecnico':self.manager.pk}).status_code,403)
         self.assertEqual(self.client.patch(url+str(self.other.pk)+'/',{'diagnostico':'hack'}).status_code,404)
         self.assertEqual(self.client.patch(url+str(self.order.pk)+'/',{'diagnostico':'Revisado'}).status_code,200)
@@ -44,10 +68,11 @@ class PortalAccessTests(APITestCase):
         self.client.force_authenticate(self.manager)
         self.assertEqual(self.client.post(url).status_code,403)
         self.client.force_authenticate(self.superuser)
+        self.assertEqual(self.client.post(f'/api/security/accounts/{self.superuser.pk}/toggle_superadmin/').status_code,400)
         self.assertEqual(self.client.post(url).status_code,200)
         self.tech.refresh_from_db()
         self.assertTrue(self.tech.is_staff and self.tech.is_superuser)
-        self.assertEqual(self.client.post(f'/api/security/accounts/{self.superuser.pk}/toggle_superadmin/').status_code,400)
+        self.assertEqual(self.client.post(f'/api/security/accounts/{self.superuser.pk}/toggle_superadmin/').status_code,200)
     def test_permission_revocation_is_enforced(self):
         self.client.force_authenticate(self.tech)
         role = self.tech.roles_asignados.get().rol
@@ -58,7 +83,7 @@ class PortalAccessTests(APITestCase):
         response = self.client.get('/api/security/matrix/')
         self.assertEqual(response.status_code, 200)
         resource = next(r for r in response.data['resources'] if r['code'] == 'core-ordentrabajo')
-        self.assertEqual(set(resource['permissions']), {'view', 'add', 'change', 'delete'})
+        self.assertEqual(set(resource['permissions']), {'view', 'add', 'change', 'delete', 'close_ordentrabajo'})
         role = self.tech.roles_asignados.get().rol
         permissions = list(role.permissions.exclude(pk=resource['permissions']['change']['id']).values_list('pk', flat=True))
         self.assertEqual(self.client.patch(f'/api/security/roles/{role.pk}/', {'permissions': permissions}, format='json').status_code, 200)
@@ -86,7 +111,7 @@ class PortalAccessTests(APITestCase):
         url='/api/security/login/'
         self.assertEqual(client.post(url,{'username':'manager','password':'TestPassword123!'},format='json').status_code,403)
         client.get('/api/csrf/')
-        response=client.post(url,{'username':'manager','password':'TestPassword123!'},format='json',HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value)
+        response=client.post(url,{'username':'manager','password':'TestPassword123!','challenge_left':2,'challenge_right':3,'challenge_answer':5},format='json',HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value)
         self.assertEqual(response.status_code,200)
         self.assertEqual(client.get('/api/security/session/').data['username'],'manager')
         self.assertEqual(client.post('/api/cerrar_sesion/',HTTP_X_CSRFTOKEN=client.cookies['csrftoken'].value).status_code,200)

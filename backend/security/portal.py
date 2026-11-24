@@ -18,6 +18,8 @@ from .models import Role, UserRole, has_effective_role, get_effective_permission
 from .models import Resource
 from .audit import audit_security_change
 
+Usuario = get_user_model()
+
 def admin(user):
     return has_effective_role(user, 'Administrador')
 
@@ -256,6 +258,33 @@ def resource_view(model):
     )
 
     class Serializer(serializers.ModelSerializer):
+        if model == m.OrdenTrabajo:
+            instalacion_direccion = serializers.CharField(
+                source='instalacion.direccion', read_only=True, allow_null=True
+            )
+            instalacion_barrio = serializers.CharField(
+                source='instalacion.barrio', read_only=True, allow_null=True
+            )
+            instalacion_ubicacion = serializers.CharField(
+                source='instalacion.ubicacion', read_only=True, allow_null=True
+            )
+            instalacion_latitud = serializers.DecimalField(
+                source='instalacion.latitud', max_digits=9, decimal_places=6,
+                read_only=True, allow_null=True,
+            )
+            instalacion_longitud = serializers.DecimalField(
+                source='instalacion.longitud', max_digits=9, decimal_places=6,
+                read_only=True, allow_null=True,
+            )
+            instalacion_comunidad_display = serializers.CharField(
+                source='instalacion.comunidad.nombre', read_only=True,
+                allow_null=True, default=None,
+            )
+            alerta_prioridad_display = serializers.CharField(
+                source='alerta.prioridad.nombre', read_only=True,
+                allow_null=True, default=None,
+            )
+
         class Meta:
             fields = '__all__'
             read_only_fields = ['fecha_atencion', 'fecha_cierre']
@@ -325,9 +354,14 @@ def resource_view(model):
         serializer_class = DispositivoSerializer if model == m.Dispositivo else Serializer
         permission_classes = [IsAuthenticated]
         def get_queryset(self):
-            return scoped(self.request.user, model).select_related(
+            queryset = scoped(self.request.user, model).select_related(
                 *(field.name for field in relation_fields)
             )
+            if model == m.OrdenTrabajo:
+                queryset = queryset.select_related(
+                    'instalacion__comunidad', 'alerta__prioridad'
+                )
+            return queryset
         @action(detail=True, methods=['get'], url_path='comparativa')
         def comparativa(self, request, pk=None):
             if model != m.Dispositivo:
