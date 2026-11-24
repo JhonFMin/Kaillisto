@@ -1,10 +1,10 @@
 # Ka’illisto — estado del frontend
 
-Actualizado: 23 de noviembre de 2026
+Actualizado: 24 de noviembre de 2026
 
 ## Estado de publicación
 
-El último incremento de frontend es `77b058e` (`Separate personal and admin workspace shells`), en la rama `frontend`; incluye el nuevo cascarón personal separado del panel administrativo. `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Render sirve los bundles `index-BCZH1lPf.js` e `index-DJnhhGTx.css`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
+El último incremento de frontend es `4c9f9f3` (`Personalize user workspace cards and RBAC`), en la rama `frontend`; agrega navegación personal ligada al RBAC y tarjetas para las listas de “Mi espacio”. `77b058e` separó los cascarones; `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Render sirve los bundles `index-C9RQISxe.js` e `index-CqkV7Rwe.css`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
 Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
 
@@ -131,10 +131,20 @@ Commit: `77b058e` — `Separate personal and admin workspace shells`.
 7. **Control de calidad:** pruebas móviles, teclado/accesibilidad, estados vacíos/errores, permisos por rol, y revisión de carga en conexiones lentas. No fusionar hasta que Jhon pruebe el preview.
 8. **Modelo comercial:** preparar planes o demostración para hogares y comunidades cuando las funciones principales estén estables; no introducir anuncios todavía.
 
+### 9. RBAC y tarjetas en “Mi espacio” (desplegado)
+
+Commit: `4c9f9f3` — `Personalize user workspace cards and RBAC`.
+
+- “Mi espacio” consulta `/api/security/navigation/?workspace=personal`, que arma los permisos a partir de los roles activos de esa persona y excluye el rol `Administrador`. La navegación y los recursos personales muestran únicamente recursos activos, visibles en el menú y permitidos por sus roles; los cambios de RBAC se vuelven a cargar al entrar o cambiar de espacio.
+- Una cuenta con acceso administrativo y roles de servicio conserva ambos espacios: la vista administrativa usa sus permisos habituales y la vista personal usa los permisos de sus otros roles. Los listados/tablas del panel administrativo permanecen en el mismo modo lineal.
+- Las listas lineales de `/mi-alertas`, `/tecnicos` y los recursos consultables de Mi espacio ahora se presentan como tarjetas con imagen, búsqueda, estado, fecha, ubicación y detalles desplegables. Las órdenes muestran coordenadas de la instalación en mapa; las tarjetas de dispositivos conservan el acceso a mediciones.
+- `pnpm run build`: correcto. `pnpm run lint`: termina con advertencias existentes del proyecto; no hay errores. `security.test_portal`: 9 pruebas correctas, incluyendo usuario dual y recurso oculto. `git diff --check`: correcto.
+- Render preview `https://kaillisto-pr-3.onrender.com`: HTML, JavaScript y CSS responden HTTP 200. Bundles publicados: `index-C9RQISxe.js` y `index-CqkV7Rwe.css`; el JS contiene el flujo de permisos personales y tarjetas, y el CSS las clases visuales. La sesión de navegador no estuvo disponible desde Codex para inspeccionar una cuenta autenticada; Jhon debe revisar la vista con sus cuentas de roles en el preview.
+
 ## Cuidado con Neon y Render
 
 El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los previews de Render pueden copiar variables del servicio base al crearse; antes de cualquier migración futura, confirmar de nuevo que `DATABASE_URL` sigue apuntando a la rama de prueba. No imprimir ni pegar credenciales en el chat o en commits.
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Separación de cascarones en 77b058e; resúmenes de líder/propietario en 87f10dd; registro y solicitudes en 2d4da31. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias previas. Render sirve index-BCZH1lPf.js e index-DJnhhGTx.css; rutas públicas/admin respondieron 200. Jhon aún debe probar visualmente con cuenta dual y revisar el look de la página comercial; incorporar referencia visual si la comparte. Después sigue prueba móvil, repuestos y notificaciones push. Avisa antes de cada incremento visual; conserva violeta, Inter y tarjetas.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. El último avance es 4c9f9f3: navegación de “Mi espacio” ligada a roles y recursos activos/visibles, con listas personales en tarjetas; las tablas administrativas siguen lineales. Verificaciones: build correcto, 9 pruebas de seguridad correctas, lint con advertencias del proyecto, preview sirve index-C9RQISxe.js e index-CqkV7Rwe.css. Jhon debe probar la vista autenticada de líder/técnico/propietario y cuenta dual. Migración core.0020 aplicada solo a Neon aislado. Luego sigue prueba móvil, repuestos y notificaciones push. Conserva violeta, Inter y tarjetas.
