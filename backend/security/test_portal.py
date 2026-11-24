@@ -48,6 +48,9 @@ class PortalAccessTests(APITestCase):
             'view_comunidad', 'view_estadoinstalacion', 'view_tipomedicion',
             'view_estadoalerta', 'view_prioridadalerta', 'view_tipoalerta',
         } & technician_codes)
+        homeowner_codes = set(default_permissions('Propietario Solar').values_list('codename', flat=True))
+        self.assertTrue({'view_instalacion', 'view_dispositivo', 'view_medicion', 'view_alerta', 'view_ordentrabajo', 'view_notificacion'}.issubset(homeowner_codes))
+        self.assertFalse({'change_ordentrabajo', 'close_ordentrabajo', 'view_comunidad', 'view_repuesto'} & homeowner_codes)
 
         self.client.force_authenticate(self.manager)
         role = self.tech.roles_asignados.get().rol
@@ -58,6 +61,33 @@ class PortalAccessTests(APITestCase):
             set(role.permissions.values_list('codename', flat=True)),
             technician_codes,
         )
+
+    def test_homeowner_default_can_follow_only_orders_for_their_own_installation(self):
+        homeowner = m.Usuario.objects.create_user(
+            username='solar-owner', email='solar-owner@example.test',
+            password='TestPassword123!',
+        )
+        owned_installation = m.Instalacion.objects.create(
+            tipo=m.Instalacion.Tipo.RESIDENCIAL, responsable=homeowner,
+            nombre='Hogar propietario', direccion='Calle 2', barrio='Centro',
+            capacidad=3, fecha_instalacion=date.today(),
+            estado_instalacion=self.i1.estado_instalacion,
+        )
+        own_order = m.OrdenTrabajo.objects.create(
+            instalacion=owned_installation, tecnico=self.tech,
+            estado=self.order.estado, descripcion='Mantenimiento del hogar',
+        )
+        owner_role, _ = Role.objects.get_or_create(name='Propietario Solar')
+        owner_role.permissions.set(default_permissions('Propietario Solar'))
+        UserRole.objects.create(usuario=homeowner, rol=owner_role)
+        self.client.force_authenticate(homeowner)
+
+        response = self.client.get(
+            '/api/security/portal/ordenes/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual([row['id_orden_trabajo'] for row in response.data], [own_order.pk])
 
     def test_anonymous_and_leader_scope(self):
         url='/api/security/portal/instalaciones/'

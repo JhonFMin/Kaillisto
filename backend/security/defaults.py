@@ -32,6 +32,7 @@ ROLE_PERMISSION_PRESETS = {
         "dispositivo": ("view",),
         "medicion": ("view",),
         "alerta": ("view",),
+        "ordentrabajo": ("view",),
         "notificacion": ("view",),
     },
 }
