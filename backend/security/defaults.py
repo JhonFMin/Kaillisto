@@ -6,7 +6,6 @@ from django.contrib.auth.models import Permission
 ROLE_PERMISSION_PRESETS = {
     "Técnico de Campo": {
         "instalacion": ("view",),
-        "comunidad": ("view",),
         "dispositivo": ("view",),
         "medicion": ("view",),
         "umbral": ("view",),
@@ -15,12 +14,9 @@ ROLE_PERMISSION_PRESETS = {
         "repuesto": ("view",),
         "repuestoordentrabajo": ("view", "add"),
         "notificacion": ("view",),
-        "estadoinstalacion": ("view",),
+        # The field workflow loads status choices from this catalog. Other
+        # lookup catalogs are configuration screens for administrators.
         "estadoordentrabajo": ("view",),
-        "tipomedicion": ("view",),
-        "estadoalerta": ("view",),
-        "prioridadalerta": ("view",),
-        "tipoalerta": ("view",),
     },
     "Líder Comunitario": {
         "comunidad": ("view",),

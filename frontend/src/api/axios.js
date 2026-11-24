@@ -28,6 +28,11 @@ async function ensureCsrf() {
 
 // Inyecta el token CSRF en cada petición que lo necesita
 api.interceptors.request.use(async (config) => {
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem('kaillisto-workspace-mode') === 'personal') {
+        config.headers['X-Kaillisto-Workspace'] = 'personal';
+    } else {
+        delete config.headers['X-Kaillisto-Workspace'];
+    }
     const unsafe = ['post', 'put', 'patch', 'delete'];
     if (unsafe.includes(config.method?.toLowerCase())) {
         await ensureCsrf();

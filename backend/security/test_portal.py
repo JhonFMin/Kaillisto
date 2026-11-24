@@ -3,6 +3,7 @@ from django.contrib.auth.models import Permission
 from rest_framework.test import APITestCase, APIClient
 from core import models as m
 from security.models import Role, UserRole
+from security.defaults import default_permissions
 
 class PortalAccessTests(APITestCase):
     @classmethod
@@ -28,7 +29,7 @@ class PortalAccessTests(APITestCase):
                     ],
                     'Líder Comunitario': [
                         'view_instalacion', 'view_alerta', 'view_ordentrabajo',
-                        'view_dispositivo',
+                        'view_dispositivo', 'view_medicion',
                     ],
                 }[name]
                 role.permissions.set(Permission.objects.filter(codename__in=allowed))
@@ -39,6 +40,25 @@ class PortalAccessTests(APITestCase):
         order_state, _=m.EstadoOrdenTrabajo.objects.get_or_create(nombre='Pendiente')
         cls.order=m.OrdenTrabajo.objects.create(instalacion=cls.i1,tecnico=cls.tech,estado=order_state,descripcion='Test')
         cls.other=m.OrdenTrabajo.objects.create(instalacion=cls.i2,tecnico=cls.manager,estado=order_state,descripcion='Other')
+
+    def test_role_defaults_only_grant_operational_permissions_and_restore_from_admin(self):
+        technician_codes = set(default_permissions('Técnico de Campo').values_list('codename', flat=True))
+        self.assertTrue({'view_ordentrabajo', 'change_ordentrabajo', 'close_ordentrabajo', 'view_medicion'}.issubset(technician_codes))
+        self.assertFalse({
+            'view_comunidad', 'view_estadoinstalacion', 'view_tipomedicion',
+            'view_estadoalerta', 'view_prioridadalerta', 'view_tipoalerta',
+        } & technician_codes)
+
+        self.client.force_authenticate(self.manager)
+        role = self.tech.roles_asignados.get().rol
+        response = self.client.post(f'/api/security/roles/{role.pk}/restore-defaults/')
+        self.assertEqual(response.status_code, 200, response.data)
+        role.refresh_from_db()
+        self.assertEqual(
+            set(role.permissions.values_list('codename', flat=True)),
+            technician_codes,
+        )
+
     def test_anonymous_and_leader_scope(self):
         url='/api/security/portal/instalaciones/'
         self.assertIn(self.client.get(url).status_code,[401,403])
@@ -80,6 +100,104 @@ class PortalAccessTests(APITestCase):
         hidden_resource_access = self.client.get('/api/security/navigation/?workspace=personal')
         hidden_paths = {resource['menu_path'] for resource in hidden_resource_access.data['resources']}
         self.assertNotIn('/alertas', hidden_paths)
+
+    def test_personal_navigation_does_not_give_superuser_every_resource_automatically(self):
+        UserRole.objects.create(
+            usuario=self.superuser,
+            rol=self.tech.roles_asignados.get().rol,
+        )
+        self.client.force_authenticate(self.superuser)
+
+        personal = self.client.get('/api/security/navigation/?workspace=personal')
+        self.assertEqual(personal.status_code, 200)
+        self.assertIn('view_ordentrabajo', personal.data['permissions'])
+        self.assertNotIn('view_comunidad', personal.data['permissions'])
+        personal_models = {resource['model'] for resource in personal.data['resources']}
+        self.assertIn('ordentrabajo', personal_models)
+        self.assertNotIn('comunidad', personal_models)
+        personal_installations = self.client.get(
+            '/api/security/portal/instalaciones/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(personal_installations.status_code, 200)
+        self.assertEqual(personal_installations.data, [])
+        administration_installations = self.client.get('/api/security/portal/instalaciones/')
+        self.assertEqual(administration_installations.status_code, 200)
+        self.assertEqual(len(administration_installations.data), 2)
+
+    def test_personal_workspace_does_not_apply_admin_scope_to_dual_role_measurements(self):
+        UserRole.objects.create(
+            usuario=self.leader,
+            rol=self.manager.roles_asignados.get().rol,
+        )
+        measurement_type, _ = m.TipoMedicion.objects.get_or_create(
+            nombre='Voltaje de prueba', defaults={'unidad': 'V'},
+        )
+        community_device = m.Dispositivo.objects.create(
+            instalacion=self.i1, codigo='leader-device', modelo='ESP32', api_key_hash='hash',
+        )
+        foreign_device = m.Dispositivo.objects.create(
+            instalacion=self.i2, codigo='foreign-device', modelo='ESP32', api_key_hash='hash',
+        )
+        homeowner = m.Usuario.objects.create_user(
+            username='measurement-owner', first_name='Ana', last_name='Solar',
+            email='measurement-owner@example.test', password='TestPassword123!',
+        )
+        residential = m.Instalacion.objects.create(
+            tipo=m.Instalacion.Tipo.RESIDENCIAL, responsable=homeowner,
+            nombre='Casa Solar', direccion='Calle 1', barrio='Centro',
+            ubicacion='Riohacha', latitud='11.540000', longitud='-72.910000',
+            capacidad=4, fecha_instalacion=date.today(), estado_instalacion=self.i1.estado_instalacion,
+        )
+        residential_device = m.Dispositivo.objects.create(
+            instalacion=residential, codigo='owner-device', modelo='ESP32', api_key_hash='hash',
+        )
+        m.Medicion.objects.create(dispositivo=community_device, tipo_medicion=measurement_type, valor='12.40')
+        m.Medicion.objects.create(dispositivo=foreign_device, tipo_medicion=measurement_type, valor='13.10')
+        m.Medicion.objects.create(dispositivo=residential_device, tipo_medicion=measurement_type, valor='14.20')
+        self.client.force_authenticate(self.leader)
+
+        personal = self.client.get(
+            '/api/security/portal/recursos/core-medicion/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(personal.status_code, 200, personal.content)
+        self.assertEqual([row['dispositivo_display'] for row in personal.data], ['leader-device'])
+        self.assertEqual(personal.data[0]['instalacion_display'], self.i1.nombre)
+        self.assertEqual(personal.data[0]['comunidad_display'], self.a.nombre)
+        personal_comparison = self.client.get(
+            f'/api/security/portal/dispositivos/{community_device.pk}/comparativa/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(personal_comparison.status_code, 200, personal_comparison.content)
+        self.leader.roles_asignados.get(rol__name='Líder Comunitario').rol.permissions.remove(
+            Permission.objects.get(content_type__app_label='core', codename='view_medicion')
+        )
+        restricted_comparison = self.client.get(
+            f'/api/security/portal/dispositivos/{community_device.pk}/comparativa/',
+            HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(restricted_comparison.status_code, 403)
+        personal_update = self.client.patch(
+            f'/api/security/portal/ordenes/{self.order.pk}/',
+            {'diagnostico': 'No debe usar el permiso de administrador'},
+            format='json', HTTP_X_KAILLISTO_WORKSPACE='personal',
+        )
+        self.assertEqual(personal_update.status_code, 403)
+
+        administration = self.client.get('/api/security/portal/recursos/core-medicion/')
+        self.assertEqual(administration.status_code, 200)
+        administration_devices = {row['dispositivo_display'] for row in administration.data}
+        self.assertTrue({'leader-device', 'foreign-device', 'owner-device'}.issubset(administration_devices))
+        administration_update = self.client.patch(
+            f'/api/security/portal/ordenes/{self.order.pk}/',
+            {'diagnostico': 'Edición administrativa permitida'}, format='json',
+        )
+        self.assertEqual(administration_update.status_code, 200)
+        owner_measurement = next(row for row in administration.data if row['dispositivo_display'] == 'owner-device')
+        self.assertEqual(owner_measurement['propietario_display'], 'Ana Solar')
+        self.assertEqual(owner_measurement['instalacion_barrio'], 'Centro')
+        self.assertEqual(owner_measurement['instalacion_latitud'], '11.540000')
     def test_technician_cannot_reassign_or_read_foreign_order(self):
         self.client.force_authenticate(self.tech)
         url='/api/security/portal/ordenes/'

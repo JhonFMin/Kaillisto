@@ -149,6 +149,34 @@ def _active_role_rows(user):
         user._kaillisto_active_role_rows = rows
     return rows
 
+
+def get_personal_role_rows(user):
+    """Active business roles available in Mi espacio, excluding admin access."""
+    rows = getattr(user, '_kaillisto_personal_role_rows', None)
+    if rows is None:
+        rows = tuple(
+            user.roles_asignados.filter(rol__is_active=True)
+            .exclude(rol__name='Administrador')
+            .values_list('rol_id', 'rol__name')
+        )
+        user._kaillisto_personal_role_rows = rows
+    return rows
+
+
+def get_personal_permissions(user):
+    """Permissions for Mi espacio; admin roles and superuser bypass are ignored."""
+    if not user.is_authenticated or not user.is_active:
+        return []
+    role_ids = [role_id for role_id, _ in get_personal_role_rows(user)]
+    if not role_ids:
+        return []
+    return list(Permission.objects.filter(
+        roles__in=role_ids,
+        content_type__rbac_resource__is_active=True,
+        content_type__app_label='core',
+    ).exclude(content_type__model__in=['usuario', 'idioma', 'rol', 'evento'])
+      .values_list('codename', flat=True).distinct())
+
 def has_effective_role(user, role_name):
     """
     Verifica si el usuario tiene un rol activo con el nombre exacto.

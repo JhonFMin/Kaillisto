@@ -15,7 +15,10 @@ from rest_framework.metadata import SimpleMetadata
 from rest_framework.response import Response
 from core import models as m
 from core.serializers import DispositivoSerializer, SolicitudVinculacionSerializer
-from .models import Role, UserRole, has_effective_role, get_effective_permissions
+from .models import (
+    Role, UserRole, has_effective_role, get_effective_permissions,
+    get_personal_permissions, get_personal_role_rows,
+)
 from .models import Resource
 from .audit import audit_security_change
 
@@ -33,13 +36,23 @@ def effective_permissions(user):
     return permissions
 
 
-def scoped(user, model):
+def personal_workspace_request(request):
+    return request.headers.get('X-Kaillisto-Workspace') == 'personal'
+
+
+def scoped(user, model, *, personal=False):
     qs = model.objects.all().order_by(model._meta.pk.name)
-    if admin(user) or has_full_resource_access(user):
+    if not personal and (admin(user) or has_full_resource_access(user)):
         return qs
-    technician = has_effective_role(user, 'Técnico de Campo')
-    leader = has_effective_role(user, 'Líder Comunitario')
-    homeowner = has_effective_role(user, 'Propietario Solar')
+    if personal:
+        personal_roles = {name for _, name in get_personal_role_rows(user)}
+        technician = 'Técnico de Campo' in personal_roles
+        leader = 'Líder Comunitario' in personal_roles
+        homeowner = 'Propietario Solar' in personal_roles
+    else:
+        technician = has_effective_role(user, 'Técnico de Campo')
+        leader = has_effective_role(user, 'Líder Comunitario')
+        homeowner = has_effective_role(user, 'Propietario Solar')
     installations = m.Instalacion.objects.none()
     if technician:
         installations = m.Instalacion.objects.filter(ordenes_trabajo__tecnico=user)
@@ -53,6 +66,8 @@ def scoped(user, model):
     if model == m.Comunidad:
         return qs.filter(instalaciones__in=ids).distinct()
     if model == m.OrdenTrabajo:
+        if personal and technician and (leader or homeowner):
+            return qs.filter(Q(tecnico=user) | Q(instalacion__in=ids)).distinct()
         return qs.filter(tecnico=user) if technician else qs.filter(instalacion__in=ids)
     if model in (m.Alerta, m.Dispositivo, m.Umbral):
         return qs.filter(instalacion__in=ids)
@@ -230,6 +245,8 @@ class SolicitudesVinculacion(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
+        if personal_workspace_request(self.request):
+            return queryset.filter(solicitante=user)
         if user.is_superuser or admin(user):
             return queryset
         return queryset.filter(solicitante=user)
@@ -256,7 +273,7 @@ class SolicitudesVinculacion(viewsets.ModelViewSet):
     @transaction.atomic
     def revisar(self, request, pk=None):
         user = request.user
-        if not (user.is_superuser or admin(user)):
+        if personal_workspace_request(request) or not (user.is_superuser or admin(user)):
             raise PermissionDenied('Solo administración puede revisar solicitudes de vinculación.')
         try:
             application = self.get_queryset().select_for_update().get(pk=pk)
@@ -396,6 +413,40 @@ class PortalMetadata(SimpleMetadata):
     def determine_actions(self, request, view):
         return {"POST": self.get_serializer_info(view.get_serializer())}
 
+
+class MedicionPortalSerializer(serializers.ModelSerializer):
+    tipo_medicion_display = serializers.CharField(source='tipo_medicion.nombre', read_only=True)
+    tipo_medicion_unidad = serializers.CharField(source='tipo_medicion.unidad', read_only=True)
+    dispositivo_display = serializers.CharField(source='dispositivo.codigo', read_only=True)
+    dispositivo_modelo = serializers.CharField(source='dispositivo.modelo', read_only=True)
+    instalacion_display = serializers.CharField(source='dispositivo.instalacion.nombre', read_only=True)
+    instalacion_tipo = serializers.CharField(source='dispositivo.instalacion.tipo', read_only=True)
+    instalacion_direccion = serializers.CharField(source='dispositivo.instalacion.direccion', read_only=True, allow_null=True)
+    instalacion_barrio = serializers.CharField(source='dispositivo.instalacion.barrio', read_only=True, allow_null=True)
+    instalacion_ubicacion = serializers.CharField(source='dispositivo.instalacion.ubicacion', read_only=True)
+    instalacion_latitud = serializers.DecimalField(source='dispositivo.instalacion.latitud', max_digits=9, decimal_places=6, read_only=True, allow_null=True)
+    instalacion_longitud = serializers.DecimalField(source='dispositivo.instalacion.longitud', max_digits=9, decimal_places=6, read_only=True, allow_null=True)
+    comunidad_display = serializers.CharField(source='dispositivo.instalacion.comunidad.nombre', read_only=True, allow_null=True, default=None)
+    propietario_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = m.Medicion
+        fields = [
+            'id_medicion', 'dispositivo', 'dispositivo_display', 'dispositivo_modelo',
+            'tipo_medicion', 'tipo_medicion_display', 'tipo_medicion_unidad',
+            'valor', 'fecha_hora', 'es_anomala', 'instalacion_display',
+            'instalacion_tipo', 'instalacion_direccion', 'instalacion_barrio',
+            'instalacion_ubicacion', 'instalacion_latitud', 'instalacion_longitud',
+            'comunidad_display', 'propietario_display',
+        ]
+        read_only_fields = fields
+
+    def get_propietario_display(self, measurement):
+        owner = measurement.dispositivo.instalacion.responsable
+        if owner is None:
+            return None
+        return owner.get_full_name().strip() or 'Propietario de la instalación'
+
 def resource_view(model):
     relation_fields = tuple(
         field for field in model._meta.concrete_fields
@@ -496,21 +547,38 @@ def resource_view(model):
     class Resource(viewsets.ModelViewSet):
         metadata_class = PortalMetadata
         queryset = model.objects.all()
-        serializer_class = DispositivoSerializer if model == m.Dispositivo else Serializer
+        serializer_class = (
+            DispositivoSerializer if model == m.Dispositivo else
+            MedicionPortalSerializer if model == m.Medicion else Serializer
+        )
         permission_classes = [IsAuthenticated]
         def get_queryset(self):
-            queryset = scoped(self.request.user, model).select_related(
+            personal = personal_workspace_request(self.request)
+            queryset = scoped(self.request.user, model, personal=personal).select_related(
                 *(field.name for field in relation_fields)
             )
             if model == m.OrdenTrabajo:
                 queryset = queryset.select_related(
                     'instalacion__comunidad', 'alerta__prioridad'
                 )
+            if model == m.Medicion:
+                queryset = queryset.select_related(
+                    'dispositivo__instalacion__comunidad',
+                    'dispositivo__instalacion__responsable',
+                    'tipo_medicion',
+                )
             return queryset
         @action(detail=True, methods=['get'], url_path='comparativa')
         def comparativa(self, request, pk=None):
             if model != m.Dispositivo:
                 raise ValidationError('Esta consulta solo aplica a dispositivos IoT.')
+            personal = personal_workspace_request(request)
+            permissions = (
+                get_personal_permissions(request.user)
+                if personal else effective_permissions(request.user)
+            )
+            if 'ALL' not in permissions and 'view_medicion' not in permissions:
+                raise PermissionDenied('Tu rol no tiene permiso para consultar mediciones.')
             device = self.get_object()
             latest = m.Medicion.objects.filter(
                 dispositivo=device, tipo_medicion_id=OuterRef('pk'),
@@ -569,28 +637,40 @@ def resource_view(model):
             })
         def initial(self, request, *args, **kwargs):
             super().initial(request, *args, **kwargs)
-            if not request.user.is_superuser and request.method != 'OPTIONS':
+            personal = personal_workspace_request(request)
+            if request.method != 'OPTIONS' and (personal or not request.user.is_superuser):
                 verb = {'GET': 'view', 'HEAD': 'view', 'POST': 'add', 'PATCH': 'change', 'PUT': 'change', 'DELETE': 'delete'}[request.method]
                 required = f'{verb}_{model._meta.model_name}'
-                if required not in effective_permissions(request.user):
+                permissions = get_personal_permissions(request.user) if personal else effective_permissions(request.user)
+                if required not in permissions and 'ALL' not in permissions:
                     raise PermissionDenied('Tu rol no tiene este permiso activo.')
+            admin_scope = not personal and (
+                request.user.is_superuser or admin(request.user) or has_full_resource_access(request.user)
+            )
+            has_technician_role = (
+                any(name == 'Técnico de Campo' for _, name in get_personal_role_rows(request.user))
+                if personal else has_effective_role(request.user, 'Técnico de Campo')
+            )
             if (
                 request.method in ('PUT', 'PATCH')
                 and model == m.OrdenTrabajo
-                and has_effective_role(request.user, 'Técnico de Campo')
-                and not admin(request.user)
-                and not has_full_resource_access(request.user)
+                and has_technician_role
+                and not admin_scope
             ):
-                tech = has_effective_role(request.user, 'Técnico de Campo')
-                allowed = {'diagnostico', 'solucion_aplicada', 'estado'} if tech else set()
+                allowed = {'diagnostico', 'solucion_aplicada', 'estado'}
                 if set(request.data) - allowed:
                     raise PermissionDenied('No puedes modificar la asignación de la orden.')
         def perform_create(self, serializer):
+            personal = personal_workspace_request(self.request)
+            roles = {name for _, name in get_personal_role_rows(self.request.user)} if personal else set()
+            technician = 'Técnico de Campo' in roles if personal else has_effective_role(self.request.user, 'Técnico de Campo')
+            admin_scope = not personal and (
+                self.request.user.is_superuser or admin(self.request.user) or has_full_resource_access(self.request.user)
+            )
             if (
                 model == m.RepuestoOrdenTrabajo
-                and has_effective_role(self.request.user, 'Técnico de Campo')
-                and not admin(self.request.user)
-                and not has_full_resource_access(self.request.user)
+                and technician
+                and not admin_scope
             ):
                 if serializer.validated_data['orden_trabajo'].tecnico_id != self.request.user.pk:
                     raise PermissionDenied('La orden no te pertenece.')
@@ -604,7 +684,11 @@ def resource_view(model):
                 previous_state = serializer.instance.estado.nombre
                 state = serializer.validated_data.get('estado', serializer.instance.estado).nombre
                 if state == 'Cerrada' and previous_state != 'Cerrada':
-                    permissions = effective_permissions(self.request.user)
+                    permissions = (
+                        get_personal_permissions(self.request.user)
+                        if personal_workspace_request(self.request)
+                        else effective_permissions(self.request.user)
+                    )
                     if 'ALL' not in permissions and 'close_ordentrabajo' not in permissions:
                         raise PermissionDenied('Tu rol no tiene permiso para cerrar órdenes de trabajo.')
                 if state == 'En proceso' and not serializer.instance.fecha_atencion:
@@ -767,7 +851,8 @@ def profile(request):
 def dashboard_summary(request):
     """Entrega los conteos autorizados con una sola consulta a la base."""
     user = request.user
-    permissions = set(effective_permissions(user))
+    personal = personal_workspace_request(request)
+    permissions = set(get_personal_permissions(user) if personal else effective_permissions(user))
     resources = {
         'comunidades': m.Comunidad,
         'instalaciones': m.Instalacion,
@@ -777,9 +862,9 @@ def dashboard_summary(request):
     annotations = {}
     for key, model in resources.items():
         codename = f'view_{model._meta.model_name}'
-        if user.is_superuser or 'ALL' in permissions or codename in permissions:
+        if (not personal and user.is_superuser) or 'ALL' in permissions or codename in permissions:
             count_query = (
-                scoped(user, model)
+                scoped(user, model, personal=personal)
                 .order_by()
                 .values(_kaillisto_group=Value(1))
                 .annotate(_kaillisto_count=Count('pk', distinct=True))

@@ -1128,10 +1128,13 @@ def ficha_instalacion_tecnico(request, id_instalacion):
     )
 
 # Keep legacy URLs subject to the same scope rules as the local portal.
-from security.portal import scoped, admin as portal_admin
+from security.portal import scoped, admin as portal_admin, personal_workspace_request
 
 def _scoped_queryset(model):
-    return lambda self: scoped(self.request.user, model)
+    return lambda self: scoped(
+        self.request.user, model,
+        personal=personal_workspace_request(self.request),
+    )
 
 for _view, _model in [(ComunidadViewSet, Comunidad), (InstalacionViewSet, Instalacion),
     (DispositivoViewSet, Dispositivo), (UmbralViewSet, Umbral), (AlertaViewSet, Alerta)]:
@@ -1140,7 +1143,10 @@ for _view, _model in [(ComunidadViewSet, Comunidad), (InstalacionViewSet, Instal
 # Operational edits use the scoped portal, preventing legacy reassignment paths.
 class LegacyWritePermission(IsAuthenticated):
     def has_permission(self, request, view):
-        return super().has_permission(request, view) and (request.method in ('GET', 'HEAD', 'OPTIONS') or portal_admin(request.user))
+        return super().has_permission(request, view) and (
+            request.method in ('GET', 'HEAD', 'OPTIONS')
+            or (not personal_workspace_request(request) and portal_admin(request.user))
+        )
 
 for _view in [ComunidadViewSet, InstalacionViewSet, DispositivoViewSet, UmbralViewSet,
     EstadoInstalacionViewSet, TipoMedicionViewSet, RepuestoViewSet, RepuestoOrdenTrabajoViewSet, OrdenTrabajoViewSet]:

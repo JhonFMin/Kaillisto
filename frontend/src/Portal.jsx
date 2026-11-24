@@ -1098,6 +1098,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     [loading, setLoading] = useState(true),
     [editing, setEditing] = useState(null),
     [compareDevice, setCompareDevice] = useState(null),
+    [selectedMeasurement, setSelectedMeasurement] = useState(null),
     [locationRow, setLocationRow] = useState(null),
     [search, setSearch] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
@@ -1142,6 +1143,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         (k) =>
           !k.endsWith("_display") &&
           !k.startsWith("map_") &&
+          !["dispositivo_modelo", "tipo_medicion_unidad", "instalacion_tipo", "instalacion_direccion", "instalacion_barrio", "instalacion_ubicacion", "instalacion_latitud", "instalacion_longitud", "propietario_display"].includes(k) &&
           ![
             "password",
             "permissions_detail",
@@ -1186,6 +1188,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
   const PersonalVisualIcon = personalVisuals[3];
   const personalCardTitle = (row) => ({
     alertas: row.tipo_alerta_display || row.tipo_medicion_display || `Alerta #${idOf(row)}`,
+    mediciones: row.tipo_medicion_display || `Medición #${idOf(row)}`,
     ordenes: `Orden #${idOf(row)}`,
     consumos: row.repuesto_display || row.repuesto_nombre || `Repuesto #${idOf(row)}`,
     dispositivos: row.codigo || `Dispositivo #${idOf(row)}`,
@@ -1194,6 +1197,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     notificaciones: row.alerta_display || row.asunto || `Aviso #${idOf(row)}`,
   }[kind] || row.nombre || row.codigo || row.asunto || `Registro #${idOf(row)}`);
   const personalCardSummary = (row) => [
+    kind === "mediciones" && row.valor != null ? `Lectura: ${row.valor} ${row.tipo_medicion_unidad || ""}`.trim() : null,
     row.mensaje,
     row.descripcion,
     row.diagnostico,
@@ -1201,7 +1205,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     row.modelo,
     [row.direccion, row.barrio, row.ubicacion].filter(Boolean).join(" · "),
   ].find((value) => value && String(value).trim()) || "Consulta el detalle y el seguimiento de este registro.";
-  const personalCardDate = (row) => row.fecha_creacion || row.fecha_atencion || row.ultima_comunicacion || row.fecha_envio;
+  const personalCardDate = (row) => row.fecha_creacion || row.fecha_atencion || row.ultima_comunicacion || row.fecha_envio || row.fecha_hora;
   const personalMapPoint = (row) => {
     const latitude = row.instalacion_latitud ?? row.latitud ?? row.map_latitud;
     const longitude = row.instalacion_longitud ?? row.longitud ?? row.map_longitud;
@@ -1262,7 +1266,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         ) : filteredRows.length ? <div className="personal-record-grid">
           {filteredRows.map((row, index) => {
             const location = personalMapPoint(row);
-            const state = row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display;
+            const state = row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display || (kind === "mediciones" ? row.es_anomala ? "Lectura anómala" : "Lectura registrada" : "");
             const mapLabel = personalCardTitle(row);
             const extraDetails = [
               ["Diagnóstico", row.diagnostico],
@@ -1270,18 +1274,21 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
               ["Referencia", row.referencia || row.direccion],
             ].filter(([, value]) => value && String(value).trim());
             return <article className="personal-record-card feature" key={idOf(row)} style={{ "--card-index": index }}>
-              <div className="personal-record-card-top"><span>{definitions[kind]?.[0] || title || "Seguimiento"}</span>{state && <span className={`personal-record-status${String(state).toLowerCase().includes("cerr") || String(state).toLowerCase().includes("normal") ? " is-calm" : ""}`}>{state}</span>}</div>
+              <div className="personal-record-card-top"><span>{definitions[kind]?.[0] || title || "Seguimiento"}</span>{state && <span className={`personal-record-status${String(state).toLowerCase().includes("cerr") || String(state).toLowerCase().includes("normal") || String(state).toLowerCase().includes("registrad") ? " is-calm" : ""}`}>{state}</span>}</div>
               <h3>{personalCardTitle(row)}</h3>
               <p>{personalCardSummary(row)}</p>
               <div className="personal-record-meta">
                 {row.instalacion_display && <span><MapPin size={14} />{row.instalacion_display}</span>}
+                {kind === "mediciones" && row.dispositivo_display && <span><Radio size={14} />{row.dispositivo_display}</span>}
+                {kind === "mediciones" && row.comunidad_display && <span><MapPin size={14} />{row.comunidad_display}</span>}
                 {personalCardDate(row) && <span><ClockCounterClockwise size={14} />{readableDate(personalCardDate(row))}</span>}
                 {row.cantidad != null && <span><Package size={14} />{row.cantidad} unidades</span>}
                 {row.canal && <span><Bell size={14} />{row.canal}</span>}
               </div>
               <div className="personal-record-actions">
                 {location && <button type="button" className="secondary" aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} />{locationRow === idOf(row) ? "Ocultar ubicación" : "Ver ubicación"}</button>}
-                {kind === "dispositivos" && <button type="button" className="secondary" onClick={() => setCompareDevice(row)}><ChartLine size={15} />Ver mediciones</button>}
+                {kind === "dispositivos" && (user.is_superuser || user.permisos.includes("ALL") || user.permisos.includes("view_medicion")) && <button type="button" className="secondary" onClick={() => setCompareDevice(row)}><ChartLine size={15} />Ver mediciones</button>}
+                {personalView && kind === "mediciones" && <button type="button" className="secondary" onClick={() => setSelectedMeasurement(row)}><MapPin size={15} />Ver detalle, equipo y mapa</button>}
                 {canEdit && <button type="button" className="secondary" disabled={schemaLoading} onClick={() => openEditor(row)}>Editar</button>}
               </div>
               {extraDetails.length > 0 && <details className="personal-record-details"><summary>Ver detalles del seguimiento</summary><dl>{extraDetails.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></details>}
@@ -1395,6 +1402,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         )}
       </section>
       {compareDevice && <DeviceComparison device={compareDevice} onClose={() => setCompareDevice(null)} />}
+      {selectedMeasurement && <MeasurementDetail measurement={selectedMeasurement} onClose={() => setSelectedMeasurement(null)} />}
           {editing && (
         <Editor
           key={`${kind}-${idOf(editing) || "new"}`}
@@ -1483,6 +1491,38 @@ function DeviceComparison({ device, onClose }) {
     </section>
   </div>;
 }
+
+function MeasurementDetail({ measurement, onClose }) {
+  const latitude = measurement.instalacion_latitud;
+  const longitude = measurement.instalacion_longitud;
+  const zone = [
+    measurement.instalacion_direccion,
+    measurement.instalacion_barrio,
+    measurement.instalacion_ubicacion,
+  ].filter(Boolean).join(" · ");
+  const value = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(Number(measurement.valor));
+  const facts = [
+    ["Dispositivo", [measurement.dispositivo_display, measurement.dispositivo_modelo].filter(Boolean).join(" · ")],
+    ["Instalación", measurement.instalacion_display],
+    ["Zona", zone || "Ubicación descriptiva pendiente"],
+    ["Comunidad", measurement.comunidad_display || "Instalación residencial"],
+    ["Propietario", measurement.propietario_display || (measurement.instalacion_tipo === "residencial" ? "Responsable sin nombre registrado" : "No aplica")],
+    ["Lectura", `${measurement.tipo_medicion_display || "Medición"} · ${value} ${measurement.tipo_medicion_unidad || ""}`.trim()],
+    ["Registrada", readableDate(measurement.fecha_hora)],
+  ];
+  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="modal measurement-context-modal" role="dialog" aria-modal="true" aria-labelledby="measurement-context-title">
+      <header><div><span className="eyebrow">MEDICIÓN #{idOf(measurement)}</span><h2 id="measurement-context-title">Contexto de la lectura</h2></div><button className="icon-button" type="button" aria-label="Cerrar" onClick={onClose}><X size={18} /></button></header>
+      <div className="measurement-context-value"><ChartLine size={21} /><div><span>{measurement.tipo_medicion_display || "Lectura del sistema"}</span><strong>{value} {measurement.tipo_medicion_unidad || ""}</strong></div><span className={`reading-state ${measurement.es_anomala ? "fuera-de-rango" : "normal"}`}>{measurement.es_anomala ? "Revisar" : "Registrada"}</span></div>
+      <dl className="measurement-context-facts">{facts.map(([label, detail]) => <div key={label}><dt>{label}</dt><dd>{detail || "Sin información"}</dd></div>)}</dl>
+      {latitude != null && longitude != null
+        ? <LocationMap latitude={latitude} longitude={longitude} label={`${measurement.dispositivo_display || "Dispositivo"} · ${measurement.instalacion_display || "Instalación"}`} />
+        : <p className="empty">Esta instalación todavía no tiene coordenadas para mostrar en el mapa.</p>}
+      <footer><button className="secondary" type="button" onClick={onClose}>Cerrar detalle</button></footer>
+    </section>
+  </div>;
+}
+
 function Dashboard({ user }) {
   const [stats, setStats] = useState(null),
     [error, setError] = useState("");
@@ -1614,8 +1654,8 @@ function HomeownerOverview({ user }) {
     let active = true;
     const requests = [
       ["installations", "/security/portal/instalaciones/"],
-      ["devices", "/security/portal/dispositivos/"],
-      ["alerts", "/security/portal/alertas/"],
+      ...(user.permisos.includes("view_dispositivo") ? [["devices", "/security/portal/dispositivos/"]] : []),
+      ...(user.permisos.includes("view_alerta") ? [["alerts", "/security/portal/alertas/"]] : []),
       ...(user.permisos.includes("view_ordentrabajo") ? [["orders", "/security/portal/ordenes/"]] : []),
       ...(user.permisos.includes("view_notificacion") ? [["notifications", "/security/portal/notificaciones/"]] : []),
     ];
@@ -1638,6 +1678,14 @@ function HomeownerOverview({ user }) {
     !["cerrada", "cerrado"].includes((alert.estado_display || "").toLowerCase()),
   );
   const openOrders = orders.filter((order) => !String(order.estado_display || "").toLowerCase().includes("cerrad"));
+  const homeownerStats = [
+    ["Instalaciones", installations.length],
+    ...(user.permisos.includes("view_dispositivo") ? [["Dispositivos", devices.length]] : []),
+    ...(user.permisos.includes("view_alerta") ? [["Avisos activos", openAlerts.length]] : []),
+    ...(user.permisos.includes("view_ordentrabajo")
+      ? [["Órdenes abiertas", openOrders.length]]
+      : user.permisos.includes("view_notificacion") ? [["Notificaciones", notifications.length]] : []),
+  ];
   return <>
     <div className="page-heading">
       <div>
@@ -1649,12 +1697,7 @@ function HomeownerOverview({ user }) {
     </div>
     {error && <p role="alert" className="notice">{error}</p>}
     <div className="stat-grid homeowner-stats">
-      {[
-        ["Instalaciones", installations.length],
-        ["Dispositivos", devices.length],
-        ["Avisos activos", openAlerts.length],
-        [user.permisos.includes("view_ordentrabajo") ? "Órdenes abiertas" : "Avisos registrados", user.permisos.includes("view_ordentrabajo") ? openOrders.length : alerts.length],
-      ].map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
+      {homeownerStats.map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
     </div>
     <section className="owner-section">
       <div className="section-intro"><h2>Tu instalación</h2><span className="muted">Ubicación y estado</span></div>
@@ -1669,7 +1712,7 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : <p className="empty">Aún no hay una instalación vinculada a tu cuenta. Pide al administrador que te asigne como responsable de la vivienda.</p>}
     </section>
-    <section className="owner-section">
+    {user.permisos.includes("view_dispositivo") && <section className="owner-section">
       <div className="section-intro"><h2>Mediciones del sistema</h2><span className="muted">Valores recientes y comparación con los rangos esperados</span></div>
       {!loading && devices.length ? <div className="owner-card-grid">
         {devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
@@ -1677,10 +1720,10 @@ function HomeownerOverview({ user }) {
           <h3>{device.codigo}</h3>
           <p>{device.modelo || "Dispositivo IoT"} · {device.instalacion_display || "Instalación vinculada"}</p>
           <small>Último contacto: {device.ultima_comunicacion ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(device.ultima_comunicacion)) : "Sin comunicación registrada"}</small>
-          <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>
+          {(user.is_superuser || user.permisos.includes("ALL") || user.permisos.includes("view_medicion")) && <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>}
         </article>)}
       </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
-    </section>
+    </section>}
     {user.permisos.includes("view_ordentrabajo") && <section className="owner-section">
       <div className="section-intro"><h2>Mantenimiento de tu vivienda</h2><span className="muted">Órdenes abiertas</span></div>
       {loading ? <p className="empty">Cargando órdenes de trabajo…</p> : openOrders.length ? <div className="owner-card-grid">
@@ -1694,7 +1737,7 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : <p className="empty">No hay órdenes de mantenimiento abiertas para tu vivienda.</p>}
     </section>}
-    <section className="owner-section">
+    {user.permisos.includes("view_alerta") && <section className="owner-section">
       <div className="section-intro"><h2>Avisos y novedades</h2><Link to="/alertas">Ver todas las alertas ↗</Link></div>
       {loading ? <p className="empty">Cargando avisos…</p> : alerts.length ? <div className="owner-alert-list">
         {alerts.slice(0, 8).map((alert) => <article className="owner-alert" key={idOf(alert)}>
@@ -1703,7 +1746,7 @@ function HomeownerOverview({ user }) {
           <span className={`reading-state ${(alert.estado_display || "").toLowerCase().includes("cerr") ? "normal" : "fuera-de-rango"}`}>{alert.estado_display || "Revisar"}</span>
         </article>)}
       </div> : <p className="empty">No hay avisos registrados para tu sistema. Aquí aparecerán si una lectura requiere atención.</p>}
-    </section>
+    </section>}
     {user.permisos.includes("view_notificacion") && <section className="owner-section">
       <div className="section-intro"><h2>Notificaciones</h2><Link to="/notificaciones">Abrir bandeja ↗</Link></div>
       {loading ? <p className="empty">Cargando notificaciones…</p> : notifications.length ? <div className="owner-card-grid">
@@ -1725,6 +1768,12 @@ function CommunityOverview({ user }) {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const canViewCommunity = user.permisos.includes("view_comunidad");
+  const canViewInstallations = user.permisos.includes("view_instalacion");
+  const canViewDevices = user.permisos.includes("view_dispositivo");
+  const canViewOrders = user.permisos.includes("view_ordentrabajo");
+  const canViewAlerts = user.permisos.includes("view_alerta");
+  const canViewNotifications = user.permisos.includes("view_notificacion");
   useEffect(() => {
     let active = true;
     const resources = [
@@ -1734,7 +1783,7 @@ function CommunityOverview({ user }) {
       ["orders", "ordenes", "view_ordentrabajo"],
       ["alerts", "alertas", "view_alerta"],
       ["notifications", "notificaciones", "view_notificacion"],
-    ].filter(([, , permission]) => user.is_superuser || user.permisos.includes(permission));
+    ].filter(([, , permission]) => user.permisos.includes(permission));
     Promise.allSettled(resources.map(([, name]) => api.get(`/security/portal/${name}/`)))
       .then((results) => {
         if (!active) return;
@@ -1750,7 +1799,7 @@ function CommunityOverview({ user }) {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [user.is_superuser, user.permisos]);
+  }, [user.permisos]);
   const community = data.communities[0];
   const openOrders = data.orders.filter((order) => !String(order.estado_display || "").toLowerCase().includes("cerrad"));
   const openAlerts = data.alerts.filter((alert) => !["cerrada", "cerrado", "resuelta", "resuelto"].includes(String(alert.estado_display || "").toLowerCase()));
@@ -1758,26 +1807,27 @@ function CommunityOverview({ user }) {
   const pointUrl = community?.latitud != null && community?.longitud != null
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${community.latitud},${community.longitud}`)}`
     : null;
+  const communityStats = [
+    ["Instalaciones", data.installations.length, Layers],
+    ...(canViewDevices ? [["Equipos", data.devices.length, Radio]] : []),
+    ...(canViewAlerts ? [["Alertas activas", openAlerts.length, Bell]] : []),
+    ...(canViewOrders ? [["Órdenes abiertas", openOrders.length, Wrench]] : []),
+  ];
   return <>
     <div className="page-heading">
       <div><span className="eyebrow">TU TERRITORIO SOLAR</span><h1>Mi comunidad</h1><p>Instalaciones, alertas y trabajo técnico de tu comunidad, reunidos en un solo lugar.</p></div>
       <span className="tag">LÍDER COMUNITARIO / {user.username}</span>
     </div>
     {error && <p role="alert" className="notice">Algunos datos no se pudieron cargar. {error}</p>}
-    <section className="community-highlight">
+    {canViewCommunity && <section className="community-highlight">
       <div className="community-highlight-icon"><MapPin size={24} /></div>
       <div><span className="eyebrow">COMUNIDAD ASIGNADA</span><h2>{community?.nombre || (loading ? "Cargando comunidad…" : "Tu comunidad")}</h2><p>{[community?.sector, community?.municipio, community?.ubicacion].filter(Boolean).join(" · ") || "Ubicación comunitaria registrada en Ka’illisto"}</p></div>
       {pointUrl && <a className="button secondary" href={pointUrl} target="_blank" rel="noreferrer">Abrir mapa ↗</a>}
-    </section>
+    </section>}
     <div className="stat-grid homeowner-stats community-stats">
-      {[
-        ["Instalaciones", data.installations.length, Layers],
-        ["Equipos", data.devices.length, Radio],
-        ["Alertas activas", openAlerts.length, Bell],
-        ["Órdenes abiertas", openOrders.length, Wrench],
-      ].map(([label, value, Icon]) => <article key={label}><Icon size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu comunidad</small></article>)}
+      {communityStats.map(([label, value, Icon]) => <article key={label}><Icon size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu comunidad</small></article>)}
     </div>
-    <section className="owner-section">
+    {canViewInstallations && <section className="owner-section">
       <div className="section-intro"><h2>Instalaciones de la zona</h2><span className="muted">Ubicación y estado</span></div>
       {loading ? <p className="empty">Cargando instalaciones…</p> : data.installations.length ? <div className="owner-card-grid">
         {data.installations.map((installation) => {
@@ -1792,19 +1842,19 @@ function CommunityOverview({ user }) {
           </article>;
         })}
       </div> : <p className="empty">Todavía no hay instalaciones vinculadas a esta comunidad.</p>}
-    </section>
-    <section className="owner-section">
+    </section>}
+    {canViewDevices && <section className="owner-section">
       <div className="section-intro"><h2>Equipos solares</h2><span className="muted">Conexión y mediciones</span></div>
       {loading ? <p className="empty">Cargando equipos…</p> : data.devices.length ? <div className="owner-card-grid">
         {data.devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
           <Radio size={19} /><h3>{device.codigo || `Equipo #${idOf(device)}`}</h3>
           <p>{device.modelo || "Dispositivo IoT"} · {device.instalacion_display || "Instalación comunitaria"}</p>
           <small>Último contacto: {readableDate(device.ultima_comunicacion)}</small>
-          <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>
+          {(user.is_superuser || user.permisos.includes("ALL") || user.permisos.includes("view_medicion")) && <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>}
         </article>)}
       </div> : <p className="empty">Todavía no hay equipos conectados a las instalaciones de la comunidad.</p>}
-    </section>
-    <section className="owner-section">
+    </section>}
+    {canViewOrders && <section className="owner-section">
       <div className="section-intro"><h2>Visitas y mantenimiento</h2><Link to="/tecnicos">Ver órdenes ↗</Link></div>
       {loading ? <p className="empty">Cargando órdenes…</p> : openOrders.length ? <div className="owner-card-grid">
         {openOrders.slice(0, 6).map((order) => {
@@ -1819,21 +1869,21 @@ function CommunityOverview({ user }) {
           </article>;
         })}
       </div> : <p className="empty">No hay visitas pendientes para las instalaciones de tu comunidad.</p>}
-    </section>
+    </section>}
     <div className="community-feed-grid">
-      <section className="owner-section">
+      {canViewAlerts && <section className="owner-section">
         <div className="section-intro"><h2>Alertas recientes</h2><Link to="/mi-alertas">Ver alertas ↗</Link></div>
         {loading ? <p className="empty">Cargando alertas…</p> : openAlerts.length ? <div className="owner-alert-list">
           {openAlerts.slice(0, 5).map((alert) => <article className="owner-alert" key={idOf(alert)}><Bell size={18} /><div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Instalación comunitaria"} · {readableDate(alert.fecha_creacion)}</small></div><span className="reading-state fuera-de-rango">{alert.prioridad_display || alert.estado_display || "Revisar"}</span></article>)}
         </div> : <p className="empty">No hay alertas que requieran seguimiento.</p>}
-      </section>
-      <section className="owner-section">
+      </section>}
+      {canViewNotifications && <section className="owner-section">
         <div className="section-intro"><h2>Notificaciones</h2><Link to="/notificaciones">Abrir bandeja ↗</Link></div>
         {loading ? <p className="empty">Cargando notificaciones…</p> : data.notifications.length ? <div className="owner-card-grid">
           {data.notifications.slice(0, 4).map((notification) => <article className="feature owner-card notification-card" key={idOf(notification)}><Bell size={19} /><h3>{notification.alerta_display || "Aviso comunitario"}</h3><p>{notification.mensaje}</p><div className="owner-meta"><span>Entrega</span><strong>{notification.estado || "Pendiente"}</strong></div><small>{notification.canal || "Canal por confirmar"} · {readableDate(notification.fecha_envio || notification.fecha_creacion)}</small></article>)}
         </div> : <p className="empty">No hay notificaciones registradas.</p>}
         {!loading && pendingDelivery.length > 0 && <p className="notice community-delivery-note">{pendingDelivery.length} notificación{pendingDelivery.length === 1 ? "" : "es"} pendiente{pendingDelivery.length === 1 ? "" : "s"} de entrega.</p>}
-      </section>
+      </section>}
     </div>
     {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
   </>;
@@ -2013,13 +2063,58 @@ function TechnicianCases({ user }) {
   </>;
 }
 
+function ScrollablePersonalNav({ links, personalHome }) {
+  const navRef = useRef(null);
+  const [scroll, setScroll] = useState({ overflow: false, left: false, right: false });
+  useEffect(() => {
+    const element = navRef.current;
+    if (!element) return undefined;
+    const update = () => {
+      setScroll({
+        overflow: element.scrollWidth > element.clientWidth + 2,
+        left: element.scrollLeft > 2,
+        right: element.scrollLeft + element.clientWidth < element.scrollWidth - 2,
+      });
+    };
+    update();
+    element.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  }, [links.length]);
+  const shift = (direction) => navRef.current?.scrollBy({ left: direction * 220, behavior: "smooth" });
+  return <div className={`personal-space-nav-shell${scroll.overflow ? " has-overflow" : ""}`}>
+    {scroll.left && <button type="button" className="personal-nav-scroll previous" aria-label="Desplazar navegación a la izquierda" onClick={() => shift(-1)}><CaretDown size={15} /></button>}
+    <nav ref={navRef} className="personal-space-nav" aria-label="Navegación de mi espacio" tabIndex={0}>
+      {links.map(([path, label, Icon]) => <NavLink key={path} to={path} end={path === personalHome} title={label}><Icon size={16} /><span>{label}</span></NavLink>)}
+    </nav>
+    {scroll.right && <button type="button" className="personal-nav-scroll next" aria-label="Desplazar navegación a la derecha" onClick={() => shift(1)}><CaretDown size={15} /></button>}
+  </div>;
+}
+
+const PERSONAL_SUMMARY_RESOURCES = {
+  "Líder Comunitario": new Set(["comunidad", "instalacion", "dispositivo", "alerta", "ordentrabajo"]),
+  "Propietario Solar": new Set(["comunidad", "instalacion", "dispositivo", "umbral", "alerta", "ordentrabajo"]),
+  "Técnico de Campo": new Set(["comunidad", "instalacion", "dispositivo", "umbral", "alerta", "ordentrabajo", "repuesto", "repuestoordentrabajo"]),
+};
+const PERSONAL_WORKFLOW_NAV_HIDDEN = {
+  "Líder Comunitario": new Set(["/mi-alertas", "/tecnicos"]),
+};
+const PERSONAL_LOOKUP_RESOURCES = new Set(["estadoinstalacion", "estadoordentrabajo", "tipomedicion", "estadoalerta", "prioridadalerta", "tipoalerta"]);
+
 function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onModeChange, personalAccess = { permissions: [], resources: [] }, onLoadPersonalAccess }) {
   const adminMode = mode === "admin" && canUseAdminWorkspace(accountUser);
   const personalMode = !adminMode;
   const personalPermissions = personalAccess?.permissions || [];
   const personalResources = personalAccess?.resources || [];
   const scopedPersonalPermissions = personalPermissions.filter((permission) =>
-    personalResources.some((resource) => resource.model === permission.replace(/^view_/, "")),
+    personalResources.some((resource) => resource.model === permission.replace(/^view_/, "")) ||
+    PERSONAL_LOOKUP_RESOURCES.has(permission.replace(/^view_/, "")),
   );
   const user = personalMode ? {
     ...accountUser,
@@ -2032,6 +2127,7 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
   const themeKey = adminMode ? "kaillisto-admin-theme" : "kaillisto-personal-theme";
   const initialTheme = () => localStorage.getItem(themeKey) || (adminMode ? localStorage.getItem("kaillisto-theme") || "dark" : "light");
   const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [resourceNav, setResourceNav] = useState([]);
   const [themeState, setThemeState] = useState(() => ({ key: themeKey, value: initialTheme() }));
   const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem("kaillisto-motion") !== "off");
@@ -2055,7 +2151,7 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
     window.addEventListener("kaillisto:permissions", onPermissions);
     return () => { active = false; window.removeEventListener("kaillisto:permissions", onPermissions); };
   }, [adminMode, user.id]);
-  useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => { setOpen(false); setMoreOpen(false); }, [loc.pathname]);
   useEffect(() => { localStorage.setItem("kaillisto-motion", motionEnabled ? "on" : "off"); }, [motionEnabled]);
   useEffect(() => {
     if (!open) return;
@@ -2148,6 +2244,24 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
   const links = [...staticLinks, ...dynamicLinks].filter(([path]) => {
     if (seenPaths.has(path)) return false;
     seenPaths.add(path);
+    return true;
+  });
+  const summaryResourceModels = new Set([
+    ...PERSONAL_LOOKUP_RESOURCES,
+    ...user.roles.flatMap((role) => [...(PERSONAL_SUMMARY_RESOURCES[role] || [])]),
+  ]);
+  const staticPaths = new Set(staticLinks.map(([path]) => path));
+  const personalExtraLinks = personalMode
+    ? dynamicLinks.filter((link) => !summaryResourceModels.has(link[3].model) && !PERSONAL_LOOKUP_RESOURCES.has(link[3].model) && !staticPaths.has(link[0]))
+    : [];
+  const primaryDynamicLinks = personalMode ? personalExtraLinks.slice(0, 4) : dynamicLinks;
+  const moreLinks = personalMode ? personalExtraLinks.slice(4) : [];
+  const personalNavPaths = new Set();
+  const hiddenWorkflowPaths = new Set(user.roles.flatMap((role) => [...(PERSONAL_WORKFLOW_NAV_HIDDEN[role] || [])]));
+  const personalNavLinks = [...staticLinks, ...primaryDynamicLinks].filter(([path]) => {
+    if (hiddenWorkflowPaths.has(path)) return false;
+    if (personalNavPaths.has(path)) return false;
+    personalNavPaths.add(path);
     return true;
   });
   const routes = {
@@ -2251,13 +2365,19 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
         <header className={`workspace-header${personalMode ? " user-space-header" : ""}`}>
           {personalMode ? <>
             <Brand />
-            <nav className="personal-space-nav" aria-label="Navegación de mi espacio">
-              {links.map(([path, label, Icon]) => <NavLink key={path} to={path} end={path === personalHome}><Icon size={16} /><span>{label}</span></NavLink>)}
-            </nav>
+            <div className="personal-space-navigation">
+              <ScrollablePersonalNav links={personalNavLinks} personalHome={personalHome} />
+              {moreLinks.length > 0 && <div className="personal-resource-overflow">
+                <button type="button" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((value) => !value)}>Más recursos <CaretDown size={14} /></button>
+                {moreOpen && <div className="personal-resource-menu" role="menu" aria-label="Más recursos de mi espacio">
+                  {moreLinks.map(([path, label, Icon]) => <NavLink key={path} role="menuitem" to={path}><Icon size={16} /><span>{label}</span></NavLink>)}
+                </div>}
+              </div>}
+            </div>
             <div className="header-actions personal-space-actions">
               <InstallAppButton />
               <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"} title={theme === "dark" ? "Tema claro" : "Tema oscuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}<span>{theme === "dark" ? "Claro" : "Oscuro"}</span></button>
-              {canUseAdminWorkspace(user) && <button className="personal-space-switch" type="button" onClick={() => switchMode("admin")}><Shield size={15} /> Administración</button>}
+              {canUseAdminWorkspace(accountUser) && <button className="personal-space-switch" type="button" onClick={() => switchMode("admin")}><Shield size={15} /> Administración</button>}
               <Link className="user-space-account" to="/perfil" aria-label="Mi perfil"><span className="avatar">{user.username.slice(0, 2).toUpperCase()}</span></Link>
               <button className="user-space-logout" type="button" onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"><LogOut size={17} /></button>
             </div>

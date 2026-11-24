@@ -149,17 +149,10 @@ def matrix(request):
 def navigation_resources(request):
     from core.models import Usuario, Rol, Evento
     from .portal import RESOURCES, effective_permissions
+    from .models import get_personal_permissions
     personal_workspace = request.query_params.get('workspace') == 'personal'
     if personal_workspace:
-        personal_role_ids = request.user.roles_asignados.filter(
-            rol__is_active=True,
-        ).exclude(rol__name='Administrador').values_list('rol_id', flat=True)
-        permissions = set(Permission.objects.filter(
-            roles__in=personal_role_ids,
-            content_type__rbac_resource__is_active=True,
-            content_type__app_label='core',
-        ).exclude(content_type__model__in=['usuario', 'idioma', 'rol', 'evento'])
-          .values_list('codename', flat=True).distinct())
+        permissions = set(get_personal_permissions(request.user))
         personal_models = {model._meta.model_name for model in RESOURCES.values()} | {'medicion'}
         resources = Resource.objects.filter(
             is_active=True, menu_visible=True,
@@ -179,7 +172,7 @@ def navigation_resources(request):
         if model is None or model in (Rol, Evento):
             continue
         permission = f'view_{resource.content_type.model}'
-        if not request.user.is_superuser and permission not in permissions:
+        if (personal_workspace or not request.user.is_superuser) and permission not in permissions:
             continue
         is_role_manager = resource.content_type.app_label == 'security' and resource.content_type.model == 'role'
         is_audit = resource.content_type.app_label == 'security' and resource.content_type.model == 'securityauditevent'
