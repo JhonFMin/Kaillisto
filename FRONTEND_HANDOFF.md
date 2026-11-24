@@ -4,7 +4,7 @@ Actualizado: 23 de noviembre de 2026
 
 ## Estado de publicación
 
-El último incremento de frontend es `77b058e` (`Separate personal and admin workspace shells`), en la rama `frontend`; incluye el nuevo cascarón del espacio personal separado del panel administrativo. `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Verificar en Render después del push de `77b058e`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
+El último incremento de frontend es `77b058e` (`Separate personal and admin workspace shells`), en la rama `frontend`; incluye el nuevo cascarón personal separado del panel administrativo. `87f10dd` agregó los resúmenes del líder y propietario; `2d4da31` incluye registro, solicitud con mapa y revisión administrativa. El backend `faf0fa9` aplicó `core.0020` a la rama aislada de Neon. Render sirve los bundles `index-BCZH1lPf.js` e `index-DJnhhGTx.css`. La pestaña `/usuarios` sigue mostrando administración; la elección de espacio está en `/login`.
 
 Jhon pidió aviso antes de comenzar el trabajo de interfaz; ya se le avisó en esta conversación. Falta que pruebe interactivamente el flujo en el preview y nos comparta cualquier ajuste.
 
@@ -117,7 +117,8 @@ Commit: `77b058e` — `Separate personal and admin workspace shells`.
 - “Administración” conserva su barra lateral, rutas y resumen. Un usuario con ambos accesos puede cambiar de un modo al otro; no se alteran los permisos RBAC.
 - La preferencia visual se guarda por separado: claro como valor inicial para el espacio personal y oscuro para administración; ambos conservan Inter y el violeta Ka’illisto.
 - Para una cuenta administrativa sin rol de hogar, comunidad o técnico, “Mi espacio” abre la solicitud de vinculación.
-- `pnpm run build`, `pnpm run lint` y `git diff --check` pasan; el lint conserva advertencias preexistentes. Las 8 pruebas `security.test_portal` también pasan. Falta comprobar el nuevo diseño en Render con una cuenta administrativa y una cuenta dual.
+- `pnpm run build`, `pnpm run lint` y `git diff --check` pasan; el lint conserva advertencias preexistentes. Las 8 pruebas `security.test_portal` también pasan. Falta comprobar visualmente el nuevo diseño con una cuenta administrativa y una cuenta dual.
+- Render entrega JS/CSS nuevos con HTTP 200 y contienen las clases del espacio personal. `/login`, `/dashboard`, `/mi-vivienda`, `/mi-comunidad`, `/usuarios`, `/roles`, `/registro`, `/solicitud-vinculacion` y `/solicitudes-revision` respondieron HTTP 200.
 
 ## Pendiente para terminar el frontend
 
@@ -136,4 +137,4 @@ El preview usa una rama aislada de Neon y `core.0020` ya se aplicó allí. Los p
 
 ## Instrucción para continuar en otro chat
 
-> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Separación de cascarones en 77b058e; resúmenes de líder/propietario en 87f10dd; registro y solicitudes en 2d4da31. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias previas. Verifica el commit 77b058e y prueba con cuenta dual en Render; luego sigue con el diseño comercial de portada (aún sin referencia del usuario), prueba móvil, repuestos y notificaciones push. Avisa antes de cada incremento visual; conserva violeta, Inter y tarjetas visuales.
+> Continua Kaillisto en C:/Users/Jhon/Documents/ChatGPT/Kaillisto, rama frontend; lee FRONTEND_HANDOFF.md y revisa git status/log. PR: https://github.com/JhonFMin/Kaillisto/pull/3. Preview: https://kaillisto-pr-3.onrender.com. No fusiones a main. Separación de cascarones en 77b058e; resúmenes de líder/propietario en 87f10dd; registro y solicitudes en 2d4da31. Backend de solicitudes en faf0fa9; core.0020 aplicada a Neon aislado. Build y 8 pruebas de seguridad pasan; lint conserva advertencias previas. Render sirve index-BCZH1lPf.js e index-DJnhhGTx.css; rutas públicas/admin respondieron 200. Jhon aún debe probar visualmente con cuenta dual y revisar el look de la página comercial; incorporar referencia visual si la comparte. Después sigue prueba móvil, repuestos y notificaciones push. Avisa antes de cada incremento visual; conserva violeta, Inter y tarjetas.
