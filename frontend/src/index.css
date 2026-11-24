@@ -2884,6 +2884,11 @@ body,
 .personal-records-shell { min-width: 0; }
 .personal-record-toolbar { min-height: 62px; margin: 0 0 14px; padding: 10px 15px; border: 1px solid rgb(247 249 250 / 13%); border-radius: 15px; background: rgb(247 249 250 / 3%); }
 .personal-record-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.personal-record-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 17px; padding: 13px 15px; border: 1px solid rgb(247 249 250 / 11%); border-radius: 14px; color: #bdb5c5; background: rgb(247 249 250 / 3%); font-size: 12px; }
+.personal-record-pagination > div { display: flex; align-items: center; gap: 12px; }
+.personal-record-pagination > div > span { min-width: 48px; color: #e7dced; text-align: center; font-variant-numeric: tabular-nums; }
+.personal-record-pagination button { min-height: 36px; padding: 7px 12px; border-radius: 9px; font-size: 11px; }
+.personal-record-pagination button:disabled { opacity: .45; cursor: not-allowed; }
 .personal-record-card { display: grid; align-content: start; gap: 12px; min-width: 0; padding: 21px; border-radius: 19px; animation: personal-card-enter .42s both; animation-delay: calc(var(--card-index, 0) * 45ms); }
 .personal-record-card.feature h3 { margin: 0; color: #f4eff8; font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
 .personal-record-card.feature p { max-width: none; margin: 0; color: #c7c1ce; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
@@ -2908,6 +2913,8 @@ body,
 @keyframes personal-card-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .workspace[data-motion="off"] .personal-record-card { animation: none; }
 .workspace[data-theme="light"] .personal-record-toolbar { border-color: #e6e0eb; background: rgb(255 255 255 / 86%); }
+.workspace[data-theme="light"] .personal-record-pagination { border-color: #e6e0eb; color: #62596b; background: #fff; }
+.workspace[data-theme="light"] .personal-record-pagination > div > span { color: #372c41; }
 .workspace[data-theme="light"] .personal-record-card { border-color: #e3dce9; background: #fff; box-shadow: 0 10px 30px rgb(42 28 59 / 5%); }
 .workspace[data-theme="light"] .personal-record-card.feature h3 { color: #28222f; }
 .workspace[data-theme="light"] .personal-record-card.feature p { color: #615a68; }
@@ -2948,6 +2955,8 @@ body,
   .personal-record-card { padding: 17px; }
   .personal-record-toolbar { align-items: flex-start; flex-direction: column; }
   .personal-record-toolbar .search { width: 100%; }
+  .personal-record-pagination { align-items: flex-start; flex-direction: column; }
+  .personal-record-pagination > div { width: 100%; justify-content: space-between; }
   .measurement-context-facts { grid-template-columns: 1fr; }
   .measurement-context-value { align-items: flex-start; flex-wrap: wrap; }
   .measurement-context-value > div { flex-basis: calc(100% - 40px); }

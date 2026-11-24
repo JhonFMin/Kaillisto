@@ -1100,7 +1100,8 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
     [compareDevice, setCompareDevice] = useState(null),
     [selectedMeasurement, setSelectedMeasurement] = useState(null),
     [locationRow, setLocationRow] = useState(null),
-    [search, setSearch] = useState("");
+    [search, setSearch] = useState(""),
+    [page, setPage] = useState(1);
   const [schemaLoading, setSchemaLoading] = useState(false);
   const resourceEndpoint = endpointOverride || endpoint(kind);
   const permissionModel = modelName || permissionModelByKind[kind];
@@ -1174,6 +1175,10 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
       display(key, value, row).toLowerCase().includes(search.toLowerCase()),
     ),
   );
+  const pageSize = 12;
+  const pageCount = Math.ceil(filteredRows.length / pageSize);
+  const currentPage = Math.min(page, Math.max(1, pageCount));
+  const visibleRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const personalVisuals = {
     alertas: ["Alertas de mi zona", "Señales importantes para cuidar tu sistema solar.", "/solar-operations.jpg", Bell],
     ordenes: ["Seguimiento de visitas", "Cada visita, su avance y la ubicación de atención.", "/solar-technician.jpg", Wrench],
@@ -1252,7 +1257,7 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
               aria-label="Buscar registros"
               placeholder="Buscar en este apartado…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </label>
         </div>
@@ -1263,8 +1268,9 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
         )}
         {personalView ? loading ? (
           <p className="empty">Cargando información…</p>
-        ) : filteredRows.length ? <div className="personal-record-grid">
-          {filteredRows.map((row, index) => {
+        ) : filteredRows.length ? <>
+        <div className="personal-record-grid">
+          {visibleRows.map((row, index) => {
             const location = personalMapPoint(row);
             const state = row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display || (kind === "mediciones" ? row.es_anomala ? "Lectura anómala" : "Lectura registrada" : "");
             const mapLabel = personalCardTitle(row);
@@ -1295,7 +1301,16 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
               {location && locationRow === idOf(row) && <LocationMap latitude={location.latitude} longitude={location.longitude} label={mapLabel} />}
             </article>;
           })}
-        </div> : <div className="empty personal-record-empty"><Layers size={30} /><h3>{search ? "No encontramos resultados" : "Aún no hay registros"}</h3><p>{search ? "Prueba con otro nombre, estado o ubicación." : kind === "ordenes" ? "Cuando te asignen una visita, aquí verás el estado, el sitio y su ubicación." : "Cuando haya información para tu cuenta, aparecerá aquí organizada en tarjetas."}</p></div> : loading ? (
+        </div>
+        {pageCount > 1 && <nav className="personal-record-pagination" aria-label="Paginación de registros">
+          <span aria-live="polite">Mostrando {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredRows.length)} de {filteredRows.length}</span>
+          <div>
+            <button type="button" className="secondary" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Anterior</button>
+            <span aria-label={`Página ${currentPage} de ${pageCount}`}>{currentPage} / {pageCount}</span>
+            <button type="button" className="secondary" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>Siguiente</button>
+          </div>
+        </nav>}
+        </> : <div className="empty personal-record-empty"><Layers size={30} /><h3>{search ? "No encontramos resultados" : "Aún no hay registros"}</h3><p>{search ? "Prueba con otro nombre, estado o ubicación." : kind === "ordenes" ? "Cuando te asignen una visita, aquí verás el estado, el sitio y su ubicación." : "Cuando haya información para tu cuenta, aparecerá aquí organizada en tarjetas."}</p></div> : loading ? (
           <p className="empty">Cargando información…</p>
         ) : (
           <div className="table-scroll">
