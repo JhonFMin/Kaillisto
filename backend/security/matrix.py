@@ -149,12 +149,30 @@ def matrix(request):
 def navigation_resources(request):
     from core.models import Usuario, Rol, Evento
     from .portal import RESOURCES, effective_permissions
-    permissions = set(effective_permissions(request.user))
-    resources = Resource.objects.filter(
-        is_active=True, menu_visible=True,
-    ).filter(
-        Q(content_type__app_label='core') | Q(content_type__app_label='security', content_type__model__in=['role', 'securityauditevent'])
-    ).exclude(content_type__model__in=['idioma', 'rol', 'evento']).select_related('content_type')
+    personal_workspace = request.query_params.get('workspace') == 'personal'
+    if personal_workspace:
+        personal_role_ids = request.user.roles_asignados.filter(
+            rol__is_active=True,
+        ).exclude(rol__name='Administrador').values_list('rol_id', flat=True)
+        permissions = set(Permission.objects.filter(
+            roles__in=personal_role_ids,
+            content_type__rbac_resource__is_active=True,
+            content_type__app_label='core',
+        ).exclude(content_type__model__in=['usuario', 'idioma', 'rol', 'evento'])
+          .values_list('codename', flat=True).distinct())
+        personal_models = {model._meta.model_name for model in RESOURCES.values()} | {'medicion'}
+        resources = Resource.objects.filter(
+            is_active=True, menu_visible=True,
+            content_type__app_label='core',
+            content_type__model__in=personal_models,
+        ).select_related('content_type')
+    else:
+        permissions = set(effective_permissions(request.user))
+        resources = Resource.objects.filter(
+            is_active=True, menu_visible=True,
+        ).filter(
+            Q(content_type__app_label='core') | Q(content_type__app_label='security', content_type__model__in=['role', 'securityauditevent'])
+        ).exclude(content_type__model__in=['idioma', 'rol', 'evento']).select_related('content_type')
     result = []
     for resource in resources:
         model = resource.content_type.model_class()
@@ -184,4 +202,6 @@ def navigation_resources(request):
             'endpoint': endpoint,
             'menu_path': menu_path,
         })
+    if personal_workspace:
+        return Response({'permissions': sorted(permissions), 'resources': result})
     return Response(result)

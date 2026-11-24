@@ -47,6 +47,39 @@ class PortalAccessTests(APITestCase):
         self.assertEqual(self.client.get(url+str(self.i2.pk)+'/').status_code,404)
         self.assertEqual(self.client.patch(url+str(self.i1.pk)+'/',{'nombre':'hack'}).status_code,403)
         self.assertEqual(self.client.get('/api/instalaciones/'+str(self.i2.pk)+'/').status_code,404)
+
+    def test_personal_navigation_uses_only_non_admin_roles_for_dual_access_account(self):
+        UserRole.objects.create(
+            usuario=self.leader,
+            rol=self.manager.roles_asignados.get().rol,
+        )
+        self.client.force_authenticate(self.leader)
+
+        personal = self.client.get('/api/security/navigation/?workspace=personal')
+        self.assertEqual(personal.status_code, 200)
+        self.assertIn('view_instalacion', personal.data['permissions'])
+        self.assertIn('view_ordentrabajo', personal.data['permissions'])
+        self.assertNotIn('view_usuario', personal.data['permissions'])
+        self.assertNotIn('view_role', personal.data['permissions'])
+        personal_paths = {resource['menu_path'] for resource in personal.data['resources']}
+        self.assertIn('/instalaciones', personal_paths)
+        self.assertIn('/mantenimiento', personal_paths)
+        self.assertNotIn('/usuarios', personal_paths)
+        self.assertNotIn('/roles', personal_paths)
+
+        administration = self.client.get('/api/security/navigation/')
+        self.assertEqual(administration.status_code, 200)
+        administration_paths = {resource['menu_path'] for resource in administration.data}
+        self.assertIn('/usuarios', administration_paths)
+        self.assertIn('/roles', administration_paths)
+
+        from security.models import Resource
+        alerts_resource = Resource.objects.get(content_type__app_label='core', content_type__model='alerta')
+        alerts_resource.menu_visible = False
+        alerts_resource.save(update_fields=['menu_visible'])
+        hidden_resource_access = self.client.get('/api/security/navigation/?workspace=personal')
+        hidden_paths = {resource['menu_path'] for resource in hidden_resource_access.data['resources']}
+        self.assertNotIn('/alertas', hidden_paths)
     def test_technician_cannot_reassign_or_read_foreign_order(self):
         self.client.force_authenticate(self.tech)
         url='/api/security/portal/ordenes/'

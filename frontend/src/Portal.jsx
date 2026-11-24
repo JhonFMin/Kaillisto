@@ -33,6 +33,7 @@ import { ClipboardTextIcon as ClipboardText } from "@phosphor-icons/react/dist/c
 import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { UserCircleIcon as UserCircle } from "@phosphor-icons/react/dist/csr/UserCircle";
 import { ChartLineIcon as ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
+import { ClockCounterClockwiseIcon as ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import InstallAppButton from "./components/InstallAppButton.jsx";
 import "leaflet/dist/leaflet.css";
 import api from "./api/axios";
@@ -479,13 +480,16 @@ function Landing() {
     </div>
   );
 }
-function personalDestination(user) {
-  const permissions = user?.permisos || [];
-  const roles = user?.roles || [];
-  if (user?.roles?.includes("Propietario Solar") && permissions.includes("view_instalacion")) return "/mi-vivienda";
-  if (user?.roles?.includes("Líder Comunitario") && permissions.includes("view_instalacion")) return "/mi-comunidad";
-  if (user?.roles?.includes("Técnico de Campo") && permissions.includes("view_ordentrabajo")) return "/mis-casos";
-  if (canUseAdminWorkspace(user) && !roles.some((role) => ["Propietario Solar", "Líder Comunitario", "Técnico de Campo"].includes(role))) return "/solicitud-vinculacion";
+function personalDestination(user, personalPermissions = user?.permisos || [], personalResources = null) {
+  const permissions = personalPermissions;
+  const roles = (user?.roles || []).filter((role) => role !== "Administrador");
+  const canSee = (permission) => permissions.includes(permission) && (
+    personalResources == null || personalResources.some((resource) => resource.model === permission.replace(/^view_/, ""))
+  );
+  if (roles.includes("Propietario Solar") && canSee("view_instalacion")) return "/mi-vivienda";
+  if (roles.includes("Líder Comunitario") && canSee("view_instalacion")) return "/mi-comunidad";
+  if (roles.includes("Técnico de Campo") && canSee("view_ordentrabajo")) return "/mis-casos";
+  if (canUseAdminWorkspace(user) || roles.length) return "/solicitud-vinculacion";
   return "/dashboard";
 }
 
@@ -1087,7 +1091,7 @@ function Editor({ kind, row, schema, onClose, onSave, user }) {
     </div>
   );
 }
-function Records({ kind, user, title, readonly = false, endpointOverride, modelName }) {
+function Records({ kind, user, title, readonly = false, endpointOverride, modelName, personalView = false }) {
   const [rows, setRows] = useState([]),
     [schema, setSchema] = useState({}),
     [error, setError] = useState(""),
@@ -1163,6 +1167,46 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
   const canShowLocation = ["comunidades", "instalaciones", "dispositivos"].includes(kind);
   const canCreate =
     !readonly && canCreateKind;
+  const filteredRows = rows.filter((row) =>
+    Object.entries(row).some(([key, value]) =>
+      display(key, value, row).toLowerCase().includes(search.toLowerCase()),
+    ),
+  );
+  const personalVisuals = {
+    alertas: ["Alertas de mi zona", "Señales importantes para cuidar tu sistema solar.", "/solar-operations.jpg", Bell],
+    ordenes: ["Seguimiento de visitas", "Cada visita, su avance y la ubicación de atención.", "/solar-technician.jpg", Wrench],
+    comunidades: ["Tu red comunitaria", "Sistemas y ubicaciones vinculados a tu comunidad.", "/solar-guajira-dawn.webp", MapPin],
+    instalaciones: ["Instalaciones solares", "Consulta el estado y la ubicación de cada sistema.", "/solar-home.jpg", Layers],
+    dispositivos: ["Equipos conectados", "Estado de conexión y lecturas de tus dispositivos.", "/solar-controller.webp", Radio],
+    consumos: ["Repuestos utilizados", "Materiales registrados durante tus órdenes de trabajo.", "/solar-technician.jpg", Package],
+    notificaciones: ["Centro de avisos", "Mensajes y novedades de tu sistema en un solo lugar.", "/solar-dawn.jpg", Bell],
+    repuestos: ["Repuestos disponibles", "Consulta los materiales relacionados con el servicio.", "/solar-operations.jpg", Package],
+    mediciones: ["Mediciones del sistema", "Lecturas recientes de los equipos conectados.", "/solar-controller.webp", ChartLine],
+  }[kind] || [title || definitions[kind]?.[0] || "Tu espacio solar", "Información útil, organizada para ti.", "/solar-home.jpg", definitions[kind]?.[1] || Layers];
+  const PersonalVisualIcon = personalVisuals[3];
+  const personalCardTitle = (row) => ({
+    alertas: row.tipo_alerta_display || row.tipo_medicion_display || `Alerta #${idOf(row)}`,
+    ordenes: `Orden #${idOf(row)}`,
+    consumos: row.repuesto_display || row.repuesto_nombre || `Repuesto #${idOf(row)}`,
+    dispositivos: row.codigo || `Dispositivo #${idOf(row)}`,
+    instalaciones: row.nombre || `Instalación #${idOf(row)}`,
+    comunidades: row.nombre || `Comunidad #${idOf(row)}`,
+    notificaciones: row.alerta_display || row.asunto || `Aviso #${idOf(row)}`,
+  }[kind] || row.nombre || row.codigo || row.asunto || `Registro #${idOf(row)}`);
+  const personalCardSummary = (row) => [
+    row.mensaje,
+    row.descripcion,
+    row.diagnostico,
+    row.solucion_aplicada,
+    row.modelo,
+    [row.direccion, row.barrio, row.ubicacion].filter(Boolean).join(" · "),
+  ].find((value) => value && String(value).trim()) || "Consulta el detalle y el seguimiento de este registro.";
+  const personalCardDate = (row) => row.fecha_creacion || row.fecha_atencion || row.ultima_comunicacion || row.fecha_envio;
+  const personalMapPoint = (row) => {
+    const latitude = row.instalacion_latitud ?? row.latitud ?? row.map_latitud;
+    const longitude = row.instalacion_longitud ?? row.longitud ?? row.map_longitud;
+    return latitude != null && longitude != null ? { latitude, longitude } : null;
+  };
   return (
     <>
       <div className="page-heading">
@@ -1190,9 +1234,14 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
           </button>
         )}
       </div>
-      <section className="data-panel">
-        <div className="table-toolbar">
-          <span>{rows.length} registros</span>
+      {personalView && <section className="personal-collection-hero" aria-label={personalVisuals[0]}>
+        <img src={personalVisuals[2]} alt="" loading="lazy" />
+        <div className="personal-collection-copy"><span className="eyebrow">KA’ILLISTO / MI ESPACIO</span><h2>{personalVisuals[0]}</h2><p>{personalVisuals[1]}</p></div>
+        <div className="personal-collection-count"><PersonalVisualIcon size={22} /><strong>{filteredRows.length}</strong><span>{filteredRows.length === 1 ? "registro" : "registros"}</span></div>
+      </section>}
+      <section className={personalView ? "personal-records-shell" : "data-panel"}>
+        <div className={`table-toolbar${personalView ? " personal-record-toolbar" : ""}`}>
+          <span>{personalView ? `${filteredRows.length} ${filteredRows.length === 1 ? "registro" : "registros"}` : `${rows.length} registros`}</span>
           <label className="search">
             <Search size={16} />
             <input
@@ -1208,7 +1257,38 @@ function Records({ kind, user, title, readonly = false, endpointOverride, modelN
             {error}
           </p>
         )}
-        {loading ? (
+        {personalView ? loading ? (
+          <p className="empty">Cargando información…</p>
+        ) : filteredRows.length ? <div className="personal-record-grid">
+          {filteredRows.map((row, index) => {
+            const location = personalMapPoint(row);
+            const state = row.estado_display || row.estado || row.prioridad_display || row.prioridad_alerta_display;
+            const mapLabel = personalCardTitle(row);
+            const extraDetails = [
+              ["Diagnóstico", row.diagnostico],
+              ["Solución aplicada", row.solucion_aplicada],
+              ["Referencia", row.referencia || row.direccion],
+            ].filter(([, value]) => value && String(value).trim());
+            return <article className="personal-record-card feature" key={idOf(row)} style={{ "--card-index": index }}>
+              <div className="personal-record-card-top"><span>{definitions[kind]?.[0] || title || "Seguimiento"}</span>{state && <span className={`personal-record-status${String(state).toLowerCase().includes("cerr") || String(state).toLowerCase().includes("normal") ? " is-calm" : ""}`}>{state}</span>}</div>
+              <h3>{personalCardTitle(row)}</h3>
+              <p>{personalCardSummary(row)}</p>
+              <div className="personal-record-meta">
+                {row.instalacion_display && <span><MapPin size={14} />{row.instalacion_display}</span>}
+                {personalCardDate(row) && <span><ClockCounterClockwise size={14} />{readableDate(personalCardDate(row))}</span>}
+                {row.cantidad != null && <span><Package size={14} />{row.cantidad} unidades</span>}
+                {row.canal && <span><Bell size={14} />{row.canal}</span>}
+              </div>
+              <div className="personal-record-actions">
+                {location && <button type="button" className="secondary" aria-expanded={locationRow === idOf(row)} onClick={() => setLocationRow((current) => current === idOf(row) ? null : idOf(row))}><MapPin size={15} />{locationRow === idOf(row) ? "Ocultar ubicación" : "Ver ubicación"}</button>}
+                {kind === "dispositivos" && <button type="button" className="secondary" onClick={() => setCompareDevice(row)}><ChartLine size={15} />Ver mediciones</button>}
+                {canEdit && <button type="button" className="secondary" disabled={schemaLoading} onClick={() => openEditor(row)}>Editar</button>}
+              </div>
+              {extraDetails.length > 0 && <details className="personal-record-details"><summary>Ver detalles del seguimiento</summary><dl>{extraDetails.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></details>}
+              {location && locationRow === idOf(row) && <LocationMap latitude={location.latitude} longitude={location.longitude} label={mapLabel} />}
+            </article>;
+          })}
+        </div> : <div className="empty personal-record-empty"><Layers size={30} /><h3>{search ? "No encontramos resultados" : "Aún no hay registros"}</h3><p>{search ? "Prueba con otro nombre, estado o ubicación." : kind === "ordenes" ? "Cuando te asignen una visita, aquí verás el estado, el sitio y su ubicación." : "Cuando haya información para tu cuenta, aparecerá aquí organizada en tarjetas."}</p></div> : loading ? (
           <p className="empty">Cargando información…</p>
         ) : (
           <div className="table-scroll">
@@ -1933,9 +2013,22 @@ function TechnicianCases({ user }) {
   </>;
 }
 
-function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
-  const adminMode = mode === "admin" && canUseAdminWorkspace(user);
+function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onModeChange, personalAccess = { permissions: [], resources: [] }, onLoadPersonalAccess }) {
+  const adminMode = mode === "admin" && canUseAdminWorkspace(accountUser);
   const personalMode = !adminMode;
+  const personalPermissions = personalAccess?.permissions || [];
+  const personalResources = personalAccess?.resources || [];
+  const scopedPersonalPermissions = personalPermissions.filter((permission) =>
+    personalResources.some((resource) => resource.model === permission.replace(/^view_/, "")),
+  );
+  const user = personalMode ? {
+    ...accountUser,
+    roles: (accountUser.roles || []).filter((role) => role !== "Administrador"),
+    permisos: scopedPersonalPermissions,
+    is_superuser: false,
+    admin: false,
+    full_resource_access: false,
+  } : accountUser;
   const themeKey = adminMode ? "kaillisto-admin-theme" : "kaillisto-personal-theme";
   const initialTheme = () => localStorage.getItem(themeKey) || (adminMode ? localStorage.getItem("kaillisto-theme") || "dark" : "light");
   const [open, setOpen] = useState(false);
@@ -1946,7 +2039,7 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const theme = themeState.key === themeKey ? themeState.value : initialTheme();
-  const personalHome = personalDestination(user);
+  const personalHome = personalDestination(user, scopedPersonalPermissions, personalResources);
   const toggleTheme = () => setThemeState((current) => {
     const nextTheme = (current.key === themeKey ? current.value : theme) === "dark" ? "light" : "dark";
     localStorage.setItem(themeKey, nextTheme);
@@ -1970,7 +2063,7 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  const tech = user.roles.includes("Técnico de Campo");
+  const tech = personalMode && user.roles.includes("Técnico de Campo");
   const routePermissions = {
     "/comunidades": "view_comunidad",
     "/instalaciones": "view_instalacion",
@@ -1996,13 +2089,18 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
     "/tecnicos": "view_ordentrabajo",
     "/mi-alertas": "view_alerta",
   };
-  const canOpen = (path) =>
-    user.is_superuser ||
-    (path === "/catalogos"
-      ? catalogs.some((kind) => user.permisos.includes(catalogPermissions[kind]))
-        : path === "/mi-alertas" && user.roles.includes("Líder Comunitario")
-        ? user.permisos.includes("view_alerta")
-        : !routePermissions[path] || user.permisos.includes(routePermissions[path]));
+  const canAccessPersonalPermission = (permission) => personalMode &&
+    user.permisos.includes(permission) &&
+    personalResources.some((resource) => resource.model === permission.replace(/^view_/, ""));
+  const canOpen = (path) => {
+    if (adminMode) {
+      return accountUser.is_superuser || (path === "/catalogos"
+        ? catalogs.some((kind) => accountUser.permisos.includes(catalogPermissions[kind]))
+        : !routePermissions[path] || accountUser.permisos.includes(routePermissions[path]));
+    }
+    const permission = routePermissions[path];
+    return !permission || canAccessPersonalPermission(permission);
+  };
   const baseLinks = [[adminMode ? "/dashboard" : personalHome, adminMode ? "Resumen" : "Inicio", LayoutDashboard]];
   const iconForResource = (name) => ({
     "map-pin": MapPin, communities: MapPin, comunidad: MapPin,
@@ -2015,7 +2113,8 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
     clipboard: ClipboardText,
     layers: Layers, stack: Layers,
   }[String(name || "").toLowerCase()] || Layers);
-  const dynamicLinks = (adminMode ? resourceNav : []).map((resource) => [
+  const availableResources = adminMode ? resourceNav : personalResources;
+  const dynamicLinks = availableResources.map((resource) => [
     resource.menu_path, resource.name, iconForResource(resource.menu_icon), resource,
   ]);
   const workflowLinks = [];
@@ -2025,23 +2124,23 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
     baseRoutes[path] = [kind, title, readonly];
   };
   if (personalMode && tech) {
-    if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
-    if (user.permisos.includes("view_instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
-    if (user.permisos.includes("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
+    if (canAccessPersonalPermission("view_ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
+    if (canAccessPersonalPermission("view_instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
+    if (canAccessPersonalPermission("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
   if (personalMode && user.roles.includes("Líder Comunitario")) {
-    if (user.permisos.includes("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "community-overview", "Mi comunidad", true);
-    if (user.permisos.includes("view_alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
-    if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
+    if (canAccessPersonalPermission("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "community-overview", "Mi comunidad", true);
+    if (canAccessPersonalPermission("view_alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
+    if (canAccessPersonalPermission("view_ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
-  if (personalMode && user.roles.includes("Propietario Solar") && user.permisos.includes("view_instalacion")) {
+  if (personalMode && user.roles.includes("Propietario Solar") && canAccessPersonalPermission("view_instalacion")) {
     addWorkflow("/mi-vivienda", "Mi vivienda", MapPin, "homeowner", "Mi vivienda", true);
   }
   if (adminMode) {
     addWorkflow("/solicitudes-revision", "Solicitudes de ingreso", ClipboardText, "service-request-review", "Solicitudes de vinculación", false);
   }
   const personalQuickLinks = personalMode ? [
-    ...(user.permisos.includes("view_notificacion") ? [["/notificaciones", "Notificaciones", Bell]] : []),
+    ...(canAccessPersonalPermission("view_notificacion") ? [["/notificaciones", "Notificaciones", Bell]] : []),
     ["/solicitud-vinculacion", "Solicitar servicio", MapPin],
   ] : [];
   const staticLinks = [...baseLinks, ...workflowLinks, ...personalQuickLinks, ["/perfil", "Mi perfil", UserCircle]];
@@ -2065,9 +2164,14 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
       items: dynamicLinks.filter(([, , , resource]) => (resource.menu_group || "Recursos") === label),
     }));
   if (adminMode) groups.push(...dynamicGroups);
-  const switchMode = (nextMode) => {
-    const target = nextMode === "admin" ? "/dashboard" : personalHome;
-    onModeChange(nextMode);
+  const switchMode = async (nextMode) => {
+    let access = { permissions: personalPermissions, resources: personalResources };
+    if (nextMode === "personal" && onLoadPersonalAccess) {
+      try { access = await onLoadPersonalAccess(); }
+      catch { access = { permissions: [], resources: [] }; }
+    }
+    const target = nextMode === "admin" ? "/dashboard" : personalDestination(accountUser, access.permissions, access.resources);
+    onModeChange(nextMode, nextMode === "personal" ? access : null);
     navigate(target);
   };
   return (
@@ -2215,14 +2319,15 @@ function Workspace({ user, onLogout, onProfileUpdated, mode, onModeChange }) {
                         user={user}
                         title={title}
                         readonly={readonly}
+                        personalView={personalMode}
                       />
                     )
                   }
                 />
               ))}
-            {adminMode && resourceNav.map((resource) => {
+            {availableResources.filter((resource) => canOpen(resource.menu_path)).map((resource) => {
               const page = modelPage(resource.model);
-              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} />} /> : null;
+              return page ? <Route key={`resource-${resource.id}`} path={resource.menu_path} element={page.kind === "roles" ? <RoleMatrix user={user} /> : page.kind === "audit" ? <SecurityAudit /> : <Records kind={page.kind} user={user} title={resource.name} endpointOverride={resource.endpoint} modelName={resource.model} personalView={personalMode} />} /> : null;
             })}
             {adminMode && canOpen("/catalogos") && (
               <Route path="/catalogos" element={<Catalogs user={user} />} />
@@ -2370,18 +2475,47 @@ function Shell() {
     if (savedMode === "admin" || savedMode === "personal") return savedMode;
     return ["/dashboard", "/usuarios", "/roles", "/catalogos", "/solicitudes-revision"].includes(window.location.pathname) ? "admin" : "personal";
   });
+  const [personalAccess, setPersonalAccess] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("kaillisto-personal-access") || "null");
+      if (Array.isArray(saved?.permissions) && Array.isArray(saved?.resources)) return saved;
+    } catch {}
+    return { permissions: [], resources: [] };
+  });
   const loc = useLocation(),
     navigate = useNavigate();
-  const changeWorkspaceMode = (mode) => {
+  const savePersonalAccess = useCallback((data) => {
+    const normalized = {
+      permissions: Array.isArray(data?.permissions) ? data.permissions : [],
+      resources: Array.isArray(data?.resources) ? data.resources : [],
+    };
+    sessionStorage.setItem("kaillisto-personal-access", JSON.stringify(normalized));
+    setPersonalAccess(normalized);
+    return normalized;
+  }, []);
+  const loadPersonalAccess = useCallback(async () => {
+    const { data } = await api.get("/security/navigation/?workspace=personal");
+    return savePersonalAccess(data);
+  }, [savePersonalAccess]);
+  const clearPersonalAccess = useCallback(() => {
+    sessionStorage.removeItem("kaillisto-personal-access");
+    setPersonalAccess({ permissions: [], resources: [] });
+  }, []);
+  const changeWorkspaceMode = (mode, access = null) => {
     const safeMode = mode === "admin" ? "admin" : "personal";
+    if (access) savePersonalAccess(access);
     sessionStorage.setItem("kaillisto-workspace-mode", safeMode);
     setWorkspaceMode(safeMode);
   };
   const refresh = useCallback(async () => {
     const r = await api.get("/security/session/");
+    if (workspaceMode === "personal") {
+      try { await loadPersonalAccess(); }
+      catch { savePersonalAccess({ permissions: [], resources: [] }); }
+    }
     setUser(r.data);
     return r.data;
-  }, []);
+  }, [loadPersonalAccess, savePersonalAccess, workspaceMode]);
   useEffect(() => {
     if (["/", "/login", "/registro"].includes(loc.pathname)) {
       setLoading(false);
@@ -2431,14 +2565,19 @@ function Shell() {
       ) : loc.pathname === "/login" ? (
         <Login
           user={user}
-          destination={user ? (workspaceMode === "admin" && canUseAdminWorkspace(user) ? "/dashboard" : personalDestination(user)) : loginDestination}
+          destination={user ? (workspaceMode === "admin" && canUseAdminWorkspace(user) ? "/dashboard" : personalDestination(user, personalAccess.permissions, personalAccess.resources)) : loginDestination}
           onLogin={async (space) => {
             const { data: authenticatedUser } = await api.get("/security/session/");
             const adminUnavailable = space === "admin" && !canUseAdminWorkspace(authenticatedUser);
             const resolvedMode = space === "admin" && !adminUnavailable ? "admin" : "personal";
-            const target = resolvedMode === "admin" ? "/dashboard" : personalDestination(authenticatedUser);
+            let access = personalAccess;
+            if (resolvedMode === "personal") {
+              try { access = await loadPersonalAccess(); }
+              catch { access = savePersonalAccess({ permissions: [], resources: [] }); }
+            }
+            const target = resolvedMode === "admin" ? "/dashboard" : personalDestination(authenticatedUser, access.permissions, access.resources);
             setError(adminUnavailable ? "Esta cuenta no tiene acceso administrativo. Abrimos tu espacio personal." : "");
-            changeWorkspaceMode(resolvedMode);
+            changeWorkspaceMode(resolvedMode, access);
             setLoginDestination(target);
             setUser(authenticatedUser);
             navigate(target);
@@ -2454,6 +2593,7 @@ function Shell() {
             try {
               await api.post("/cerrar_sesion/");
               setUser(null);
+              clearPersonalAccess();
               changeWorkspaceMode("personal");
               navigate("/login");
             } catch (e) {
@@ -2462,6 +2602,8 @@ function Shell() {
           }}
           mode={workspaceMode}
           onModeChange={changeWorkspaceMode}
+          personalAccess={personalAccess}
+          onLoadPersonalAccess={loadPersonalAccess}
         />
       ) : (
         <Navigate to="/login" replace />
