@@ -274,6 +274,8 @@ const endpoint = (kind) =>
     : kind === "roles"
       ? "/security/roles/"
       : `/security/portal/${kind}/`;
+const recordsFrom = (data) => Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+const readableDate = (value) => value ? new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Fecha no disponible";
 const permissionModelByKind = {
   usuarios: "usuario",
   roles: "role",
@@ -1521,29 +1523,39 @@ function HomeownerOverview({ user }) {
   const [installations, setInstallations] = useState([]);
   const [devices, setDevices] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    Promise.all([
-      api.get("/security/portal/instalaciones/"),
-      api.get("/security/portal/dispositivos/"),
-      api.get("/security/portal/alertas/"),
-    ])
-      .then(([installationResponse, deviceResponse, alertResponse]) => {
+    const requests = [
+      ["installations", "/security/portal/instalaciones/"],
+      ["devices", "/security/portal/dispositivos/"],
+      ["alerts", "/security/portal/alertas/"],
+      ...(user.permisos.includes("view_ordentrabajo") ? [["orders", "/security/portal/ordenes/"]] : []),
+      ...(user.permisos.includes("view_notificacion") ? [["notifications", "/security/portal/notificaciones/"]] : []),
+    ];
+    Promise.allSettled(requests.map(([, path]) => api.get(path)))
+      .then((results) => {
         if (!active) return;
-        setInstallations(installationResponse.data);
-        setDevices(deviceResponse.data);
-        setAlerts(alertResponse.data);
+        const setters = { installations: setInstallations, devices: setDevices, alerts: setAlerts, orders: setOrders, notifications: setNotifications };
+        const failures = [];
+        results.forEach((result, index) => {
+          const [key] = requests[index];
+          if (result.status === "fulfilled") setters[key](recordsFrom(result.value.data));
+          else failures.push(errorText(result.reason));
+        });
+        if (failures.length) setError(failures[0]);
       })
-      .catch((e) => { if (active) setError(errorText(e)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [user.permisos]);
   const openAlerts = alerts.filter((alert) =>
     !["cerrada", "cerrado"].includes((alert.estado_display || "").toLowerCase()),
   );
+  const openOrders = orders.filter((order) => !String(order.estado_display || "").toLowerCase().includes("cerrad"));
   return <>
     <div className="page-heading">
       <div>
@@ -1559,7 +1571,7 @@ function HomeownerOverview({ user }) {
         ["Instalaciones", installations.length],
         ["Dispositivos", devices.length],
         ["Avisos activos", openAlerts.length],
-        ["Avisos registrados", alerts.length],
+        [user.permisos.includes("view_ordentrabajo") ? "Órdenes abiertas" : "Avisos registrados", user.permisos.includes("view_ordentrabajo") ? openOrders.length : alerts.length],
       ].map(([label, value]) => <article key={label}><MapPin size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu vivienda</small></article>)}
     </div>
     <section className="owner-section">
@@ -1587,6 +1599,19 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : !loading && <p className="empty">No hay dispositivos asociados a tu instalación todavía.</p>}
     </section>
+    {user.permisos.includes("view_ordentrabajo") && <section className="owner-section">
+      <div className="section-intro"><h2>Mantenimiento de tu vivienda</h2><span className="muted">Órdenes abiertas</span></div>
+      {loading ? <p className="empty">Cargando órdenes de trabajo…</p> : openOrders.length ? <div className="owner-card-grid">
+        {openOrders.slice(0, 6).map((order) => <article className="feature owner-card" key={idOf(order)}>
+          <Wrench size={19} />
+          <h3>Orden #{idOf(order)}</h3>
+          <p>{order.descripcion || "Visita de mantenimiento"}</p>
+          <div className="owner-meta"><span>Estado</span><strong>{order.estado_display || "En seguimiento"}</strong></div>
+          <div className="owner-meta"><span>Instalación</span><strong>{order.instalacion_display || order.instalacion_nombre || "Tu vivienda"}</strong></div>
+          {order.instalacion_latitud != null && order.instalacion_longitud != null && <a className="owner-map-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.instalacion_latitud},${order.instalacion_longitud}`)}`} target="_blank" rel="noreferrer">Ver ubicación ↗</a>}
+        </article>)}
+      </div> : <p className="empty">No hay órdenes de mantenimiento abiertas para tu vivienda.</p>}
+    </section>}
     <section className="owner-section">
       <div className="section-intro"><h2>Avisos y novedades</h2><Link to="/alertas">Ver todas las alertas ↗</Link></div>
       {loading ? <p className="empty">Cargando avisos…</p> : alerts.length ? <div className="owner-alert-list">
@@ -1597,6 +1622,137 @@ function HomeownerOverview({ user }) {
         </article>)}
       </div> : <p className="empty">No hay avisos registrados para tu sistema. Aquí aparecerán si una lectura requiere atención.</p>}
     </section>
+    {user.permisos.includes("view_notificacion") && <section className="owner-section">
+      <div className="section-intro"><h2>Notificaciones</h2><Link to="/notificaciones">Abrir bandeja ↗</Link></div>
+      {loading ? <p className="empty">Cargando notificaciones…</p> : notifications.length ? <div className="owner-card-grid">
+        {notifications.slice(0, 4).map((notification) => <article className="feature owner-card notification-card" key={idOf(notification)}>
+          <Bell size={19} />
+          <h3>{notification.alerta_display || "Aviso de tu sistema"}</h3>
+          <p>{notification.mensaje}</p>
+          <div className="owner-meta"><span>Entrega</span><strong>{notification.estado || "Pendiente"}</strong></div>
+          <small>{notification.canal || "Canal por confirmar"} · {readableDate(notification.fecha_envio || notification.fecha_creacion)}</small>
+        </article>)}
+      </div> : <p className="empty">No tienes notificaciones registradas.</p>}
+    </section>}
+    {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
+  </>;
+}
+
+function CommunityOverview({ user }) {
+  const [data, setData] = useState({ communities: [], installations: [], devices: [], orders: [], alerts: [], notifications: [] });
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    const resources = [
+      ["communities", "comunidades", "view_comunidad"],
+      ["installations", "instalaciones", "view_instalacion"],
+      ["devices", "dispositivos", "view_dispositivo"],
+      ["orders", "ordenes", "view_ordentrabajo"],
+      ["alerts", "alertas", "view_alerta"],
+      ["notifications", "notificaciones", "view_notificacion"],
+    ].filter(([, , permission]) => user.is_superuser || user.permisos.includes(permission));
+    Promise.allSettled(resources.map(([, name]) => api.get(`/security/portal/${name}/`)))
+      .then((results) => {
+        if (!active) return;
+        const next = {};
+        const failures = [];
+        results.forEach((result, index) => {
+          const [key] = resources[index];
+          if (result.status === "fulfilled") next[key] = recordsFrom(result.value.data);
+          else { next[key] = []; failures.push(errorText(result.reason)); }
+        });
+        setData((current) => ({ ...current, ...next }));
+        if (failures.length) setError(failures[0]);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user.is_superuser, user.permisos]);
+  const community = data.communities[0];
+  const openOrders = data.orders.filter((order) => !String(order.estado_display || "").toLowerCase().includes("cerrad"));
+  const openAlerts = data.alerts.filter((alert) => !["cerrada", "cerrado", "resuelta", "resuelto"].includes(String(alert.estado_display || "").toLowerCase()));
+  const pendingDelivery = data.notifications.filter((notification) => ["pendiente", "error", "fallida"].includes(String(notification.estado || "").toLowerCase()));
+  const pointUrl = community?.latitud != null && community?.longitud != null
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${community.latitud},${community.longitud}`)}`
+    : null;
+  return <>
+    <div className="page-heading">
+      <div><span className="eyebrow">TU TERRITORIO SOLAR</span><h1>Mi comunidad</h1><p>Instalaciones, alertas y trabajo técnico de tu comunidad, reunidos en un solo lugar.</p></div>
+      <span className="tag">LÍDER COMUNITARIO / {user.username}</span>
+    </div>
+    {error && <p role="alert" className="notice">Algunos datos no se pudieron cargar. {error}</p>}
+    <section className="community-highlight">
+      <div className="community-highlight-icon"><MapPin size={24} /></div>
+      <div><span className="eyebrow">COMUNIDAD ASIGNADA</span><h2>{community?.nombre || (loading ? "Cargando comunidad…" : "Tu comunidad")}</h2><p>{[community?.sector, community?.municipio, community?.ubicacion].filter(Boolean).join(" · ") || "Ubicación comunitaria registrada en Ka’illisto"}</p></div>
+      {pointUrl && <a className="button secondary" href={pointUrl} target="_blank" rel="noreferrer">Abrir mapa ↗</a>}
+    </section>
+    <div className="stat-grid homeowner-stats community-stats">
+      {[
+        ["Instalaciones", data.installations.length, Layers],
+        ["Equipos", data.devices.length, Radio],
+        ["Alertas activas", openAlerts.length, Bell],
+        ["Órdenes abiertas", openOrders.length, Wrench],
+      ].map(([label, value, Icon]) => <article key={label}><Icon size={18} /><span>{label}</span><strong>{loading ? "—" : value}</strong><small>En tu comunidad</small></article>)}
+    </div>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Instalaciones de la zona</h2><span className="muted">Ubicación y estado</span></div>
+      {loading ? <p className="empty">Cargando instalaciones…</p> : data.installations.length ? <div className="owner-card-grid">
+        {data.installations.map((installation) => {
+          const mapUrl = installation.latitud != null && installation.longitud != null
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${installation.latitud},${installation.longitud}`)}` : null;
+          return <article className="feature owner-card" key={idOf(installation)}>
+            <Layers size={19} /><h3>{installation.nombre || `Sistema #${idOf(installation)}`}</h3>
+            <p>{[installation.direccion, installation.barrio, installation.ubicacion].filter(Boolean).join(" · ") || "Ubicación vinculada a la comunidad"}</p>
+            <div className="owner-meta"><span>Capacidad</span><strong>{installation.capacidad ?? "—"} kW</strong></div>
+            <div className="owner-meta"><span>Estado</span><strong>{installation.estado_instalacion_display || "Sin estado"}</strong></div>
+            {mapUrl && <a className="owner-map-link" href={mapUrl} target="_blank" rel="noreferrer">Ver ubicación ↗</a>}
+          </article>;
+        })}
+      </div> : <p className="empty">Todavía no hay instalaciones vinculadas a esta comunidad.</p>}
+    </section>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Equipos solares</h2><span className="muted">Conexión y mediciones</span></div>
+      {loading ? <p className="empty">Cargando equipos…</p> : data.devices.length ? <div className="owner-card-grid">
+        {data.devices.map((device) => <article className="feature owner-card" key={idOf(device)}>
+          <Radio size={19} /><h3>{device.codigo || `Equipo #${idOf(device)}`}</h3>
+          <p>{device.modelo || "Dispositivo IoT"} · {device.instalacion_display || "Instalación comunitaria"}</p>
+          <small>Último contacto: {readableDate(device.ultima_comunicacion)}</small>
+          <button className="secondary owner-action" onClick={() => setSelectedDevice(device)}>Ver mediciones e historial</button>
+        </article>)}
+      </div> : <p className="empty">Todavía no hay equipos conectados a las instalaciones de la comunidad.</p>}
+    </section>
+    <section className="owner-section">
+      <div className="section-intro"><h2>Visitas y mantenimiento</h2><Link to="/tecnicos">Ver órdenes ↗</Link></div>
+      {loading ? <p className="empty">Cargando órdenes…</p> : openOrders.length ? <div className="owner-card-grid">
+        {openOrders.slice(0, 6).map((order) => {
+          const mapUrl = order.instalacion_latitud != null && order.instalacion_longitud != null
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.instalacion_latitud},${order.instalacion_longitud}`)}` : null;
+          return <article className="feature owner-card" key={idOf(order)}>
+            <Wrench size={19} /><h3>{order.instalacion_display || order.instalacion_nombre || `Orden #${idOf(order)}`}</h3>
+            <p>{order.descripcion || "Visita de mantenimiento"}</p>
+            <div className="owner-meta"><span>Estado</span><strong>{order.estado_display || "En seguimiento"}</strong></div>
+            <small>Registrada: {readableDate(order.fecha_creacion)}</small>
+            {mapUrl && <a className="owner-map-link" href={mapUrl} target="_blank" rel="noreferrer">Abrir ubicación de la visita ↗</a>}
+          </article>;
+        })}
+      </div> : <p className="empty">No hay visitas pendientes para las instalaciones de tu comunidad.</p>}
+    </section>
+    <div className="community-feed-grid">
+      <section className="owner-section">
+        <div className="section-intro"><h2>Alertas recientes</h2><Link to="/mi-alertas">Ver alertas ↗</Link></div>
+        {loading ? <p className="empty">Cargando alertas…</p> : openAlerts.length ? <div className="owner-alert-list">
+          {openAlerts.slice(0, 5).map((alert) => <article className="owner-alert" key={idOf(alert)}><Bell size={18} /><div><strong>{alert.tipo_alerta_display || alert.tipo_medicion_display || "Aviso del sistema"}</strong><p>{alert.mensaje}</p><small>{alert.instalacion_display || "Instalación comunitaria"} · {readableDate(alert.fecha_creacion)}</small></div><span className="reading-state fuera-de-rango">{alert.prioridad_display || alert.estado_display || "Revisar"}</span></article>)}
+        </div> : <p className="empty">No hay alertas que requieran seguimiento.</p>}
+      </section>
+      <section className="owner-section">
+        <div className="section-intro"><h2>Notificaciones</h2><Link to="/notificaciones">Abrir bandeja ↗</Link></div>
+        {loading ? <p className="empty">Cargando notificaciones…</p> : data.notifications.length ? <div className="owner-card-grid">
+          {data.notifications.slice(0, 4).map((notification) => <article className="feature owner-card notification-card" key={idOf(notification)}><Bell size={19} /><h3>{notification.alerta_display || "Aviso comunitario"}</h3><p>{notification.mensaje}</p><div className="owner-meta"><span>Entrega</span><strong>{notification.estado || "Pendiente"}</strong></div><small>{notification.canal || "Canal por confirmar"} · {readableDate(notification.fecha_envio || notification.fecha_creacion)}</small></article>)}
+        </div> : <p className="empty">No hay notificaciones registradas.</p>}
+        {!loading && pendingDelivery.length > 0 && <p className="notice community-delivery-note">{pendingDelivery.length} notificación{pendingDelivery.length === 1 ? "" : "es"} pendiente{pendingDelivery.length === 1 ? "" : "s"} de entrega.</p>}
+      </section>
+    </div>
     {selectedDevice && <DeviceComparison device={selectedDevice} onClose={() => setSelectedDevice(null)} />}
   </>;
 }
@@ -1859,7 +2015,7 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
     if (user.permisos.includes("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
   if (user.roles.includes("Líder Comunitario")) {
-    if (user.permisos.includes("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "instalaciones", "Mi comunidad", true);
+    if (user.permisos.includes("view_instalacion")) addWorkflow("/mi-comunidad", "Mi comunidad", MapPin, "community-overview", "Mi comunidad", true);
     if (user.permisos.includes("view_alerta")) addWorkflow("/mi-alertas", "Alertas de mi zona", Bell, "alertas", "Alertas de mi zona", true);
     if (user.permisos.includes("view_ordentrabajo")) addWorkflow("/tecnicos", "Técnicos asignados", Wrench, "ordenes", "Técnicos asignados", true);
   }
@@ -2004,6 +2160,8 @@ function Workspace({ user, onLogout, onProfileUpdated }) {
                       <RoleMatrix user={user} />
                     ) : kind === "homeowner" ? (
                       <HomeownerOverview user={user} />
+                    ) : kind === "community-overview" ? (
+                      <CommunityOverview user={user} />
                     ) : kind === "technician-cases" ? (
                       <TechnicianCases user={user} />
                     ) : kind === "service-request-review" ? (
