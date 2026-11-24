@@ -74,6 +74,8 @@ def scoped(user, model, *, personal=False):
     if model == m.Notificacion:
         return qs.filter(destinatario=user, alerta__instalacion__in=ids)
     if model == m.Medicion:
+        if personal and technician:
+            return qs
         return qs.filter(dispositivo__instalacion__in=ids)
     if model == m.RepuestoOrdenTrabajo:
         return qs.filter(orden_trabajo__tecnico=user) if technician else qs.none()
