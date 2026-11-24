@@ -2320,6 +2320,7 @@ function Workspace({ user: accountUser, onLogout, onProfileUpdated, mode, onMode
   if (personalMode && tech) {
     if (canAccessPersonalPermission("view_ordentrabajo")) addWorkflow("/mis-casos", "Mis casos asignados", Wrench, "technician-cases", "Mis casos asignados", false);
     if (canAccessPersonalPermission("view_instalacion")) addWorkflow("/ficha-tecnica", "Fichas técnicas", Layers, "instalaciones", "Fichas técnicas", true);
+    if (user.permisos.includes("view_repuesto")) addWorkflow("/repuestos", "Catálogo de repuestos", Package, "repuestos", "Catálogo de repuestos", false);
     if (canAccessPersonalPermission("view_repuestoordentrabajo")) addWorkflow("/consumos", "Repuestos utilizados", Package, "consumos", "Repuestos utilizados", true);
   }
   if (personalMode && user.roles.includes("Líder Comunitario")) {
